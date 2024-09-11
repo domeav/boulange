@@ -97,12 +97,6 @@ def populate_recipes(apps, schema_editor):
         RecipeLine(recipe=ref_GSa,
                    ingredient=ing[0],
                    quantity=ing[1]).save()
-    ref_TGSa = Recipe(name='Sarrasin 100% (1,6 kg)',
-                      ref='TGSa',
-                      price=13,
-                      orig_recipe=ref_GSa,
-                      coef=2)
-    ref_TGSa.save()
     ref_PSa = Recipe(name='Sarrasin 100% (400 g)',
                      ref='PSa',
                      price=3.5,
@@ -123,12 +117,6 @@ def populate_recipes(apps, schema_editor):
         RecipeLine(recipe=ref_GSe,
                    ingredient=ing[0],
                    quantity=ing[1]).save()
-    ref_TGSe = Recipe(name='Seigle 100% (1,6 kg)',
-                      ref='TGSe',
-                      price=13,
-                      orig_recipe=ref_GSe,
-                      coef=2)
-    ref_TGSe.save()
     ref_PSe = Recipe(name='Seigle 100% (400 g)',
                      ref='PSe',
                      price=3.5,
@@ -136,7 +124,99 @@ def populate_recipes(apps, schema_editor):
                      coef=0.5)
     ref_PSe.save()
     
+    # brioches
+    BR = Recipe(name='Brioche raisin',
+                ref='BR',
+                price=4.7)
+    BR.save()
+    BR_ingredients = [(Ingredient.objects.get(name="Farine blé"), 493),
+                      (Ingredient.objects.get(name="Lait"), 296),
+                      (Ingredient.objects.get(name="Huile"), 49),
+                      (Ingredient.objects.get(name="Levain"), 256),
+                      (Ingredient.objects.get(name="Sel"), 6),
+                      (Ingredient.objects.get(name="Sucre"), 69),
+                      (Ingredient.objects.get(name="Raisins secs"), 94)]
+    for ing in BR_ingredients:
+        RecipeLine(recipe=BR,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    BC = Recipe(name='Brioche chocolat',
+                ref='BC',
+                price=5.7)
+    BC.save()
+    BC_ingredients = [(Ingredient.objects.get(name="Farine blé"), 493),
+                      (Ingredient.objects.get(name="Lait"), 296),
+                      (Ingredient.objects.get(name="Huile"), 49),
+                      (Ingredient.objects.get(name="Levain"), 256),
+                      (Ingredient.objects.get(name="Sel"), 6),
+                      (Ingredient.objects.get(name="Sucre"), 69),
+                      (Ingredient.objects.get(name="Pépites de chocolat"), 94)]
+    for ing in BC_ingredients:
+        RecipeLine(recipe=BC,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    # gâteaux/biscuits
+    cookie = Recipe(name="Cookie",
+                    ref='COOKIE',
+                    price='2')
+    cookie.save()
+    cookie_ingredients = [(Ingredient.objects.get(name="Farine blé"), 400/12),
+                          (Ingredient.objects.get(name="Eau"), 120/12),
+                          (Ingredient.objects.get(name="Beurre"), 200/12),
+                          (Ingredient.objects.get(name="Oeufs"), 3/12),
+                          (Ingredient.objects.get(name="Levain"), 150/12),
+                          (Ingredient.objects.get(name="Sucre"), 100/12),
+                          (Ingredient.objects.get(name="Pépites de chocolat"), 200/12),
+                          (Ingredient.objects.get(name="Noisettes"), 120/12)]
+    for ing in cookie_ingredients:
+        RecipeLine(recipe=cookie,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    gateau_breton = Recipe(name="Gâteau breton",
+                    ref='BRETON',
+                    price='12')
+    gateau_breton.save()
+    gateau_breton_ingredients = [(Ingredient.objects.get(name="Farine blé"), 500),
+                                 (Ingredient.objects.get(name="Eau"), 90),
+                                 (Ingredient.objects.get(name="Beurre"), 400),
+                                 (Ingredient.objects.get(name="Oeufs"), 6),
+                                 (Ingredient.objects.get(name="Sucre"), 300)]
+    for ing in gateau_breton_ingredients:
+        RecipeLine(recipe=gateau_breton,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    gateau_argent = Recipe(name="Gâteau d'argent",
+                    ref='ARGENT',
+                    price='2')
+    gateau_argent.save()
+    gateau_argent_ingredients = [(Ingredient.objects.get(name="Farine blé"), 450),
+                                 (Ingredient.objects.get(name="Eau"), 90),
+                                 (Ingredient.objects.get(name="Oeufs"), 15),
+                                 (Ingredient.objects.get(name="Huile"), 200),
+                                 (Ingredient.objects.get(name="Sucre"), 250)]
+    for ing in gateau_argent_ingredients:
+        RecipeLine(recipe=gateau_argent,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    far = Recipe(name="Far",
+                           ref='FAR',
+                           price='15')
+    far.save()
+    far_ingredients = [(Ingredient.objects.get(name="Farine blé"), 375),
+                       (Ingredient.objects.get(name="Lait"), 1500),
+                       (Ingredient.objects.get(name="Oeufs"), 6),
+                       (Ingredient.objects.get(name="Beurre"), 30),
+                       (Ingredient.objects.get(name="Sucre"), 250),
+                       (Ingredient.objects.get(name="Pruneaux"), 375)]
+    for ing in far_ingredients:
+        RecipeLine(recipe=far,
+                   ingredient=ing[0],
+                   quantity=ing[1]).save()
+    
 
+    
+
+    
 
 class Migration(migrations.Migration):
 
