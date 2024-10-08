@@ -60,6 +60,7 @@ class Migration(migrations.Migration):
                 ("ref", models.CharField(max_length=20)),
                 ("price", models.DecimalField(decimal_places=2, max_digits=5)),
                 ("active", models.BooleanField(default=True)),
+                ("nb_units", models.IntegerField(default=1)),
             ],
         ),
         migrations.CreateModel(

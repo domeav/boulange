@@ -19,6 +19,7 @@ class Recipe(models.Model):
     # if orig_recipe is set we'll be using its ingredients with quantity * coef
     orig_recipe = models.ForeignKey("Recipe", on_delete=models.CASCADE, null=True)
     coef = models.FloatField(default=1)
+    nb_units = models.IntegerField(default=1)
     def __str__(self):
         return f'{self.name}/{self.ref}'
     class Meta:
@@ -33,10 +34,16 @@ class RecipeLine(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     quantity = models.FloatField()
     def __str__(self):
-        return f'{self.quantity}{self.ingredient.unit} {self.ingredient.name}'
+        quantity = self.quantity / self.recipe.nb_units
+        return f'{self.ingredient.name} : {round(quantity, 2)} {self.ingredient.unit}'
     
     
 class DeliveryPoint(models.Model):
+    BATCH_TARGET = {
+        "SAME_DAY": "same day",
+        "PREVIOUS_DAY": "previous day",
+    }
+    batch_target = models.CharField(max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=400)
     active = models.BooleanField(default=True)
