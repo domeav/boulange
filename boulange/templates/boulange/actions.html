@@ -3,7 +3,7 @@
 
 {% for batch in daily_batches.batches.values %}
 <div style="border: solid; border-color: blue; margin: 10px; padding: 10px;">
-  <h3>{{ batch.recipe }}: {{ batch.quantity }}</h3>
+  <h3>{{ batch.product }}: {{ batch.quantity }}</h3>
   <ul>
     {% for ingredient in batch.list_ingredients %}
     <li>{{ ingredient }}</li>
@@ -14,8 +14,8 @@
     {% for dpd in batch.delivery_point_dispatch.values %}
     <li>
       {{ dpd.delivery_point }}:
-      {% for recipe, qty in dpd.recipes.items %}
-      {{ recipe }} ({{qty}})
+      {% for product, qty in dpd.products.items %}
+      {{ product }} ({{qty}})
       {% endfor %}
     </li>
     {% endfor %}

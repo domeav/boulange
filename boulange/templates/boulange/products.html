@@ -1,0 +1,20 @@
+<h2>Recettes</h2>
+
+{% for product in products %}
+{% if product.active %}
+<div>
+  <h2>{{ product.name }}</h2>
+  <h3>Référence/prix : {{ product.ref }}/{{ product.price }}€</h3>
+  <ul>
+    {% if product.orig_product %}
+    Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
+    {% else %}
+    {% for line in product.productline_set.all %}
+    <li>{{ line }}</li>
+    {% endfor %}
+    {% endif %}
+  </ul>
+  Prix de revient : {{ product.cost_price|floatformat:2 }}
+</div>
+{% endif %}
+{% endfor %}

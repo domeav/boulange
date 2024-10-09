@@ -8,18 +8,18 @@ from .models import (
     Ingredient,
     Order,
     OrderLine,
-    Recipe,
-    RecipeLine,
+    Product,
+    ProductLine,
 )
 
 
-class RecipeLineInline(admin.TabularInline):
-    model = RecipeLine
+class ProductLineInline(admin.TabularInline):
+    model = ProductLine
     extra = 1
 
 
-class RecipeAdmin(admin.ModelAdmin):
-    inlines = [RecipeLineInline]
+class ProductAdmin(admin.ModelAdmin):
+    inlines = [ProductLineInline]
 
 
 class DeliveryDateInline(admin.StackedInline):
@@ -46,7 +46,7 @@ class DeliveryDateAdmin(nested_admin.NestedModelAdmin):
 
 
 admin.site.register(Ingredient)
-admin.site.register(Recipe, RecipeAdmin)
+admin.site.register(Product, ProductAdmin)
 admin.site.register(DeliveryPoint, DeliveryPointAdmin)
 admin.site.register(Customer)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)

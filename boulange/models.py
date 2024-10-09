@@ -14,14 +14,14 @@ class Ingredient(models.Model):
         indexes = [models.Index(fields=["name"])]
 
 
-class Recipe(models.Model):
+class Product(models.Model):
     name = models.CharField(max_length=200)
     ref = models.CharField(max_length=20)
     price = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
-    # if orig_recipe is set we'll be using its ingredients with quantity * coef
-    orig_recipe = models.ForeignKey(
-        "Recipe", on_delete=models.CASCADE, null=True, blank=True
+    # if orig_product is set we'll be using its ingredients with quantity * coef
+    orig_product = models.ForeignKey(
+        "Product", on_delete=models.CASCADE, null=True, blank=True
     )
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
@@ -31,8 +31,8 @@ class Recipe(models.Model):
 
     def cost_price(self):
         price = 0
-        recipe = self.orig_recipe or self
-        for line in recipe.recipeline_set.all():
+        product = self.orig_product or self
+        for line in product.productline_set.all():
             price += Decimal(line.quantity) * line.ingredient.per_unit_price
         return price * Decimal(self.coef) / Decimal(self.nb_units)
 
@@ -43,13 +43,13 @@ class Recipe(models.Model):
         ]
 
 
-class RecipeLine(models.Model):
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+class ProductLine(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     quantity = models.FloatField()
 
     def display(self, coef=1):
-        quantity = self.quantity / self.recipe.nb_units * coef
+        quantity = self.quantity / self.product.nb_units * coef
         return f"{self.ingredient.name} : {round(quantity, 2)} {self.ingredient.unit}"
 
     def __str__(self):
@@ -111,8 +111,8 @@ class Order(models.Model):
 
 class OrderLine(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    recipe = models.ForeignKey(Recipe, on_delete=models.PROTECT)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField()
 
     def __str__(self):
-        return f"{self.quantity} {self.recipe.ref}"
+        return f"{self.quantity} {self.product.ref}"

@@ -5,16 +5,16 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from .DailyBatches import DailyBatches
-from .models import DeliveryDate, Order, Recipe
+from .models import DeliveryDate, Order, Product
 
 
 def index(request):
     return HttpResponse("Hello, world.")
 
 
-def recipes(request):
-    context = {"recipes": Recipe.objects.all()}
-    return render(request, "boulange/recipes.html", context)
+def products(request):
+    context = {"products": Product.objects.all()}
+    return render(request, "boulange/products.html", context)
 
 
 def orders(request):

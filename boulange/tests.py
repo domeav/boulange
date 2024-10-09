@@ -2,8 +2,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 class ViewTests(TestCase):
-    def test_recipes(self):
-        response = self.client.get(reverse("recipes"))
+    def test_products(self):
+        response = self.client.get(reverse("products"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Semi-complet lin (2 kg)")
     def test_orders(self):

@@ -3,13 +3,13 @@
 from django.db import migrations
 
 
-def populate_recipes(apps, schema_editor):
+def populate_products(apps, schema_editor):
     Ingredient = apps.get_model("boulange", "Ingredient")
-    Recipe = apps.get_model("boulange", "Recipe")
-    RecipeLine = apps.get_model("boulange", "RecipeLine")
+    Product = apps.get_model("boulange", "Product")
+    ProductLine = apps.get_model("boulange", "ProductLine")
 
     # Nature
-    ref_GN = Recipe(name="Semi-complet nature (1 kg)", ref="GN", price=5)
+    ref_GN = Product(name="Semi-complet nature (1 kg)", ref="GN", price=5)
     ref_GN.save()
     GN_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 637),
@@ -18,25 +18,25 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Sel"), 11),
     ]
     for ing in GN_ingredients:
-        RecipeLine(recipe=ref_GN, ingredient=ing[0], quantity=ing[1]).save()
-    ref_TGN = Recipe(
+        ProductLine(product=ref_GN, ingredient=ing[0], quantity=ing[1]).save()
+    ref_TGN = Product(
         name="Semi-complet nature (2 kg)",
         ref="TGN",
         price=10,
-        orig_recipe=ref_GN,
+        orig_product=ref_GN,
         coef=2,
     )
     ref_TGN.save()
-    ref_PN = Recipe(
+    ref_PN = Product(
         name="Semi-complet nature (500 g)",
         ref="PN",
         price=2.7,
-        orig_recipe=ref_GN,
+        orig_product=ref_GN,
         coef=0.5,
     )
     ref_PN.save()
     # Lin
-    ref_GL = Recipe(name="Semi-complet Lin (1 kg)", ref="GL", price=6.5)
+    ref_GL = Product(name="Semi-complet Lin (1 kg)", ref="GL", price=6.5)
     ref_GL.save()
     GL_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 585),
@@ -46,21 +46,21 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Graines lin"), 76),
     ]
     for ing in GL_ingredients:
-        RecipeLine(recipe=ref_GL, ingredient=ing[0], quantity=ing[1]).save()
-    ref_TGL = Recipe(
-        name="Semi-complet lin (2 kg)", ref="TGL", price=13, orig_recipe=ref_GL, coef=2
+        ProductLine(product=ref_GL, ingredient=ing[0], quantity=ing[1]).save()
+    ref_TGL = Product(
+        name="Semi-complet lin (2 kg)", ref="TGL", price=13, orig_product=ref_GL, coef=2
     )
     ref_TGL.save()
-    ref_PL = Recipe(
+    ref_PL = Product(
         name="Semi-complet lin (500 g)",
         ref="PL",
         price=3.5,
-        orig_recipe=ref_GL,
+        orig_product=ref_GL,
         coef=0.5,
     )
     ref_PL.save()
     # Kasha
-    ref_GK = Recipe(name="Semi-complet Kasha (1 kg)", ref="GK", price=6.5)
+    ref_GK = Product(name="Semi-complet Kasha (1 kg)", ref="GK", price=6.5)
     ref_GK.save()
     GK_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 599),
@@ -70,25 +70,25 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Graines kasha"), 78),
     ]
     for ing in GK_ingredients:
-        RecipeLine(recipe=ref_GK, ingredient=ing[0], quantity=ing[1]).save()
-    ref_TGK = Recipe(
+        ProductLine(product=ref_GK, ingredient=ing[0], quantity=ing[1]).save()
+    ref_TGK = Product(
         name="Semi-complet kasha (2 kg)",
         ref="TGK",
         price=13,
-        orig_recipe=ref_GK,
+        orig_product=ref_GK,
         coef=2,
     )
     ref_TGK.save()
-    ref_PK = Recipe(
+    ref_PK = Product(
         name="Semi-complet kasha (500 g)",
         ref="PK",
         price=3.5,
-        orig_recipe=ref_GK,
+        orig_product=ref_GK,
         coef=0.5,
     )
     ref_PK.save()
     # sarrasin
-    ref_GSa = Recipe(name="Sarrasin 100% (800 g)", ref="GSa", price=6.5)
+    ref_GSa = Product(name="Sarrasin 100% (800 g)", ref="GSa", price=6.5)
     ref_GSa.save()
     GSa_ingredients = [
         (Ingredient.objects.get(name="Farine sarrasin"), 549 * 0.8),
@@ -97,17 +97,17 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Sel"), 11 * 0.8),
     ]
     for ing in GSa_ingredients:
-        RecipeLine(recipe=ref_GSa, ingredient=ing[0], quantity=ing[1]).save()
-    ref_PSa = Recipe(
+        ProductLine(product=ref_GSa, ingredient=ing[0], quantity=ing[1]).save()
+    ref_PSa = Product(
         name="Sarrasin 100% (400 g)",
         ref="PSa",
         price=3.5,
-        orig_recipe=ref_GSa,
+        orig_product=ref_GSa,
         coef=0.5,
     )
     ref_PSa.save()
     # seigle
-    ref_GSe = Recipe(name="Seigle 100% (800 g)", ref="GSe", price=5)
+    ref_GSe = Product(name="Seigle 100% (800 g)", ref="GSe", price=5)
     ref_GSe.save()
     GSe_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 197 * 0.8),
@@ -117,14 +117,14 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Sel"), 12 * 0.8),
     ]
     for ing in GSe_ingredients:
-        RecipeLine(recipe=ref_GSe, ingredient=ing[0], quantity=ing[1]).save()
-    ref_PSe = Recipe(
-        name="Seigle 100% (400 g)", ref="PSe", price=2.7, orig_recipe=ref_GSe, coef=0.5
+        ProductLine(product=ref_GSe, ingredient=ing[0], quantity=ing[1]).save()
+    ref_PSe = Product(
+        name="Seigle 100% (400 g)", ref="PSe", price=2.7, orig_product=ref_GSe, coef=0.5
     )
     ref_PSe.save()
 
     # brioches
-    BR = Recipe(name="Brioche raisin", ref="BR", price=4.7)
+    BR = Product(name="Brioche raisin", ref="BR", price=4.7)
     BR.save()
     BR_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 493),
@@ -136,8 +136,8 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Raisins secs"), 94),
     ]
     for ing in BR_ingredients:
-        RecipeLine(recipe=BR, ingredient=ing[0], quantity=ing[1]).save()
-    BC = Recipe(name="Brioche chocolat", ref="BC", price=5.7)
+        ProductLine(product=BR, ingredient=ing[0], quantity=ing[1]).save()
+    BC = Product(name="Brioche chocolat", ref="BC", price=5.7)
     BC.save()
     BC_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 493),
@@ -149,9 +149,9 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Pépites de chocolat"), 94),
     ]
     for ing in BC_ingredients:
-        RecipeLine(recipe=BC, ingredient=ing[0], quantity=ing[1]).save()
+        ProductLine(product=BC, ingredient=ing[0], quantity=ing[1]).save()
     # gâteaux/biscuits
-    cookie = Recipe(name="Cookie", ref="COOKIE", price=2, nb_units=12)
+    cookie = Product(name="Cookie", ref="COOKIE", price=2, nb_units=12)
     cookie.save()
     cookie_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 400),
@@ -164,8 +164,8 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Noisettes"), 120),
     ]
     for ing in cookie_ingredients:
-        RecipeLine(recipe=cookie, ingredient=ing[0], quantity=ing[1]).save()
-    gateau_breton = Recipe(name="Gâteau breton", ref="BRETON", price=12)
+        ProductLine(product=cookie, ingredient=ing[0], quantity=ing[1]).save()
+    gateau_breton = Product(name="Gâteau breton", ref="BRETON", price=12)
     gateau_breton.save()
     gateau_breton_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 500),
@@ -175,8 +175,8 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Sucre"), 300),
     ]
     for ing in gateau_breton_ingredients:
-        RecipeLine(recipe=gateau_breton, ingredient=ing[0], quantity=ing[1]).save()
-    gateau_argent = Recipe(name="Gâteau d'argent", ref="ARGENT", price=2, nb_units=15)
+        ProductLine(product=gateau_breton, ingredient=ing[0], quantity=ing[1]).save()
+    gateau_argent = Product(name="Gâteau d'argent", ref="ARGENT", price=2, nb_units=15)
     gateau_argent.save()
     gateau_argent_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 450),
@@ -186,8 +186,8 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Sucre"), 250),
     ]
     for ing in gateau_argent_ingredients:
-        RecipeLine(recipe=gateau_argent, ingredient=ing[0], quantity=ing[1]).save()
-    far = Recipe(name="Far", ref="FAR", price=15)
+        ProductLine(product=gateau_argent, ingredient=ing[0], quantity=ing[1]).save()
+    far = Product(name="Far", ref="FAR", price=15)
     far.save()
     far_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 375),
@@ -198,9 +198,9 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Pruneaux"), 375),
     ]
     for ing in far_ingredients:
-        RecipeLine(recipe=far, ingredient=ing[0], quantity=ing[1]).save()
+        ProductLine(product=far, ingredient=ing[0], quantity=ing[1]).save()
 
-    ref_PATON = Recipe(name="Pâton pizza (x1)", ref="PATON", price=1.8)
+    ref_PATON = Product(name="Pâton pizza (x1)", ref="PATON", price=1.8)
     ref_PATON.save()
     PATON_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 125),
@@ -211,9 +211,9 @@ def populate_recipes(apps, schema_editor):
         (Ingredient.objects.get(name="Herbes de provence"), 2.5),
     ]
     for ing in PATON_ingredients:
-        RecipeLine(recipe=ref_PATON, ingredient=ing[0], quantity=ing[1]).save()
-    ref_PATON5 = Recipe(
-        name="Pâton pizza (x5)", ref="PATON5", price=8, orig_recipe=ref_PATON, coef=5
+        ProductLine(product=ref_PATON, ingredient=ing[0], quantity=ing[1]).save()
+    ref_PATON5 = Product(
+        name="Pâton pizza (x5)", ref="PATON5", price=8, orig_product=ref_PATON, coef=5
     )
     ref_PATON5.save()
 
@@ -224,4 +224,4 @@ class Migration(migrations.Migration):
         ("boulange", "0002_ingredients"),
     ]
 
-    operations = [migrations.RunPython(populate_recipes)]
+    operations = [migrations.RunPython(populate_products)]

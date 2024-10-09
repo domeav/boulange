@@ -1,45 +1,45 @@
 class DeliveryPointDispatch:
-    recipes: dict[str, int]
+    products: dict[str, int]
 
     def __init__(self, delivery_point):
         self.delivery_point = delivery_point
-        self.recipes = {}
+        self.products = {}
 
-    def add(self, recipeLine):
-        if recipeLine.recipe.ref not in self.recipes:
-            self.recipes[recipeLine.recipe.ref] = 0
-        self.recipes[recipeLine.recipe.ref] += recipeLine.quantity
+    def add(self, productLine):
+        if productLine.product.ref not in self.products:
+            self.products[productLine.product.ref] = 0
+        self.products[productLine.product.ref] += productLine.quantity
 
 
-class RecipeBatch:
+class ProductBatch:
     quantity = 0
     delivery_point_dispatch: dict[int, DeliveryPointDispatch]
 
-    def __init__(self, recipe):
-        self.recipe = recipe
+    def __init__(self, product):
+        self.product = product
         self.delivery_point_dispatch = {}
 
-    def add(self, recipeLine, deliveryPoint):
-        self.quantity += recipeLine.quantity * recipeLine.recipe.coef
+    def add(self, productLine, deliveryPoint):
+        self.quantity += productLine.quantity * productLine.product.coef
         if deliveryPoint.id not in self.delivery_point_dispatch:
             self.delivery_point_dispatch[deliveryPoint.id] = DeliveryPointDispatch(
                 deliveryPoint
             )
-        self.delivery_point_dispatch[deliveryPoint.id].add(recipeLine)
+        self.delivery_point_dispatch[deliveryPoint.id].add(productLine)
 
     def list_ingredients(self):
-        for line in self.recipe.recipeline_set.all():
+        for line in self.product.productline_set.all():
             yield line.display(self.quantity)
 
 
 class DailyBatches:
-    batches: dict[int, RecipeBatch]
+    batches: dict[int, ProductBatch]
 
     def __init__(self):
         self.batches = {}
 
-    def add(self, recipeLine, deliveryPoint):
-        base_recipe = recipeLine.recipe.orig_recipe or recipeLine.recipe
-        if base_recipe.id not in self.batches:
-            self.batches[base_recipe.id] = RecipeBatch(base_recipe)
-        self.batches[base_recipe.id].add(recipeLine, deliveryPoint)
+    def add(self, productLine, deliveryPoint):
+        base_product = productLine.product.orig_product or productLine.product
+        if base_product.id not in self.batches:
+            self.batches[base_product.id] = ProductBatch(base_product)
+        self.batches[base_product.id].add(productLine, deliveryPoint)

@@ -142,7 +142,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name="Recipe",
+            name="Product",
             fields=[
                 (
                     "id",
@@ -160,12 +160,12 @@ class Migration(migrations.Migration):
                 ("coef", models.FloatField(default=1)),
                 ("nb_units", models.IntegerField(default=1)),
                 (
-                    "orig_recipe",
+                    "orig_product",
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        to="boulange.recipe",
+                        to="boulange.product",
                     ),
                 ),
             ],
@@ -190,16 +190,16 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "recipe",
+                    "product",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="boulange.recipe",
+                        to="boulange.product",
                     ),
                 ),
             ],
         ),
         migrations.CreateModel(
-            name="RecipeLine",
+            name="ProductLine",
             fields=[
                 (
                     "id",
@@ -219,10 +219,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "recipe",
+                    "product",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to="boulange.recipe",
+                        to="boulange.product",
                     ),
                 ),
             ],
@@ -236,11 +236,11 @@ class Migration(migrations.Migration):
             index=models.Index(fields=["email"], name="boulange_cu_email_a59615_idx"),
         ),
         migrations.AddIndex(
-            model_name="recipe",
+            model_name="product",
             index=models.Index(fields=["name"], name="boulange_re_name_2c05e2_idx"),
         ),
         migrations.AddIndex(
-            model_name="recipe",
+            model_name="product",
             index=models.Index(fields=["ref"], name="boulange_re_ref_e7550c_idx"),
         ),
     ]
