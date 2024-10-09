@@ -4,6 +4,7 @@ from django.db import models
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=10)
+    per_unit_price = models.DecimalField(max_digits=6, decimal_places=5)
 
     def __str__(self):
         return self.name
