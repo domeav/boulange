@@ -31,7 +31,6 @@ def populate_ingredients(apps, schema_editor):
     for ing in INGREDIENTS:
         ingredient = Ingredient(name=ing[0], unit=ing[1])
         ingredient.save()
-    
 
 
 class Migration(migrations.Migration):
@@ -40,6 +39,4 @@ class Migration(migrations.Migration):
         ("boulange", "0001_initial"),
     ]
 
-    operations = [
-        migrations.RunPython(populate_ingredients)
-    ]
+    operations = [migrations.RunPython(populate_ingredients)]

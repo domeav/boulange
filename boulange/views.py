@@ -1,10 +1,11 @@
-from django.shortcuts import render
-from django.http import HttpResponse
-from .models import Recipe, RecipeLine, DeliveryDate, Order
 from datetime import date, datetime, timedelta
 from itertools import chain
-from collections import defaultdict
+
+from django.http import HttpResponse
+from django.shortcuts import render
+
 from .DailyBatches import DailyBatches
+from .models import DeliveryDate, Order, Recipe
 
 
 def index(request):
@@ -12,9 +13,7 @@ def index(request):
 
 
 def recipes(request):
-    context = {
-        "recipes": Recipe.objects.all()
-    }
+    context = {"recipes": Recipe.objects.all()}
     return render(request, "boulange/recipes.html", context)
 
 
@@ -27,24 +26,26 @@ def orders(request):
         if order.delivery_date.delivery_point.batch_target == "PREVIOUS_DAY":
             operation_date -= timedelta(days=1)
         todo.add(operation_date)
-    context = {
-        'orders': orders,
-        'todo': sorted(todo)
-    }
-    return render(request, 'boulange/orders.html', context)
+    context = {"orders": orders, "todo": sorted(todo)}
+    return render(request, "boulange/orders.html", context)
 
 
 def actions(request, year, month, day):
     target_date = date(year, month, day)
-    deliveries_d0 = DeliveryDate.objects.filter(date=target_date).filter(delivery_point__batch_target="SAME_DAY").all()
-    deliveries_d1 = DeliveryDate.objects.filter(date=target_date+timedelta(days=1)).filter(delivery_point__batch_target="PREVIOUS_DAY").all()
+    deliveries_d0 = (
+        DeliveryDate.objects.filter(date=target_date)
+        .filter(delivery_point__batch_target="SAME_DAY")
+        .all()
+    )
+    deliveries_d1 = (
+        DeliveryDate.objects.filter(date=target_date + timedelta(days=1))
+        .filter(delivery_point__batch_target="PREVIOUS_DAY")
+        .all()
+    )
     daily_batches = DailyBatches()
     for delivery_date in chain(deliveries_d0, deliveries_d1):
         for order in delivery_date.order_set.all():
             for line in order.orderline_set.all():
                 daily_batches.add(line, delivery_date.delivery_point)
-    context = {
-        "target_date": target_date,
-        "daily_batches": daily_batches
-    }
+    context = {"target_date": target_date, "daily_batches": daily_batches}
     return render(request, "boulange/actions.html", context)
