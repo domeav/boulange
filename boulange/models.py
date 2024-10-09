@@ -1,4 +1,5 @@
 from django.db import models
+from decimal import Decimal
 
 
 class Ingredient(models.Model):
@@ -24,9 +25,16 @@ class Recipe(models.Model):
     )
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
-
+    
     def __str__(self):
         return f"{self.name}/{self.ref}"
+
+    def cost_price(self):
+        price = 0
+        recipe = self.orig_recipe or self
+        for line in recipe.recipeline_set.all():
+            price += Decimal(line.quantity) * line.ingredient.per_unit_price
+        return price * Decimal(self.coef) / Decimal(self.nb_units)
 
     class Meta:
         indexes = [
