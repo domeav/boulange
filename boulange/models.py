@@ -17,7 +17,7 @@ class Recipe(models.Model):
     price = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
     # if orig_recipe is set we'll be using its ingredients with quantity * coef
-    orig_recipe = models.ForeignKey("Recipe", on_delete=models.CASCADE, null=True)
+    orig_recipe = models.ForeignKey("Recipe", on_delete=models.CASCADE, null=True, blank=True)
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
     def __str__(self):
@@ -33,10 +33,11 @@ class RecipeLine(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     quantity = models.FloatField()
-    def __str__(self):
-        quantity = self.quantity / self.recipe.nb_units
+    def display(self, coef=1):
+        quantity = self.quantity / self.recipe.nb_units * coef
         return f'{self.ingredient.name} : {round(quantity, 2)} {self.ingredient.unit}'
-    
+    def __str__(self):
+        return self.display()
     
 class DeliveryPoint(models.Model):
     BATCH_TARGET = {
@@ -73,8 +74,7 @@ class Customer(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
-            models.Index(fields=["email"]),
-            
+            models.Index(fields=["email"]),            
         ]
 
 

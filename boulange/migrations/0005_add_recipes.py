@@ -189,7 +189,7 @@ def populate_recipes(apps, schema_editor):
     gateau_argent = Recipe(name="Gâteau d'argent",
                            ref='ARGENT',
                            price=2,
-                           nb_units=12)
+                           nb_units=15)
     gateau_argent.save()
     gateau_argent_ingredients = [(Ingredient.objects.get(name="Farine blé"), 450),
                                  (Ingredient.objects.get(name="Eau"), 90),

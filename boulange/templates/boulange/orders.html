@@ -1,0 +1,13 @@
+<h2>Commandes</h2>
+<ul>
+  {% for order in orders %}
+  <li>{{ order }}</li>
+  {% endfor %}
+</ul>
+
+<h3>TODO</h3>
+<ul>
+  {% for date in todo %}
+  <li><a href="{% url 'actions' date.year date.month date.day %}">{{ date }}</a></li>
+  {% endfor %}
+</ul>

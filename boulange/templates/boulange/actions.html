@@ -1,0 +1,25 @@
+<h2>Actions pour le {{ target_date }}</h2>
+
+
+{% for batch in daily_batches.batches.values %}
+<div style="border: solid; border-color: blue; margin: 10px; padding: 10px;">
+  <h3>{{ batch.recipe }}: {{ batch.quantity }}</h3>
+  <ul>
+    {% for ingredient in batch.list_ingredients %}
+    <li>{{ ingredient }}</li>
+    {% endfor %}
+  </ul>
+  Dispatch :
+  <ul>
+    {% for dpd in batch.delivery_point_dispatch.values %}
+    <li>
+      {{ dpd.delivery_point }}:
+      {% for recipe, qty in dpd.recipes.items %}
+      {{ recipe }} ({{qty}})
+      {% endfor %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endfor %}
+
