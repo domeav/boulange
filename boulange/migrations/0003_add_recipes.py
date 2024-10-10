@@ -93,7 +93,7 @@ def populate_products(apps, schema_editor):
     GSa_ingredients = [
         (Ingredient.objects.get(name="Farine sarrasin"), 549 * 0.8),
         (Ingredient.objects.get(name="Eau"), 549 * 0.8),
-        (Ingredient.objects.get(name="Levain"), 165 * 0.8),
+        (Ingredient.objects.get(name="Levain sarrasin"), 165 * 0.8),
         (Ingredient.objects.get(name="Sel"), 11 * 0.8),
     ]
     for ing in GSa_ingredients:

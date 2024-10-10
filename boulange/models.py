@@ -1,11 +1,15 @@
-from django.db import models
 from decimal import Decimal
+
+from django.db import models
 
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=10)
-    per_unit_price = models.DecimalField(max_digits=6, decimal_places=5)
+    per_unit_price = models.DecimalField(
+        max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit"
+    )
+    needs_soaking = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -25,7 +29,7 @@ class Product(models.Model):
     )
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
-    
+
     def __str__(self):
         return f"{self.name}/{self.ref}"
 
@@ -33,8 +37,22 @@ class Product(models.Model):
         price = 0
         product = self.orig_product or self
         for line in product.productline_set.all():
-            price += Decimal(line.quantity) * line.ingredient.per_unit_price
+            unit_divisor = 1
+            if line.ingredient.unit in ("g", "ml"):
+                unit_divisor = 1000
+            price += (
+                Decimal(line.quantity) * line.ingredient.per_unit_price / unit_divisor
+            )
+
         return price * Decimal(self.coef) / Decimal(self.nb_units)
+
+    def get_soaking_water(self):
+        "Qty of water that should be used to soak ingredients"
+        water = 0
+        for line in self.productline_set.all():
+            if line.ingredient.needs_soaking:
+                water += line.quantity
+        return water
 
     class Meta:
         indexes = [
@@ -49,11 +67,26 @@ class ProductLine(models.Model):
     quantity = models.FloatField()
 
     def display(self, coef=1):
+        "Removes water that has been used to soak ingredients"
+        base_quantity = self.quantity
+        hint = ""
+        if self.ingredient.name == "Eau":
+            base_quantity -= self.product.get_soaking_water()
+            hint = " (- trempage)"
+        elif self.ingredient.needs_soaking:
+            # add water to qty
+            base_quantity *= 2
+            hint = " (trempé)"
+        quantity = base_quantity / self.product.nb_units * coef
+
+        return f"{self.ingredient.name}{ hint } : {round(quantity, 2)} {self.ingredient.unit}"
+
+    def display_dry(self, coef=1):
         quantity = self.quantity / self.product.nb_units * coef
         return f"{self.ingredient.name} : {round(quantity, 2)} {self.ingredient.unit}"
 
     def __str__(self):
-        return self.display()
+        return self.display_dry()
 
 
 class DeliveryPoint(models.Model):

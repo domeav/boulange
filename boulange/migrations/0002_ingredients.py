@@ -6,30 +6,33 @@ from django.db import migrations
 def populate_ingredients(apps, schema_editor):
     Ingredient = apps.get_model("boulange", "Ingredient")
     INGREDIENTS = (
-        ("Beurre", "g", 1),
-        ("Eau", "cl", 1),
-        ("Farine blé", "g", 1),
-        ("Farine sarrasin", "g", 1),
-        ("Farine seigle", "g", 1),
-        ("Graines kasha", "g", 1),
-        ("Graines lin", "g", 1),
-        ("Herbes de provence", "g", 1),
-        ("Huile", "cl", 1),
-        ("Huile olive", "cl", 1),
-        ("Lait de riz", "cl", 1),
-        ("Lait", "cl", 1),
-        ("Levain", "g", 1),
-        ("Noisettes", "g", 1),
-        ("Noix", "g", 1),
-        ("Oeufs", "oeufs", 1),
-        ("Pruneaux", "g", 1),
-        ("Pépites de chocolat", "g", 1),
-        ("Raisins secs", "g", 1),
-        ("Sel", "g", 1),
-        ("Sucre", "g", 1),
+        ("Beurre", "g", 13, False),
+        ("Eau", "ml", 0.3, False),
+        ("Farine blé", "g", 1.43, False),
+        ("Farine sarrasin", "g", 2.2, False),
+        ("Farine seigle", "g", 1.6, False),
+        ("Graines kasha", "g", 5, True),
+        ("Graines lin", "g", 4, True),
+        ("Herbes de provence", "g", 20, False),
+        ("Huile", "ml", 4.35, False),
+        ("Huile olive", "ml", 4.35, False),
+        ("Lait de riz", "ml", 0.4, False),
+        ("Lait", "ml", 1.1, False),
+        ("Levain", "g", 1.43, False),
+        ("Levain sarrasin", "g", 2.2, False),
+        ("Noisettes", "g", 12.5, False),
+        ("Noix", "g", 18, False),
+        ("Oeufs", "oeufs", 0.4, False),
+        ("Pruneaux", "g", 13, False),
+        ("Pépites de chocolat", "g", 9.4, False),
+        ("Raisins secs", "g", 3.78, False),
+        ("Sel", "g", 1.14, False),
+        ("Sucre", "g", 1.92, False),
     )
     for ing in INGREDIENTS:
-        ingredient = Ingredient(name=ing[0], unit=ing[1], per_unit_price=ing[2])
+        ingredient = Ingredient(
+            name=ing[0], unit=ing[1], per_unit_price=ing[2], needs_soaking=ing[3]
+        )
         ingredient.save()
 
 
