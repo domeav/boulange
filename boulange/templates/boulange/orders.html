@@ -1,7 +1,21 @@
 <h2>Commandes</h2>
 <ul>
-  {% for order in orders %}
-  <li>{{ order }}</li>
+  {% for delivery_date in delivery_dates %}
+  <li>
+    {{ delivery_date }}
+    <ul>
+      {% for order in delivery_date.order_set.all %}
+      <li>
+	{{ order.customer }}
+	<ul>
+	  {% for orderline in order.orderline_set.all %}
+	  <li>{{ orderline }}</li>
+	  {% endfor %}
+	</ul>
+      </li>
+      {% endfor %}
+    </ul>
+  </li>
   {% endfor %}
 </ul>
 

@@ -18,15 +18,14 @@ def products(request):
 
 
 def orders(request):
-    orders = Order.objects.filter(delivery_date__date__gte=datetime.now()).all()
+    delivery_dates = DeliveryDate.objects.filter(date__gte=datetime.now()).order_by("delivery_point").all()
     todo = set()
-    for order in orders:
-        operation_date = order.delivery_date.date
-        print(order.delivery_date.delivery_point)
-        if order.delivery_date.delivery_point.batch_target == "PREVIOUS_DAY":
+    for delivery_date in delivery_dates:
+        operation_date = delivery_date.date
+        if delivery_date.delivery_point.batch_target == "PREVIOUS_DAY":
             operation_date -= timedelta(days=1)
         todo.add(operation_date)
-    context = {"orders": orders, "todo": sorted(todo)}
+    context = {"delivery_dates": delivery_dates, "todo": sorted(todo)}
     return render(request, "boulange/orders.html", context)
 
 
