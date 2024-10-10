@@ -1,8 +1,12 @@
-<h2>Commandes</h2>
-<ul>
+{% extends "boulange/base.html" %}
+
+{% block title %}Commandes{% endblock %}
+
+{% block content %}
+<section>
   {% for delivery_date in delivery_dates %}
-  <li>
-    {{ delivery_date }}
+  <aside>
+    <h2>{{ delivery_date }}</h2>
     <ul>
       {% for order in delivery_date.order_set.all %}
       <li>
@@ -15,13 +19,7 @@
       </li>
       {% endfor %}
     </ul>
-  </li>
+  </aside>
   {% endfor %}
-</ul>
-
-<h3>TODO</h3>
-<ul>
-  {% for date in todo %}
-  <li><a href="{% url 'actions' date.year date.month date.day %}">{{ date }}</a></li>
-  {% endfor %}
-</ul>
+</section>
+{% endblock %}

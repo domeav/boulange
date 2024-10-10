@@ -1,25 +1,30 @@
-<h2>Actions pour le {{ target_date }}</h2>
+{% extends "boulange/base.html" %}
 
+{% block title %}Actions pour le {{ target_date }}{% endblock %}
 
-{% for batch in daily_batches.batches.values %}
-<div style="border: solid; border-color: blue; margin: 10px; padding: 10px;">
-  <h3>{{ batch.product }}: {{ batch.quantity }}</h3>
-  <ul>
-    {% for ingredient in batch.list_ingredients %}
-    <li>{{ ingredient }}</li>
-    {% endfor %}
-  </ul>
-  Dispatch :
-  <ul>
-    {% for dpd in batch.delivery_point_dispatch.values %}
-    <li>
-      {{ dpd.delivery_point }}:
-      {% for product, qty in dpd.products.items %}
-      {{ product }} ({{qty}})
+{% block content %}
+<section>
+  {% for batch in daily_batches.batches.values %}
+  <div style="border: solid; border-color: blue; margin: 10px; padding: 10px;">
+    <h3>{{ batch.product }}: {{ batch.quantity }}</h3>
+    <ul>
+      {% for ingredient in batch.list_ingredients %}
+      <li>{{ ingredient }}</li>
       {% endfor %}
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-{% endfor %}
+    </ul>
+    Dispatch :
+    <ul>
+      {% for dpd in batch.delivery_point_dispatch.values %}
+      <li>
+	{{ dpd.delivery_point }}:
+	{% for product, qty in dpd.products.items %}
+	{{ product }} ({{qty}})
+	{% endfor %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  {% endblock %}
+</section>
 

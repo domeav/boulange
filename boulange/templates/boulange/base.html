@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+  <head>
+    <link rel="stylesheet" href="{% static 'boulange/css/mvp.css' %}">
+    <title>La boulange de la ferme du Resto</title>
+  </head>
+
+  <body>
+    <header>
+      <nav>
+	<img alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	<ul>
+          <li><a href="{% url 'boulange:products' %}">Produits</a></li>
+          <li><a href="{% url 'boulange:orders' %}">Commandes</a></li>
+	  <li><a href="{% url 'boulange:actions' %}">Actions</a></li>
+	</ul>
+      </nav>
+      <h1>{% block title %}{% endblock %}</h1>
+    </header>
+    
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

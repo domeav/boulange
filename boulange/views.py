@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from itertools import chain
 
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 from .DailyBatches import DailyBatches
 from .models import DeliveryDate, Order, Product
@@ -19,17 +19,14 @@ def products(request):
 
 def orders(request):
     delivery_dates = DeliveryDate.objects.filter(date__gte=datetime.now()).order_by("delivery_point").all()
-    todo = set()
-    for delivery_date in delivery_dates:
-        operation_date = delivery_date.date
-        if delivery_date.delivery_point.batch_target == "PREVIOUS_DAY":
-            operation_date -= timedelta(days=1)
-        todo.add(operation_date)
-    context = {"delivery_dates": delivery_dates, "todo": sorted(todo)}
+    context = {"delivery_dates": delivery_dates}
     return render(request, "boulange/orders.html", context)
 
 
-def actions(request, year, month, day):
+def actions(request, year=None, month=None, day=None):
+    if not (year and month and day):
+        today = datetime.now()
+        return redirect('boulange:actions', today.year, today.month, today.day)
     target_date = date(year, month, day)
     deliveries_d0 = (
         DeliveryDate.objects.filter(date=target_date)
