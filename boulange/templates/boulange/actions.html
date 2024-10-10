@@ -1,29 +1,33 @@
 {% extends "boulange/base.html" %}
 
-{% block title %}Actions pour le {{ target_date }}{% endblock %}
+{% block title %}
+<a href="{% url 'boulange:actions' previous.year previous.month previous.day %}">⬅</a>
+Actions pour le {{ target_date|date:"l j F Y" }}
+<a href="{% url 'boulange:actions' next.year next.month next.day %}">➡</a>
+{% endblock %}
 
 {% block content %}
 <section>
   {% for batch in daily_batches.batches.values %}
-  <div style="border: solid; border-color: blue; margin: 10px; padding: 10px;">
+  <aside>
     <h3>{{ batch.product }}: {{ batch.quantity }}</h3>
     <ul>
       {% for ingredient in batch.list_ingredients %}
       <li>{{ ingredient }}</li>
       {% endfor %}
     </ul>
-    Dispatch :
+    <b>Dispatch :</b>
     <ul>
       {% for dpd in batch.delivery_point_dispatch.values %}
       <li>
-	{{ dpd.delivery_point }}:
+	{{ dpd.delivery_point }} :
 	{% for product, qty in dpd.products.items %}
 	{{ product }} ({{qty}})
 	{% endfor %}
       </li>
       {% endfor %}
     </ul>
-  </div>
+  </aside>
   {% endfor %}
   {% endblock %}
 </section>

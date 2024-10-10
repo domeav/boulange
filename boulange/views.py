@@ -9,7 +9,7 @@ from .models import DeliveryDate, Order, Product
 
 
 def index(request):
-    return HttpResponse("Hello, world.")
+    return render(request, "boulange/index.html")
 
 
 def products(request):
@@ -43,5 +43,10 @@ def actions(request, year=None, month=None, day=None):
         for order in delivery_date.order_set.all():
             for line in order.orderline_set.all():
                 daily_batches.add(line, delivery_date.delivery_point)
-    context = {"target_date": target_date, "daily_batches": daily_batches}
+    context = {
+        "target_date": target_date,
+        "daily_batches": daily_batches,
+        "previous": target_date - timedelta(days=1),
+        "next": target_date + timedelta(days=1)
+    }
     return render(request, "boulange/actions.html", context)
