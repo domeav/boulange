@@ -142,6 +142,12 @@ class Order(models.Model):
     def __str__(self):
         return f"{self.customer.email}/{self.delivery_date.delivery_point.name}/{self.delivery_date.date}"
 
+    def get_total_price(self):
+        total = 0
+        for line in self.orderline_set.all():
+            total += line.get_price()
+        return total
+
 
 class OrderLine(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
@@ -150,3 +156,6 @@ class OrderLine(models.Model):
 
     def __str__(self):
         return f"{self.quantity} {self.product.ref}"
+
+    def get_price(self):
+        return self.product.price * self.quantity

@@ -19,7 +19,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("boulange/", include("boulange.urls")),
+    path("", include("boulange.urls")),
     path("admin/", admin.site.urls),
     path("nested_admin/", include("nested_admin.urls")),
 ]

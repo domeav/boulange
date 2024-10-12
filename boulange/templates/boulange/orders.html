@@ -10,7 +10,7 @@
     <ul>
       {% for order in delivery_date.order_set.all %}
       <li>
-	{{ order.customer }}
+	{{ order.customer }} <a href="{% url 'boulange:invoice' order.id %}">facture</a>
 	<ul>
 	  {% for orderline in order.orderline_set.all %}
 	  <li>{{ orderline }}</li>

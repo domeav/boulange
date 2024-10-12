@@ -1,0 +1,38 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Facture{% if monthly %} pour {{orders.0.customer}}/{{ orders.0.delivery_date.date|date:"F Y" }}{% endif %}{% endblock %}
+
+{% block content %}
+<section>
+  {% for order in orders %}
+  {{ order }}
+  <p>
+    <table>
+      <tr>
+	<th>Designation</th>
+	<th>Quantité</th>
+	<th>Prix unitaire (€)</th>
+	<th>Prix (€)</th>
+      </tr>
+      {% for orderline in order.orderline_set.all %}
+      <tr>
+	<td>{{ orderline.product.name }}</td>
+	<td>{{ orderline.quantity }}</td>
+	<td>{{ orderline.product.price }}</td>
+	<td>{{ orderline.get_price }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+	<th colspan="3">Total :</th>
+	<th>{{ order.get_total_price }}</th>
+      </tr>
+    </table>
+  </p>
+  {% endfor %}
+  {% if not monthly %}
+  <a href="{% url 'boulange:monthly_invoice' orders.0.customer.id orders.0.delivery_date.date.year orders.0.delivery_date.date.month %}">Facture mensuelle de {{ orders.0.customer }}</a>
+  {% else %}
+  <h2>Total {{ orders.0.delivery_date.date|date:"F Y" }} : {{ total }}€</h2>
+  {% endif %}
+</section>
+{% endblock %}
