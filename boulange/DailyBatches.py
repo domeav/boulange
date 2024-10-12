@@ -32,6 +32,13 @@ class ProductBatch:
             yield line.display(self.quantity)
 
 
+class Preparation:
+    def __init__(self, name, quantity):
+        self.name = name
+        self.quantity = quantity
+        self.is_levain = True if name.startswith("Levain") else False
+
+
 class DailyBatches:
     batches: dict[int, ProductBatch]
 
@@ -43,3 +50,20 @@ class DailyBatches:
         if base_product.id not in self.batches:
             self.batches[base_product.id] = ProductBatch(base_product)
         self.batches[base_product.id].add(productLine, deliveryPoint)
+
+    def get_preparations(self):
+        preparations = {}
+        for batch in self.batches.values():
+            for line in batch.product.productline_set.all():
+                if (
+                    line.ingredient.name.startswith("Levain")
+                    or line.ingredient.needs_soaking
+                ):
+                    if line.ingredient.name not in preparations:
+                        preparations[line.ingredient.name] = Preparation(
+                            line.ingredient.name, 0
+                        )
+                    preparations[line.ingredient.name].quantity += (
+                        line.quantity * batch.quantity
+                    )
+        return preparations

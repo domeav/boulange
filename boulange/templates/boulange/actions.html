@@ -8,6 +8,29 @@ Actions pour le {{ target_date|date:"l j F Y" }}
 
 {% block content %}
 <section>
+  <header>
+    <h2>Préparations</h2>
+    <p>Levain, trempage</p>
+  </header>
+  {% for preparation in preparations_batches.get_preparations.values %}
+  <aside>
+    <h3>{{ preparation.name }}</h3>
+    Quantité : {{ preparation.quantity }} g
+    <br>
+    {% if preparation.is_levain %}
+    (Recette du levain à préciser)
+    {% else %}
+    + {{ preparation.quantity }} ml d'eau
+    {% endif %}
+  </aside>
+  {% endfor %}
+  <hr>
+</section>
+<section>
+  <header>
+    <h2>Recettes</h2>
+    <p>Pour livraison du jour ou le lendemain matin</p>
+  </header>
   {% for batch in daily_batches.batches.values %}
   <aside>
     <h3>{{ batch.product }}: {{ batch.quantity }}</h3>

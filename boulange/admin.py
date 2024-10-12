@@ -41,8 +41,15 @@ class OrderInline(nested_admin.NestedTabularInline):
     inlines = [OrderLineInline]
 
 
+class OrderAdmin(admin.ModelAdmin):
+    model = Order
+    inlines = [OrderLineInline]
+    save_as = True
+
+
 class DeliveryDateAdmin(nested_admin.NestedModelAdmin):
     inlines = [OrderInline]
+    save_as = True
 
 
 admin.site.register(Ingredient)
@@ -50,3 +57,4 @@ admin.site.register(Product, ProductAdmin)
 admin.site.register(DeliveryPoint, DeliveryPointAdmin)
 admin.site.register(Customer)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)
+admin.site.register(Order, OrderAdmin)

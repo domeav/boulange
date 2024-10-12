@@ -71,8 +71,9 @@ class ProductLine(models.Model):
         base_quantity = self.quantity
         hint = ""
         if self.ingredient.name == "Eau":
-            base_quantity -= self.product.get_soaking_water()
-            hint = " (- trempage)"
+            if self.product.get_soaking_water():
+                base_quantity -= self.product.get_soaking_water()
+                hint = " (- trempage)"
         elif self.ingredient.needs_soaking:
             # add water to qty
             base_quantity *= 2
