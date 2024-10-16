@@ -37,8 +37,36 @@ class Preparation:
         self.name = name
         self.quantity = quantity
         self.water_qty = water_qty
-        self.is_levain = True if name.startswith("Levain") else False
+        self.is_levain_froment = True if name == "Levain froment" else False
+        self.is_levain_sarrasin = True if name == "Levain sarrasin" else False
         self.is_rice = True if name == "Flocons de riz" else False
+
+    def round_quantity(self):
+        quantity = self.quantity
+        if self.is_levain_sarrasin:
+            # including future levain chef
+            quantity += 20
+        if quantity % 10 == 0:
+            return quantity
+        return (int(quantity / 10) + 1) * 10
+
+    def refresh_flour_water(self, initial_qty, target_qty, water_percentage):
+        missing = target_qty - initial_qty
+        water = missing * water_percentage / 100
+        flour = missing - water
+        return {"flour": flour, "water": water}
+
+    def refresh_first(self):
+        return self.refresh_flour_water(100, 300, 60)
+
+    def refresh_first_sarrasin(self):
+        return self.refresh_flour_water(20, 100, 50)
+
+    def refresh_second(self):
+        return self.refresh_flour_water(300, self.round_quantity(), 50)
+
+    def refresh_second_sarrasin(self):
+        return self.refresh_flour_water(100, self.round_quantity(), 50)
 
 
 class DailyBatches:
