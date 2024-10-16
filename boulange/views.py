@@ -24,12 +24,12 @@ def orders(request):
     return render(request, "boulange/orders.html", context)
 
 
-def invoice(request, order_id):
+def receipt(request, order_id):
     context = {"orders": [get_object_or_404(Order, id=order_id)], "monthly": False}
-    return render(request, "boulange/invoice.html", context)
+    return render(request, "boulange/receipt.html", context)
 
 
-def monthly_invoice(request, customer_id, year, month):
+def monthly_receipt(request, customer_id, year, month):
     start = date(year, month, 1)
     end = date(year, month + 1 if month < 12 else 1, 1)
     orders = (
@@ -42,7 +42,7 @@ def monthly_invoice(request, customer_id, year, month):
         "monthly": True,
         "total": sum([o.get_total_price() for o in orders]),
     }
-    return render(request, "boulange/invoice.html", context)
+    return render(request, "boulange/receipt.html", context)
 
 
 def actions(request, year=None, month=None, day=None):

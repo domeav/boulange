@@ -41,7 +41,7 @@ class OrderInline(nested_admin.NestedTabularInline):
     inlines = [OrderLineInline]
 
 
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(nested_admin.NestedModelAdmin):
     model = Order
     inlines = [OrderLineInline]
     save_as = True

@@ -33,10 +33,12 @@ class ProductBatch:
 
 
 class Preparation:
-    def __init__(self, name, quantity):
+    def __init__(self, name, quantity, water_qty):
         self.name = name
         self.quantity = quantity
+        self.water_qty = water_qty
         self.is_levain = True if name.startswith("Levain") else False
+        self.is_rice = True if name == "Flocons de riz" else False
 
 
 class DailyBatches:
@@ -61,9 +63,13 @@ class DailyBatches:
                 ):
                     if line.ingredient.name not in preparations:
                         preparations[line.ingredient.name] = Preparation(
-                            line.ingredient.name, 0
+                            line.ingredient.name, 0, 0
                         )
                     preparations[line.ingredient.name].quantity += (
                         line.quantity * batch.quantity
                     )
+                    preparations[line.ingredient.name].water_qty += (
+                        line.quantity * batch.quantity * line.ingredient.soaking_coef
+                    )
+
         return preparations

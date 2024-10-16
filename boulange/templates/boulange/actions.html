@@ -20,7 +20,10 @@ Actions pour le {{ target_date|date:"l j F Y" }}
     {% if preparation.is_levain %}
     (Recette du levain à préciser)
     {% else %}
-    + {{ preparation.quantity }} ml d'eau
+    + {{ preparation.water_qty|floatformat:2 }} ml d'eau
+    {% endif %}
+    {% if preparation.is_rice %}
+    <br>⚠ prévoir 10% de marge
     {% endif %}
   </aside>
   {% endfor %}

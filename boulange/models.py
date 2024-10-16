@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from django.db import models
 
+TVA = 5.5
+
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
@@ -10,6 +12,8 @@ class Ingredient(models.Model):
         max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit"
     )
     needs_soaking = models.BooleanField(default=False)
+    # qty of water needed is ing weight * coef
+    soaking_coef = models.FloatField(default=1)
 
     def __str__(self):
         return self.name
@@ -27,6 +31,7 @@ class Product(models.Model):
     orig_product = models.ForeignKey(
         "Product", on_delete=models.CASCADE, null=True, blank=True
     )
+    # when product_lines are defined in another product (orig_product)
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
 
@@ -101,6 +106,7 @@ class DeliveryPoint(models.Model):
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=400)
     active = models.BooleanField(default=True)
+    can_order_here_from_website = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -121,9 +127,8 @@ class Customer(models.Model):
     name = models.CharField(max_length=200)
     email = models.CharField(max_length=200)
     active = models.BooleanField(default=True)
-    default_delivery_point = models.ForeignKey(
-        DeliveryPoint, on_delete=models.SET_NULL, null=True
-    )
+    is_professional = models.BooleanField(default=False)
+    pro_discount_percentage = models.FloatField(default=5.0)
 
     def __str__(self):
         return f"{self.name} ({self.email})"
@@ -146,7 +151,7 @@ class Order(models.Model):
         total = 0
         for line in self.orderline_set.all():
             total += line.get_price()
-        return total
+        return round(total, 2)
 
 
 class OrderLine(models.Model):
@@ -158,4 +163,9 @@ class OrderLine(models.Model):
         return f"{self.quantity} {self.product.ref}"
 
     def get_price(self):
-        return self.product.price * self.quantity
+        total = self.product.price * self.quantity
+        if self.order.customer.is_professional:
+            total = (total - total * Decimal(TVA / 100)) * Decimal(
+                1 - self.order.customer.pro_discount_percentage / 100
+            )
+        return round(total, 2)
