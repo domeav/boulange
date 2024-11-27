@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .DailyBatches import DailyBatches
 from .models import DeliveryDate, Order, Product
+from .forms import DateForm
 
 
 def index(request):
@@ -46,6 +47,11 @@ def monthly_receipt(request, customer_id, year, month):
 
 
 def actions(request, year=None, month=None, day=None):
+    if request.method == "POST":
+        form = DateForm(request.POST)
+        if form.is_valid():
+            when = form.cleaned_data["date"]
+            return redirect("boulange:actions", when.year, when.month, when.day)
     if not (year and month and day):
         today = datetime.now()
         return redirect("boulange:actions", today.year, today.month, today.day)
@@ -85,5 +91,6 @@ def actions(request, year=None, month=None, day=None):
         "previous": target_date - timedelta(days=1),
         "next": target_date + timedelta(days=1),
         "preparations_batches": preparations_batches,
+        "form": DateForm(initial={"date": target_date}),
     }
     return render(request, "boulange/actions.html", context)

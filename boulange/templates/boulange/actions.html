@@ -6,7 +6,17 @@ Actions pour le {{ target_date|date:"l j F Y" }}
 <a href="{% url 'boulange:actions' next.year next.month next.day %}">➡</a>
 {% endblock %}
 
+{% block page_actions%}
+<form style="display: inline; border: none; padding: 0;" method="post">
+  {% csrf_token %}
+  {{ form }}
+  <input type="submit" style="padding: 0.1rem;"/>
+</form>
+{% endblock %}
+
 {% block content %}
+<section>
+</section>
 <section>
   <header>
     <h2>Levain</h2>
