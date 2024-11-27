@@ -2,6 +2,18 @@
 
 {% block title %}Commandes{% endblock %}
 
+{% block page_actions%}
+<form style="display: inline; border: none; padding: 0;" method="post">
+  {% csrf_token %}
+  {{ form }}
+  <button type="submit" name="span" value="day" style="padding: 0.1rem;">jour</button>
+  <button type="submit" name="span" value="week" style="padding: 0.1rem;">semaine</button>
+  <button type="submit" name="span" value="month" style="padding: 0.1rem;">mois</button>
+  <button type="submit" name="span" value="year" style="padding: 0.1rem;">année</button>
+</form>
+{% endblock %}
+
+
 {% block content %}
 <section>
   {% for delivery_date in delivery_dates %}

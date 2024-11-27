@@ -17,11 +17,37 @@ def products(request):
     return render(request, "boulange/products.html", context)
 
 
-def orders(request):
-    delivery_dates = (
-        DeliveryDate.objects.order_by("delivery_point").order_by("date").all()
-    )
-    context = {"delivery_dates": delivery_dates}
+def orders(request, year=None, month=None, day=None, span="week"):
+    if request.method == "POST":
+        form = DateForm(request.POST)
+        if form.is_valid():
+            when = form.cleaned_data["date"]
+            span = form.data.get("span", span)
+            return redirect("boulange:orders", when.year, when.month, when.day, span)
+    if not (year and month and day):
+        today = date.today()
+        return redirect("boulange:orders", today.year, today.month, today.day, span)
+    delivery_dates = DeliveryDate.objects.order_by("delivery_point").order_by("date")
+    target = date(year, month, day)
+    if span == "day":
+        start, end = target, target + timedelta(days=1)
+    if span == "week":
+        start = target - timedelta(days=target.weekday())
+        end = start + timedelta(days=7)
+    if span == "month":
+        start = date(target.year, target.month, 1)
+        try:
+            end = date(target.year, target.month + 1, 1)
+        except ValueError:
+            end = Date(target.year + 1, 1, 1)
+    if span == "year":
+        start = date(target.year, 1, 1)
+        end = date(target.year + 1, 1, 1)
+    delivery_dates = delivery_dates.filter(date__gte=start).filter(date__lt=end)
+    context = {
+        "delivery_dates": delivery_dates,
+        "form": DateForm(initial={"date": target}),
+    }
     return render(request, "boulange/orders.html", context)
 
 
