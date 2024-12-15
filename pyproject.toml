@@ -6,7 +6,7 @@ authors = ["Dominique Eav <dom.eav@franceimpro.net>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.10"
 django = "^5.1.4"
 django-nested-admin = "^4.1.1"
 isort = "^5.13.2"

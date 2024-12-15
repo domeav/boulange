@@ -125,7 +125,7 @@ class DeliveryDate(models.Model):
 
 
 class Customer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0)
 
@@ -138,7 +138,7 @@ class Order(models.Model):
     delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.PROTECT)
 
     def __str__(self):
-        return f"{self.customer.email}/{self.delivery_date.delivery_point.name}/{self.delivery_date.date}"
+        return f"{self.customer.user.email}/{self.delivery_date.delivery_point.name}/{self.delivery_date.date}"
 
     def get_total_price(self):
         total = 0
