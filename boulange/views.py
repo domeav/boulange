@@ -39,7 +39,7 @@ def orders(request, year=None, month=None, day=None, span="week"):
         try:
             end = date(target.year, target.month + 1, 1)
         except ValueError:
-            end = Date(target.year + 1, 1, 1)
+            end = date(target.year + 1, 1, 1)
     if span == "year":
         start = date(target.year, 1, 1)
         end = date(target.year + 1, 1, 1)
