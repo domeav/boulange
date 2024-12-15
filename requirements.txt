@@ -1,6 +1,0 @@
-django
-django-nested-admin
-isort
-black
-flake8
-pylint
