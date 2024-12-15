@@ -1,5 +1,10 @@
 import nested_admin
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+from django.forms import BaseInlineFormSet
+from datetime import date
+
 
 from .models import (
     Customer,
@@ -13,14 +18,13 @@ from .models import (
 )
 
 
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "email",
-        "active",
-        "is_professional",
-        "pro_discount_percentage",
-    )
+class CustomerInline(admin.StackedInline):
+    model = Customer
+    can_delete = False
+
+
+class UserAdmin(BaseUserAdmin):
+    inlines = [CustomerInline]
 
 
 class IngredientAdmin(admin.ModelAdmin):
@@ -40,7 +44,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 class DeliveryDateInline(admin.StackedInline):
     model = DeliveryDate
-    extra = 4
+    extra = 1
 
 
 class DeliveryPointAdmin(admin.ModelAdmin):
@@ -54,11 +58,6 @@ class OrderLineInline(nested_admin.NestedTabularInline):
     autocomplete_fields = ["product"]
 
 
-class OrderInline(nested_admin.NestedTabularInline):
-    model = Order
-    inlines = [OrderLineInline]
-
-
 class OrderAdmin(nested_admin.NestedModelAdmin):
     list_display = ("customer", "delivery_date")
     model = Order
@@ -66,15 +65,9 @@ class OrderAdmin(nested_admin.NestedModelAdmin):
     save_as = True
 
 
-class DeliveryDateAdmin(nested_admin.NestedModelAdmin):
-    list_display = ("delivery_point", "date")
-    inlines = [OrderInline]
-    save_as = True
-
-
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 admin.site.register(Ingredient, IngredientAdmin)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(DeliveryPoint, DeliveryPointAdmin)
-admin.site.register(Customer, CustomerAdmin)
-admin.site.register(DeliveryDate, DeliveryDateAdmin)
 admin.site.register(Order, OrderAdmin)

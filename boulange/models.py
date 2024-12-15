@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import models
+from django.contrib.auth.models import User
 
 TVA = 5.5
 
@@ -124,20 +125,12 @@ class DeliveryDate(models.Model):
 
 
 class Customer(models.Model):
-    name = models.CharField(max_length=200)
-    email = models.CharField(max_length=200)
-    active = models.BooleanField(default=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0)
 
     def __str__(self):
-        return f"{self.name} ({self.email})"
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["name"]),
-            models.Index(fields=["email"]),
-        ]
+        return f"{self.user.username} ({self.user.email})"
 
 
 class Order(models.Model):
