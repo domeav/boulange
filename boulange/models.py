@@ -128,6 +128,7 @@ class Customer(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0)
+    delivery_point = models.OneToOneField(DeliveryPoint, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} ({self.user.email})"
