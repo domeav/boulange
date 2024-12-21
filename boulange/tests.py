@@ -9,7 +9,12 @@ class ViewTests(TestCase):
         self.assertContains(response, "Semi-complet lin (2 kg)")
 
     def test_orders(self):
-        response = self.client.get(reverse("boulange:orders"))
+        response = self.client.get(
+            reverse(
+                "boulange:orders",
+                kwargs={"year": 2024, "month": 10, "day": 10, "span": "week"},
+            )
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Commandes")
 

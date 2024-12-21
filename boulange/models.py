@@ -96,7 +96,17 @@ class ProductLine(models.Model):
         return self.display_dry()
 
 
-class DeliveryPoint(models.Model):
+class Customer(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
+    is_professional = models.BooleanField(default=False)
+    pro_discount_percentage = models.FloatField(default=5.0)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name}({self.user.email})"
+
+
+class DeliveryDay(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     BATCH_TARGET = {
         "SAME_DAY": "same day",
         "PREVIOUS_DAY": "previous day",
@@ -104,34 +114,29 @@ class DeliveryPoint(models.Model):
     batch_target = models.CharField(
         max_length=20, choices=BATCH_TARGET, default="SAME_DAY"
     )
-    name = models.CharField(max_length=200)
-    address = models.CharField(max_length=400)
-    active = models.BooleanField(default=True)
+    address = models.CharField(max_length=400, blank=True, null=True)
     can_order_here_from_website = models.BooleanField(default=True)
+    DAY_OF_WEEK = {
+        0: "lundi",
+        1: "mardi",
+        2: "mercredi",
+        3: "jeudi",
+        4: "vendredi",
+        5: "samedi",
+        6: "dimanche",
+    }
+    day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
 
     def __str__(self):
-        return self.name
-
-    class Meta:
-        indexes = [models.Index(fields=["name"])]
+        return f"{self.user}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
 
 class DeliveryDate(models.Model):
-    delivery_point = models.ForeignKey(DeliveryPoint, on_delete=models.CASCADE)
+    delivery_day = models.ForeignKey(DeliveryDay, on_delete=models.CASCADE, null=True)
     date = models.DateField()
 
     def __str__(self):
-        return f"{self.delivery_point}: {self.date}"
-
-
-class Customer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
-    is_professional = models.BooleanField(default=False)
-    pro_discount_percentage = models.FloatField(default=5.0)
-    delivery_point = models.OneToOneField(DeliveryPoint, on_delete=models.CASCADE, blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.user.username} ({self.user.email})"
+        return f"{self.delivery_day}: {self.date}"
 
 
 class Order(models.Model):
@@ -139,7 +144,7 @@ class Order(models.Model):
     delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.PROTECT)
 
     def __str__(self):
-        return f"{self.customer.user.email}/{self.delivery_date.delivery_point.name}/{self.delivery_date.date}"
+        return f"{self.customer.user}/{self.delivery_date}"
 
     def get_total_price(self):
         total = 0

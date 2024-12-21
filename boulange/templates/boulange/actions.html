@@ -96,10 +96,10 @@ Actions pour le {{ target_date|date:"l j F Y" }}
     </ul>
     <b>Dispatch :</b>
     <ul>
-      {% for dpd in batch.delivery_point_dispatch.values %}
+      {% for ddd in batch.delivery_date_dispatch.values %}
       <li>
-	{{ dpd.delivery_point }} :
-	{% for product, qty in dpd.products.items %}
+	{{ ddd.delivery_date }} :
+	{% for product, qty in ddd.products.items %}
 	{{ product }} ({{qty}})
 	{% endfor %}
       </li>

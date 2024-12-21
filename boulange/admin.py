@@ -2,14 +2,13 @@ import nested_admin
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from django.forms import BaseInlineFormSet
 from datetime import date
 
 
 from .models import (
     Customer,
+    DeliveryDay,
     DeliveryDate,
-    DeliveryPoint,
     Ingredient,
     Order,
     OrderLine,
@@ -18,9 +17,26 @@ from .models import (
 )
 
 
+class DeliveryDateAdmin(admin.ModelAdmin):
+    list_display = ("delivery_day", "date")
+
+
 class CustomerInline(admin.StackedInline):
     model = Customer
     can_delete = False
+    fieldsets = [
+        (
+            "Professional",
+            {
+                "classes": ["collapse"],
+                "fields": ["is_professional", "pro_discount_percentage"],
+            },
+        )
+    ]
+
+
+class DeliveryDayAdmin(admin.ModelAdmin):
+    model = DeliveryDay
 
 
 class UserAdmin(BaseUserAdmin):
@@ -42,23 +58,13 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ["ref", "name"]
 
 
-class DeliveryDateInline(admin.StackedInline):
-    model = DeliveryDate
-    extra = 1
-
-
-class DeliveryPointAdmin(admin.ModelAdmin):
-    list_display = ("name", "batch_target", "active")
-    inlines = [DeliveryDateInline]
-
-
-class OrderLineInline(nested_admin.NestedTabularInline):
+class OrderLineInline(admin.TabularInline):
     model = OrderLine
     extra = 3
     autocomplete_fields = ["product"]
 
 
-class OrderAdmin(nested_admin.NestedModelAdmin):
+class OrderAdmin(admin.ModelAdmin):
     list_display = ("customer", "delivery_date")
     model = Order
     inlines = [OrderLineInline]
@@ -67,7 +73,8 @@ class OrderAdmin(nested_admin.NestedModelAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
+admin.site.register(DeliveryDay, DeliveryDayAdmin)
+admin.site.register(DeliveryDate, DeliveryDateAdmin)
+admin.site.register(Order, OrderAdmin)
 admin.site.register(Ingredient, IngredientAdmin)
 admin.site.register(Product, ProductAdmin)
-admin.site.register(DeliveryPoint, DeliveryPointAdmin)
-admin.site.register(Order, OrderAdmin)

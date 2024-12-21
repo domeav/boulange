@@ -1,8 +1,8 @@
-class DeliveryPointDispatch:
+class DeliveryDateDispatch:
     products: dict[str, int]
 
-    def __init__(self, delivery_point):
-        self.delivery_point = delivery_point
+    def __init__(self, delivery_date):
+        self.delivery_date = delivery_date
         self.products = {}
 
     def add(self, productLine):
@@ -13,19 +13,19 @@ class DeliveryPointDispatch:
 
 class ProductBatch:
     quantity = 0
-    delivery_point_dispatch: dict[int, DeliveryPointDispatch]
+    delivery_date_dispatch: dict[int, DeliveryDateDispatch]
 
     def __init__(self, product):
         self.product = product
-        self.delivery_point_dispatch = {}
+        self.delivery_date_dispatch = {}
 
-    def add(self, productLine, deliveryPoint):
+    def add(self, productLine, deliveryDate):
         self.quantity += productLine.quantity * productLine.product.coef
-        if deliveryPoint.id not in self.delivery_point_dispatch:
-            self.delivery_point_dispatch[deliveryPoint.id] = DeliveryPointDispatch(
-                deliveryPoint
+        if deliveryDate.id not in self.delivery_date_dispatch:
+            self.delivery_date_dispatch[deliveryDate.id] = DeliveryDateDispatch(
+                deliveryDate
             )
-        self.delivery_point_dispatch[deliveryPoint.id].add(productLine)
+        self.delivery_date_dispatch[deliveryDate.id].add(productLine)
 
     def list_ingredients(self):
         for line in self.product.productline_set.all():
@@ -75,11 +75,11 @@ class DailyBatches:
     def __init__(self):
         self.batches = {}
 
-    def add(self, productLine, deliveryPoint):
+    def add(self, productLine, deliveryDate):
         base_product = productLine.product.orig_product or productLine.product
         if base_product.id not in self.batches:
             self.batches[base_product.id] = ProductBatch(base_product)
-        self.batches[base_product.id].add(productLine, deliveryPoint)
+        self.batches[base_product.id].add(productLine, deliveryDate)
 
     def get_preparations(self):
         preparations = {}
