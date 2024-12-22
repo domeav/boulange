@@ -16,4 +16,9 @@ urlpatterns = [
         views.monthly_receipt,
         name="monthly_receipt",
     ),
+    path(
+        "generate_delivery_dates",
+        views.generate_delivery_dates,
+        name="generate_delivery_dates",
+    ),
 ]

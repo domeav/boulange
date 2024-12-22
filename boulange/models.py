@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db import models
 from django.contrib.auth.models import User
+from datetime import date, timedelta
 
 TVA = 5.5
 
@@ -107,6 +108,7 @@ class Customer(models.Model):
 
 class DeliveryDay(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    active = models.BooleanField(default=True)
     BATCH_TARGET = {
         "SAME_DAY": "same day",
         "PREVIOUS_DAY": "previous day",
@@ -127,6 +129,21 @@ class DeliveryDay(models.Model):
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
 
+    def generate_delivery_dates(self):
+        if not self.user.is_active or not self.active:
+            return
+        current = date.today()
+        one_year = current + timedelta(days=365)
+        existing_dates = set()
+        for ddate in DeliveryDate.objects.all():
+            existing_dates.add((ddate.delivery_day.id, ddate.date))
+        while current <= one_year:
+            if current.weekday() == self.day_of_week:
+                if (self.id, current) not in existing_dates:
+                    delivery_date = DeliveryDate(delivery_day=self, date=current)
+                    delivery_date.save()
+            current += timedelta(days=1)
+
     def __str__(self):
         return f"{self.user}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
@@ -134,6 +151,7 @@ class DeliveryDay(models.Model):
 class DeliveryDate(models.Model):
     delivery_day = models.ForeignKey(DeliveryDay, on_delete=models.CASCADE, null=True)
     date = models.DateField()
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.delivery_day}: {self.date}"
@@ -141,7 +159,7 @@ class DeliveryDate(models.Model):
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.PROTECT)
+    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.customer.user}/{self.delivery_date}"

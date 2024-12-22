@@ -2,9 +2,11 @@ from datetime import date, datetime, timedelta
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
 from .DailyBatches import DailyBatches
-from .models import DeliveryDate, Order, Product
+from .models import DeliveryDate, Order, Product, DeliveryDay
 from .forms import DateForm
 
 
@@ -125,3 +127,11 @@ def actions(request, year=None, month=None, day=None):
         "form": DateForm(initial={"date": target_date}),
     }
     return render(request, "boulange/actions.html", context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def generate_delivery_dates(request):
+    for dday in DeliveryDay.objects.all():
+        dday.generate_delivery_dates()
+    return HttpResponse("Delivery dates generated!")

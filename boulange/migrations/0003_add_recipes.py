@@ -14,7 +14,7 @@ def populate_products(apps, schema_editor):
     GN_ingredients = [
         (Ingredient.objects.get(name="Farine blé"), 637),
         (Ingredient.objects.get(name="Eau"), 414),
-        (Ingredient.objects.get(name="Levain"), 178),
+        (Ingredient.objects.get(name="Levain"), 159),
         (Ingredient.objects.get(name="Sel"), 11),
     ]
     for ing in GN_ingredients:

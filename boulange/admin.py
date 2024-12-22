@@ -35,8 +35,15 @@ class CustomerInline(admin.StackedInline):
     ]
 
 
+@admin.action(description="Generate delivery dates for one year")
+def generate_delivery_dates(modeladmin, request, queryset):
+    for delivery_day in queryset:
+        delivery_day.generate_delivery_dates()
+
+
 class DeliveryDayAdmin(admin.ModelAdmin):
     model = DeliveryDay
+    actions = [generate_delivery_dates]
 
 
 class UserAdmin(BaseUserAdmin):
