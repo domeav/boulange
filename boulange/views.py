@@ -29,8 +29,12 @@ def orders(request, year=None, month=None, day=None, span="week"):
     if not (year and month and day):
         today = date.today()
         return redirect("boulange:orders", today.year, today.month, today.day, span)
-    delivery_dates = DeliveryDate.objects.order_by("delivery_day__user").order_by(
-        "date"
+    delivery_dates = (
+        DeliveryDate.objects.filter(active=True)
+        .filter(delivery_day__active=True)
+        .filter(delivery_day__user__is_active=True)
+        .order_by("delivery_day__user")
+        .order_by("date")
     )
     target = date(year, month, day)
     if span == "day":
@@ -68,6 +72,9 @@ def monthly_receipt(request, customer_id, year, month):
         end = date(year + 1, 1, 1)
     orders = (
         Order.objects.filter(customer__id=customer_id)
+        .filter(delivery_date__active=True)
+        .filter(delivery_date__delivery_day__active=True)
+        .filter(delivery_date__delivery_day__user__is_active=True)
         .filter(delivery_date__date__gte=start)
         .filter(delivery_date__date__lt=end)
     )
@@ -91,6 +98,9 @@ def actions(request, year=None, month=None, day=None):
     target_date = date(year, month, day)
     deliveries = (
         DeliveryDate.objects.filter(date__gte=target_date)
+        .filter(active=True)
+        .filter(delivery_day__active=True)
+        .filter(delivery_day__user__is_active=True)
         .filter(date__lte=target_date + timedelta(days=2))
         .all()
     )
@@ -105,7 +115,7 @@ def actions(request, year=None, month=None, day=None):
             delivery_date.delivery_day.batch_target == "PREVIOUS_DAY"
             and delivery_date.date == target_date + timedelta(days=1)
         ):
-            for order in delivery_date.order_set.all():
+            for order in delivery_date.all_orders():
                 for line in order.orderline_set.all():
                     daily_batches.add(line, delivery_date.delivery_day)
         elif (
@@ -115,7 +125,7 @@ def actions(request, year=None, month=None, day=None):
             delivery_date.delivery_day.batch_target == "PREVIOUS_DAY"
             and delivery_date.date == target_date + timedelta(days=2)
         ):
-            for order in delivery_date.order_set.all():
+            for order in delivery_date.all_orders():
                 for line in order.orderline_set.all():
                     preparations_batches.add(line, delivery_date.delivery_day)
     context = {

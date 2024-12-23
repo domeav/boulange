@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from datetime import date, timedelta
 
 TVA = 5.5
@@ -147,19 +148,49 @@ class DeliveryDay(models.Model):
     def __str__(self):
         return f"{self.user}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
+    class Meta:
+        ordering = ["day_of_week", "user"]
+
 
 class DeliveryDate(models.Model):
     delivery_day = models.ForeignKey(DeliveryDay, on_delete=models.CASCADE, null=True)
     date = models.DateField()
     active = models.BooleanField(default=True)
 
+    def all_orders(self):
+        "Fetch orders linked directly + recurring orders"
+        return self.order_set.all().union(self.delivery_day.order_set.all())
+
     def __str__(self):
-        return f"{self.delivery_day}: {self.date}"
+        inactive = ""
+        if not self.active:
+            inactive = "[OFF] "
+        return f"{inactive}{self.delivery_day}: {self.date}"
+
+    class Meta:
+        ordering = ["date", "delivery_day"]
 
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
+    delivery_date = models.ForeignKey(
+        DeliveryDate, on_delete=models.CASCADE, blank=True, null=True
+    )
+    delivery_day = models.ForeignKey(
+        DeliveryDay,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        help_text="To be used instead of delivery date if recurring orders",
+    )
+
+    def clean(self):
+        if (self.delivery_date and self.delivery_day) or not (
+            self.delivery_date or self.delivery_day
+        ):
+            raise ValidationError(
+                "Either delivery date or delivery day must be selected"
+            )
 
     def __str__(self):
         return f"{self.customer.user}/{self.delivery_date}"

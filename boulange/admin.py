@@ -18,7 +18,12 @@ from .models import (
 
 
 class DeliveryDateAdmin(admin.ModelAdmin):
-    list_display = ("delivery_day", "date")
+    list_display = ("delivery_day", "date", "active")
+    search_fields = [
+        "delivery_day__user__first_name",
+        "delivery_day__user__last_name",
+        "delivery_day__user__username",
+    ]
 
 
 class CustomerInline(admin.StackedInline):
@@ -44,6 +49,7 @@ def generate_delivery_dates(modeladmin, request, queryset):
 class DeliveryDayAdmin(admin.ModelAdmin):
     model = DeliveryDay
     actions = [generate_delivery_dates]
+    search_fields = ["user__first_name", "user__last_name", "user__username"]
 
 
 class UserAdmin(BaseUserAdmin):
@@ -76,6 +82,7 @@ class OrderAdmin(admin.ModelAdmin):
     model = Order
     inlines = [OrderLineInline]
     save_as = True
+    autocomplete_fields = ["delivery_date", "delivery_day"]
 
 
 admin.site.unregister(User)
