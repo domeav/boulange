@@ -15,8 +15,7 @@ Actions pour le {{ target_date|date:"l j F Y" }}
 {% endblock %}
 
 {% block content %}
-<section>
-</section>
+{% if preparations_batches.get_preparations.values %}
 <section>
   <header>
     <h2>Levain</h2>
@@ -81,6 +80,8 @@ Actions pour le {{ target_date|date:"l j F Y" }}
   {% endfor %}
   <hr>
 </section>
+{% endif %}
+{% if daily_batches.batches.values %}
 <section>
   <header>
     <h2>Recettes</h2>
@@ -107,6 +108,7 @@ Actions pour le {{ target_date|date:"l j F Y" }}
     </ul>
   </aside>
   {% endfor %}
-  {% endblock %}
 </section>
+{% endif %}
+{% endblock %}
 
