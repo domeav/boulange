@@ -7,7 +7,7 @@ from datetime import date
 
 from .models import (
     Customer,
-    DeliveryDay,
+    WeeklyDelivery,
     DeliveryDate,
     Ingredient,
     Order,
@@ -18,11 +18,11 @@ from .models import (
 
 
 class DeliveryDateAdmin(admin.ModelAdmin):
-    list_display = ("delivery_day", "date", "active")
+    list_display = ("weekly_delivery", "date", "active")
     search_fields = [
-        "delivery_day__user__first_name",
-        "delivery_day__user__last_name",
-        "delivery_day__user__username",
+        "weekly_delivery__user__first_name",
+        "weekly_delivery__user__last_name",
+        "weekly_delivery__user__username",
     ]
 
 
@@ -30,6 +30,8 @@ class CustomerInline(admin.StackedInline):
     model = Customer
     can_delete = False
     fieldsets = [
+        (None,
+          {"fields": ['address']}),
         (
             "Professional",
             {
@@ -42,12 +44,12 @@ class CustomerInline(admin.StackedInline):
 
 @admin.action(description="Generate delivery dates for one year")
 def generate_delivery_dates(modeladmin, request, queryset):
-    for delivery_day in queryset:
-        delivery_day.generate_delivery_dates()
+    for weekly_delivery in queryset:
+        weekly_delivery.generate_delivery_dates()
 
 
-class DeliveryDayAdmin(admin.ModelAdmin):
-    model = DeliveryDay
+class WeeklyDeliveryAdmin(admin.ModelAdmin):
+    model = WeeklyDelivery
     actions = [generate_delivery_dates]
     search_fields = ["user__first_name", "user__last_name", "user__username"]
 
@@ -82,12 +84,12 @@ class OrderAdmin(admin.ModelAdmin):
     model = Order
     inlines = [OrderLineInline]
     save_as = True
-    autocomplete_fields = ["delivery_date", "delivery_day"]
+    autocomplete_fields = ["delivery_date"]
 
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
-admin.site.register(DeliveryDay, DeliveryDayAdmin)
+admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Ingredient, IngredientAdmin)

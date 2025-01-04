@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from datetime import date, timedelta
+from django.db.models import Q
 
 TVA = 5.5
 
@@ -41,6 +42,21 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name}/{self.ref}"
 
+    def to_dict(self):
+        obj = {'name': self.name,
+               'ref': self.ref,
+               'price': round(float(self.price), 2),
+               'active': self.active,
+               'nb_units': self.nb_units,
+               'cost_price': round(float(self.cost_price()), 2)}
+        if self.orig_product:
+            obj['orig_product'] = self.orig_product.ref
+            obj['coef'] = self.coef
+        else:
+            obj['ingredients'] = [i.to_dict() for i in self.productline_set.all()]
+        return obj
+            
+    
     def cost_price(self):
         price = 0
         product = self.orig_product or self
@@ -94,6 +110,10 @@ class ProductLine(models.Model):
         quantity = self.quantity / self.product.nb_units * coef
         return f"{self.ingredient.name} : {round(quantity, 2)} {self.ingredient.unit}"
 
+    def to_dict(self):
+        return {'ingredient': self.ingredient.name,
+                'quantity': round(self.quantity, 2)}
+    
     def __str__(self):
         return self.display_dry()
 
@@ -102,13 +122,19 @@ class Customer(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0)
+    address = models.CharField(max_length=400, blank=True, null=True)
 
+    def to_dict(self):
+        return {'user': self.__str__(),
+                'is_professional': self.is_professional,
+                'pro_discount_percentage': self.pro_discount_percentage}
+    
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}({self.user.email})"
 
 
-class DeliveryDay(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class WeeklyDelivery(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     active = models.BooleanField(default=True)
     BATCH_TARGET = {
         "SAME_DAY": "same day",
@@ -117,7 +143,6 @@ class DeliveryDay(models.Model):
     batch_target = models.CharField(
         max_length=20, choices=BATCH_TARGET, default="SAME_DAY"
     )
-    address = models.CharField(max_length=400, blank=True, null=True)
     can_order_here_from_website = models.BooleanField(default=True)
     DAY_OF_WEEK = {
         0: "lundi",
@@ -131,67 +156,89 @@ class DeliveryDay(models.Model):
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
 
     def generate_delivery_dates(self):
-        if not self.user.is_active or not self.active:
+        if not self.active:
             return
         current = date.today()
         one_year = current + timedelta(days=365)
         existing_dates = set()
         for ddate in DeliveryDate.objects.all():
-            existing_dates.add((ddate.delivery_day.id, ddate.date))
+            existing_dates.add((ddate.weekly_delivery.id, ddate.date))
         while current <= one_year:
             if current.weekday() == self.day_of_week:
                 if (self.id, current) not in existing_dates:
-                    delivery_date = DeliveryDate(delivery_day=self, date=current)
+                    delivery_date = DeliveryDate(weekly_delivery=self, date=current)
                     delivery_date.save()
             current += timedelta(days=1)
 
     def __str__(self):
-        return f"{self.user}: {self.DAY_OF_WEEK[self.day_of_week]}"
+        return f"{self.customer.user}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
     class Meta:
-        ordering = ["day_of_week", "user"]
+        ordering = ["day_of_week", "customer"]
 
 
 class DeliveryDate(models.Model):
-    delivery_day = models.ForeignKey(DeliveryDay, on_delete=models.CASCADE, null=True)
+    weekly_delivery = models.ForeignKey(WeeklyDelivery, on_delete=models.CASCADE, null=True)
     date = models.DateField()
     active = models.BooleanField(default=True)
-
-    def all_orders(self):
-        "Fetch orders linked directly + recurring orders"
-        return self.order_set.all().union(self.delivery_day.order_set.all())
 
     def __str__(self):
         inactive = ""
         if not self.active:
             inactive = "[OFF] "
-        return f"{inactive}{self.delivery_day}: {self.date}"
+        return f"{inactive}{self.weekly_delivery}: {self.date}"
 
+    def to_dict(self):
+        return {'date': self.date.isoformat(),
+                'active': self.active,
+                'user': str(self.weekly_delivery.customer.user),
+                'address': self.weekly_delivery.customer.address,
+                "orders": [o.to_dict() for o in self.order_set.all()]}
+    
     class Meta:
-        ordering = ["date", "delivery_day"]
+        ordering = ["date", "weekly_delivery"]
 
 
+def fetch_orders_for_action(year, month, day):
+    target_day = date(year, month, day)
+    weekdays_list = list(range(7)) + list(range(7))
+    weekdays = weekdays_list[target_day.weekday:target_day.weekday+3]
+    orders = {'delivery': [],
+              'bakery': [],
+              'preparation': []}
+    three_days_orders = Orders.objects.filter(
+         Q(delivery_date__date__gte=target_day),
+         Q(delivery_date__date__lte=target_day+timedelta(days+2)))
+    
+    for order in three_days_orders:
+        if order.weekly_delivery.day_of_week == target_day.weekday or order.delivery_date.date == target_day:
+            orders['delivery'].append(order)
+            if order.weekly_delivery.batch_target == 'SAME_DAY':
+                orders['bakery'].append(order)
+        elif order.weekly_delivery.day_of_week == weekdays[target_day.weekday+1] or order.delivery_date.date == target_day + timedelta(1):
+            if order.weekly_delivery.batch_target == 'SAME_DAY':
+                orders['preparation'].append(order)
+            elif order.weekly_delivery.batch_target == 'PREVIOUS_DAY':
+                orders['bakery'].append(order)
+        elif order.weekly_delivery.day_of_week == weekdays[target_day.weekday+2] or order.delivery_date.date == target_day + timedelta(2):
+            if order.weekly_delivery.batch_target == 'PREVIOUS_DAY':
+                orders['preparation'].append(order)
+    return orders
+
+        
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     delivery_date = models.ForeignKey(
         DeliveryDate, on_delete=models.CASCADE, blank=True, null=True
     )
-    delivery_day = models.ForeignKey(
-        DeliveryDay,
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-        help_text="To be used instead of delivery date if recurring orders",
-    )
 
-    def clean(self):
-        if (self.delivery_date and self.delivery_day) or not (
-            self.delivery_date or self.delivery_day
-        ):
-            raise ValidationError(
-                "Either delivery date or delivery day must be selected"
-            )
-
+    def to_dict(self):
+        return {'customer': self.customer.to_dict(),
+                'lines': [l.to_dict() for l in self.orderline_set.all()],
+                'price': round(float(self.get_total_price())),
+                'date': self.delivery_date.date.isoformat(),
+                'where': str(self.delivery_date.weekly_delivery)}
+        
     def __str__(self):
         return f"{self.customer.user}/{self.delivery_date}"
 
@@ -202,6 +249,7 @@ class Order(models.Model):
         return round(total, 2)
 
 
+
 class OrderLine(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
@@ -210,6 +258,10 @@ class OrderLine(models.Model):
     def __str__(self):
         return f"{self.quantity} {self.product.ref}"
 
+    def to_dict(self):
+        return {'product': self.product.ref,
+                'quantity': self.quantity}
+    
     def get_price(self):
         total = self.product.price * self.quantity
         if self.order.customer.is_professional:

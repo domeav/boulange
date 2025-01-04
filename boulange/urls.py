@@ -10,6 +10,7 @@ urlpatterns = [
     path("actions", views.actions, name="actions"),
     path("orders/<int:year>/<int:month>/<int:day>/<span>", views.orders, name="orders"),
     path("orders", views.orders, name="orders"),
+    path("orders", views.orders, name="orders"),
     path("receipt/<int:order_id>", views.receipt, name="receipt"),
     path(
         "monthly_receipt/<int:customer_id>/<int:year>/<int:month>",

@@ -4,9 +4,10 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from json import dumps
 
 from .DailyBatches import DailyBatches
-from .models import DeliveryDate, Order, Product, DeliveryDay
+from .models import DeliveryDate, Order, Product, WeeklyDelivery
 from .forms import DateForm
 
 
@@ -15,11 +16,16 @@ def index(request):
 
 
 def products(request):
-    context = {"products": Product.objects.all()}
+    json = request.GET.get('json', False)
+    products = Product.objects.all()
+    if json:
+        return HttpResponse(dumps([product.to_dict() for product in products]))
+    context = {"products": products}
     return render(request, "boulange/products.html", context)
 
 
 def orders(request, year=None, month=None, day=None, span="week"):
+    json = request.GET.get('json', False)
     if request.method == "POST":
         form = DateForm(request.POST)
         if form.is_valid():
@@ -31,9 +37,9 @@ def orders(request, year=None, month=None, day=None, span="week"):
         return redirect("boulange:orders", today.year, today.month, today.day, span)
     delivery_dates = (
         DeliveryDate.objects.filter(active=True)
-        .filter(delivery_day__active=True)
-        .filter(delivery_day__user__is_active=True)
-        .order_by("delivery_day__user")
+        .filter(weekly_delivery__active=True)
+        .filter(weekly_delivery__customer__user__is_active=True)
+        .order_by("weekly_delivery__customer")
         .order_by("date")
     )
     target = date(year, month, day)
@@ -52,6 +58,8 @@ def orders(request, year=None, month=None, day=None, span="week"):
         start = date(target.year, 1, 1)
         end = date(target.year + 1, 1, 1)
     delivery_dates = delivery_dates.filter(date__gte=start).filter(date__lt=end)
+    if json:
+        return HttpResponse(dumps([ddate.to_dict() for ddate in delivery_dates]))
     context = {
         "delivery_dates": delivery_dates,
         "form": DateForm(initial={"date": target}),
@@ -65,6 +73,7 @@ def receipt(request, order_id):
 
 
 def monthly_receipt(request, customer_id, year, month):
+    json = request.GET.get('json', False)
     start = date(year, month, 1)
     try:
         end = date(year, month + 1, 1)
@@ -73,15 +82,19 @@ def monthly_receipt(request, customer_id, year, month):
     orders = (
         Order.objects.filter(customer__id=customer_id)
         .filter(delivery_date__active=True)
-        .filter(delivery_date__delivery_day__active=True)
-        .filter(delivery_date__delivery_day__user__is_active=True)
+        .filter(delivery_date__weekly_delivery__active=True)
+        .filter(delivery_date__weekly_delivery__customer__user__is_active=True)
         .filter(delivery_date__date__gte=start)
         .filter(delivery_date__date__lt=end)
     )
+    total = sum([o.get_total_price() for o in orders])
+    if json:
+        return HttpResponse(dumps({"orders": [o.to_dict() for o in orders],
+                                   "total": round(float(total), 2)}))
     context = {
         "orders": orders,
         "monthly": True,
-        "total": sum([o.get_total_price() for o in orders]),
+        "total": total
     }
     return render(request, "boulange/receipt.html", context)
 
@@ -99,8 +112,8 @@ def actions(request, year=None, month=None, day=None):
     deliveries = (
         DeliveryDate.objects.filter(date__gte=target_date)
         .filter(active=True)
-        .filter(delivery_day__active=True)
-        .filter(delivery_day__user__is_active=True)
+        .filter(weekly_delivery__active=True)
+        .filter(weekly_delivery__customer__user__is_active=True)
         .filter(date__lte=target_date + timedelta(days=2))
         .all()
     )
@@ -109,25 +122,25 @@ def actions(request, year=None, month=None, day=None):
     preparations_batches = DailyBatches()
     for delivery_date in deliveries:
         if (
-            delivery_date.delivery_day.batch_target == "SAME_DAY"
+            delivery_date.weekly_delivery.batch_target == "SAME_DAY"
             and delivery_date.date == target_date
         ) or (
-            delivery_date.delivery_day.batch_target == "PREVIOUS_DAY"
+            delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY"
             and delivery_date.date == target_date + timedelta(days=1)
         ):
-            for order in delivery_date.all_orders():
+            for order in delivery_date.order_set.all():
                 for line in order.orderline_set.all():
-                    daily_batches.add(line, delivery_date.delivery_day)
+                    daily_batches.add(line, delivery_date.weekly_delivery)
         elif (
-            delivery_date.delivery_day.batch_target == "SAME_DAY"
+            delivery_date.weekly_delivery.batch_target == "SAME_DAY"
             and delivery_date.date == target_date + timedelta(days=1)
         ) or (
-            delivery_date.delivery_day.batch_target == "PREVIOUS_DAY"
+            delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY"
             and delivery_date.date == target_date + timedelta(days=2)
         ):
-            for order in delivery_date.all_orders():
+            for order in delivery_date.order_set.all():
                 for line in order.orderline_set.all():
-                    preparations_batches.add(line, delivery_date.delivery_day)
+                    preparations_batches.add(line, delivery_date.weekly_delivery)
     context = {
         "target_date": target_date,
         "daily_batches": daily_batches,
@@ -142,6 +155,6 @@ def actions(request, year=None, month=None, day=None):
 @csrf_exempt
 @require_http_methods(["POST"])
 def generate_delivery_dates(request):
-    for dday in DeliveryDay.objects.all():
+    for dday in WeeklyDelivery.objects.all():
         dday.generate_delivery_dates()
     return HttpResponse("Delivery dates generated!")
