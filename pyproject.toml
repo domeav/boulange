@@ -1,20 +1,26 @@
 [tool.poetry]
-name = "boulange"
+name = "resto"
 version = "0.1.0"
 description = ""
-authors = ["Dominique Eav <dom.eav@franceimpro.net>"]
+authors = ["Dominique Eav <dominique.eav@franceimpro.net>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = "^3.12"
 django = "^5.1.4"
-django-nested-admin = "^4.1.1"
-isort = "^5.13.2"
+djangorestframework = "^3.15.2"
+django-filter = "^24.3"
 black = "^24.10.0"
 flake8 = "^7.1.1"
-pylint = "^3.3.2"
+isort = "^5.13.2"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 200

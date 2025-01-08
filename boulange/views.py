@@ -1,160 +1,111 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from json import dumps
+from django_filters import rest_framework as filters
+from rest_framework import permissions, viewsets
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-from .DailyBatches import DailyBatches
-from .models import DeliveryDate, Order, Product, WeeklyDelivery
-from .forms import DateForm
+from .models import (
+    Customer,
+    DeliveryDate,
+    Ingredient,
+    Order,
+    OrderLine,
+    Product,
+    ProductLine,
+    WeeklyDelivery,
+)
+from .serializers import (
+    CustomerSerializer,
+    DeliveryDateSerializer,
+    IngredientSerializer,
+    OrderLineSerializer,
+    OrderSerializer,
+    ProductLineSerializer,
+    ProductSerializer,
+    WeeklyDeliverySerializer,
+)
 
-
-def index(request):
-    return render(request, "boulange/index.html")
-
-
-def products(request):
-    json = request.GET.get('json', False)
-    products = Product.objects.all()
-    if json:
-        return HttpResponse(dumps([product.to_dict() for product in products]))
-    context = {"products": products}
-    return render(request, "boulange/products.html", context)
-
-
-def orders(request, year=None, month=None, day=None, span="week"):
-    json = request.GET.get('json', False)
-    if request.method == "POST":
-        form = DateForm(request.POST)
-        if form.is_valid():
-            when = form.cleaned_data["date"]
-            span = form.data.get("span", span)
-            return redirect("boulange:orders", when.year, when.month, when.day, span)
-    if not (year and month and day):
-        today = date.today()
-        return redirect("boulange:orders", today.year, today.month, today.day, span)
-    delivery_dates = (
-        DeliveryDate.objects.filter(active=True)
-        .filter(weekly_delivery__active=True)
-        .filter(weekly_delivery__customer__user__is_active=True)
-        .order_by("weekly_delivery__customer")
-        .order_by("date")
-    )
-    target = date(year, month, day)
-    if span == "day":
-        start, end = target, target + timedelta(days=1)
-    if span == "week":
-        start = target - timedelta(days=target.weekday())
-        end = start + timedelta(days=7)
-    if span == "month":
-        start = date(target.year, target.month, 1)
-        try:
-            end = date(target.year, target.month + 1, 1)
-        except ValueError:
-            end = date(target.year + 1, 1, 1)
-    if span == "year":
-        start = date(target.year, 1, 1)
-        end = date(target.year + 1, 1, 1)
-    delivery_dates = delivery_dates.filter(date__gte=start).filter(date__lt=end)
-    if json:
-        return HttpResponse(dumps([ddate.to_dict() for ddate in delivery_dates]))
-    context = {
-        "delivery_dates": delivery_dates,
-        "form": DateForm(initial={"date": target}),
-    }
-    return render(request, "boulange/orders.html", context)
+# TODO: change permissions!
 
 
-def receipt(request, order_id):
-    context = {"orders": [get_object_or_404(Order, id=order_id)], "monthly": False}
-    return render(request, "boulange/receipt.html", context)
+class IngredientViewSet(viewsets.ModelViewSet):
+    queryset = Ingredient.objects.all().order_by("id")
+    serializer_class = IngredientSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
-def monthly_receipt(request, customer_id, year, month):
-    json = request.GET.get('json', False)
-    start = date(year, month, 1)
-    try:
-        end = date(year, month + 1, 1)
-    except ValueError:
-        end = date(year + 1, 1, 1)
-    orders = (
-        Order.objects.filter(customer__id=customer_id)
-        .filter(delivery_date__active=True)
-        .filter(delivery_date__weekly_delivery__active=True)
-        .filter(delivery_date__weekly_delivery__customer__user__is_active=True)
-        .filter(delivery_date__date__gte=start)
-        .filter(delivery_date__date__lt=end)
-    )
-    total = sum([o.get_total_price() for o in orders])
-    if json:
-        return HttpResponse(dumps({"orders": [o.to_dict() for o in orders],
-                                   "total": round(float(total), 2)}))
-    context = {
-        "orders": orders,
-        "monthly": True,
-        "total": total
-    }
-    return render(request, "boulange/receipt.html", context)
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all().order_by("id")
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
-def actions(request, year=None, month=None, day=None):
-    if request.method == "POST":
-        form = DateForm(request.POST)
-        if form.is_valid():
-            when = form.cleaned_data["date"]
-            return redirect("boulange:actions", when.year, when.month, when.day)
-    if not (year and month and day):
-        today = datetime.now()
-        return redirect("boulange:actions", today.year, today.month, today.day)
-    target_date = date(year, month, day)
-    deliveries = (
-        DeliveryDate.objects.filter(date__gte=target_date)
-        .filter(active=True)
-        .filter(weekly_delivery__active=True)
-        .filter(weekly_delivery__customer__user__is_active=True)
-        .filter(date__lte=target_date + timedelta(days=2))
-        .all()
-    )
-    daily_batches = DailyBatches()
-    # levain+soaking
-    preparations_batches = DailyBatches()
-    for delivery_date in deliveries:
-        if (
-            delivery_date.weekly_delivery.batch_target == "SAME_DAY"
-            and delivery_date.date == target_date
-        ) or (
-            delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY"
-            and delivery_date.date == target_date + timedelta(days=1)
-        ):
-            for order in delivery_date.order_set.all():
-                for line in order.orderline_set.all():
-                    daily_batches.add(line, delivery_date.weekly_delivery)
-        elif (
-            delivery_date.weekly_delivery.batch_target == "SAME_DAY"
-            and delivery_date.date == target_date + timedelta(days=1)
-        ) or (
-            delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY"
-            and delivery_date.date == target_date + timedelta(days=2)
-        ):
-            for order in delivery_date.order_set.all():
-                for line in order.orderline_set.all():
-                    preparations_batches.add(line, delivery_date.weekly_delivery)
-    context = {
-        "target_date": target_date,
-        "daily_batches": daily_batches,
-        "previous": target_date - timedelta(days=1),
-        "next": target_date + timedelta(days=1),
-        "preparations_batches": preparations_batches,
-        "form": DateForm(initial={"date": target_date}),
-    }
-    return render(request, "boulange/actions.html", context)
+class ProductLineViewSet(viewsets.ModelViewSet):
+    queryset = ProductLine.objects.all().order_by("id")
+    serializer_class = ProductLineSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
+class CustomerViewSet(viewsets.ModelViewSet):
+    queryset = Customer.objects.all().order_by("id")
+    serializer_class = CustomerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class WeeklyDeliveryViewSet(viewsets.ModelViewSet):
+    queryset = WeeklyDelivery.objects.all().order_by("id")
+    serializer_class = WeeklyDeliverySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class DeliveryDateViewSet(viewsets.ModelViewSet):
+    queryset = DeliveryDate.objects.all().order_by("id")
+    serializer_class = DeliveryDateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class OrderFilter(filters.FilterSet):
+    min_date = filters.DateFilter(field_name="delivery_date__date", lookup_expr="gte")
+    max_date = filters.DateFilter(field_name="delivery_date__date", lookup_expr="lte")
+
+    class Meta:
+        model = Order
+        fields = "__all__"
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all().order_by("id")
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = OrderFilter
+
+
+class OrderLineViewSet(viewsets.ModelViewSet):
+    queryset = OrderLine.objects.all().order_by("id")
+    serializer_class = OrderLineSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+@api_view(["POST"])
 def generate_delivery_dates(request):
     for dday in WeeklyDelivery.objects.all():
         dday.generate_delivery_dates()
-    return HttpResponse("Delivery dates generated!")
+    return Response({"message": "Delivery dates generated!"})
+
+
+@api_view(["GET"])
+def get_actions(request, year, month, day):
+    target_date = date(year, month, day)
+    delivery_dates = (
+        DeliveryDate.objects.filter(date__gte=target_date)
+        .filter(active=True)
+        .filter(date__lte=target_date + timedelta(days=2))
+        .all()
+    )
+    actions = None
+    for delivery_date in delivery_dates:
+        for order in delivery_date.order_set.all():
+            actions = order.get_actions(target_date, actions)
+
+    return Response(actions)

@@ -1,165 +1,339 @@
-from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from .models import Customer, WeeklyDelivery, DeliveryDate, Order, OrderLine, Product
+from collections import defaultdict
 from datetime import date, timedelta
-import json
+from decimal import Decimal
 
-class ViewTests(TestCase):
+from django.test import TestCase
+from rest_framework.test import APIClient
 
-    next_monday = date.today() + timedelta(days=7-date.today().weekday())
-    
+from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDelivery
+
+
+def populate():
+    store = Customer(
+        username="store",
+        first_name="a",
+        last_name="store",
+        email="store@toto.net",
+        is_professional=True,
+        pro_discount_percentage=5,
+        address="the store address",
+    )
+    store.save()
+    monday_delivery = WeeklyDelivery(
+        customer=store, batch_target="SAME_DAY", day_of_week=0
+    )
+    monday_delivery.save()
+    monday_delivery.generate_delivery_dates()
+    wednesday_delivery = WeeklyDelivery(
+        customer=store, batch_target="PREVIOUS_DAY", day_of_week=2
+    )
+    wednesday_delivery.save()
+    wednesday_delivery.generate_delivery_dates()
+    count = DeliveryDate.objects.count()
+    monday_delivery.generate_delivery_dates()
+    wednesday_delivery.generate_delivery_dates()
+    assert count == DeliveryDate.objects.count()
+
+    guy = Customer(
+        username="guy",
+        first_name="a",
+        last_name="guy",
+        email="guy@toto.net",
+        is_professional=False,
+    )
+    guy.save()
+    return {
+        "monday_delivery": monday_delivery,
+        "wednesday_delivery": wednesday_delivery,
+        "store": store,
+        "guy": guy,
+    }
+
+
+class ActionsTests(TestCase):
+    fixtures = ["data/base.json"]
+    next_monday = date.today() + timedelta(days=7 - date.today().weekday())
+
     def setUp(self):
-        assert(self.next_monday.weekday()==0)
-        store = User(username='store', first_name="a", last_name="store", email="store@toto.net")
-        store.save()
-        store_customer = Customer(user=store,
-                                  is_professional=True,
-                                  pro_discount_percentage=5,
-                                  address="the store address")
-        store_customer.save()
-        guy = User(username='guy', first_name="a", last_name="guy", email="guy@toto.net")
-        guy.save()
-        guy_customer = Customer(user=guy,
-                                  is_professional=False)
-        guy_customer.save()
-        monday_delivery = WeeklyDelivery(customer=store.customer,
-                                      batch_target="SAME_DAY",
-                                      day_of_week=0)
-        monday_delivery.save()
-        monday_delivery.generate_delivery_dates()
-        wednesday_delivery = WeeklyDelivery(customer=store.customer,
-                                         batch_target="PREVIOUS_DAY",
-                                         day_of_week=2)
-        wednesday_delivery.save()
-        wednesday_delivery.generate_delivery_dates()
-        count = DeliveryDate.objects.count()
-        monday_delivery.generate_delivery_dates()
-        wednesday_delivery.generate_delivery_dates()
-        assert(count == DeliveryDate.objects.count())
+        self.context = populate()
 
-        for monday in DeliveryDate.objects.filter(weekly_delivery=monday_delivery):
-            recurring_order = Order(customer=store_customer,
-                                    delivery_date=monday)
-            recurring_order.save()
-            for product, qty in ((Product.objects.get(ref='GN'), 5),
-                                 (Product.objects.get(ref='TGN'), 3),
-                                 (Product.objects.get(ref='PK'), 5),
-                                 (Product.objects.get(ref='BR'), 8),
-                                 (Product.objects.get(ref='COOKIE'), 20),
-                                 (Product.objects.get(ref='GSe'), 5)):
-                line = OrderLine(order=recurring_order,
-                                 product=product,
-                                 quantity=qty)
-                line.save()
-        for wednesday in DeliveryDate.objects.filter(weekly_delivery=wednesday_delivery):
-            recurring_order2 = Order(customer=store_customer,
-                                    delivery_date=wednesday)
-            recurring_order2.save()
-            for product, qty in ((Product.objects.get(ref='FAR'), 5),
-                                 (Product.objects.get(ref='GK'), 5),
-                                 (Product.objects.get(ref='GL'), 5),
-                                 (Product.objects.get(ref='PN'), 8),
-                                 (Product.objects.get(ref='BC'), 10),
-                                 (Product.objects.get(ref='GSe'), 5)):
-                line = OrderLine(order=recurring_order2,
-                                 product=product,
-                                 quantity=qty)
-                line.save()
-        simple_order = Order(customer=guy_customer,
-                             delivery_date=DeliveryDate.objects.filter(weekly_delivery=monday_delivery).get(date=self.next_monday))
-        simple_order.save()
-        for product, qty in ((Product.objects.get(ref='COOKIE'), 6),
-                             (Product.objects.get(ref='BR'), 1),
-                             (Product.objects.get(ref='PN'), 1),
-                             (Product.objects.get(ref='GSe'), 1),
-                             (Product.objects.get(ref='GSa'), 1)):
-            line = OrderLine(order=simple_order,
-                             product=product,
-                             quantity=qty)
-            line.save()
-        
-        
-        
-    
-    def test_products(self):
-        response = self.client.get(reverse("boulange:products"), query_params={'json': True})
+    def test_GK(self):
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday),
+        )
+        order.save()
+        line = OrderLine(
+            order=order, product=(Product.objects.get(ref="GK")), quantity=1
+        )
+        line.save()
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"], {"Levain froment": 168.0, "Graines kasha": 78.0}
+        )
+        actions = order.get_actions(self.next_monday)
+        self.assertEqual(actions["delivery"], {"Semi-complet Kasha (1 kg)/GK": 1})
+        self.assertEqual(
+            actions["bakery"],
+            {
+                "Semi-complet Kasha (1 kg)/GK": {
+                    "Eau (-trempage)": 311.0,
+                    "Farine blé": 599.0,
+                    "Levain froment": 168.0,
+                    "Sel": 11.0,
+                    "Graines kasha (trempé)": 156.0,
+                }
+            },
+        )
+        self.assertEqual(len(actions["preparation"]), 0)
+
+    def test_GK_previous_day(self):
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=DeliveryDate.objects.filter(
+                weekly_delivery=self.context["wednesday_delivery"]
+            ).get(date=self.next_monday + timedelta(2)),
+        )
+        order.save()
+        line = OrderLine(
+            order=order, product=(Product.objects.get(ref="GK")), quantity=1
+        )
+        line.save()
+        actions = order.get_actions(self.next_monday)
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"], {"Levain froment": 168.0, "Graines kasha": 78.0}
+        )
+        actions = order.get_actions(self.next_monday + timedelta(1))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(
+            actions["bakery"],
+            {
+                "Semi-complet Kasha (1 kg)/GK": {
+                    "Eau (-trempage)": 311.0,
+                    "Farine blé": 599.0,
+                    "Levain froment": 168.0,
+                    "Sel": 11.0,
+                    "Graines kasha (trempé)": 156.0,
+                }
+            },
+        )
+        self.assertEqual(len(actions["preparation"]), 0)
+        actions = order.get_actions(self.next_monday + timedelta(2))
+        self.assertEqual(actions["delivery"], {"Semi-complet Kasha (1 kg)/GK": 1})
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]), 0)
+
+    def test_GK_batch(self):
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday),
+        )
+        order.save()
+        OrderLine(
+            order=order, product=(Product.objects.get(ref="GK")), quantity=4
+        ).save()
+        OrderLine(
+            order=order, product=(Product.objects.get(ref="TGK")), quantity=2
+        ).save()
+        OrderLine(
+            order=order, product=(Product.objects.get(ref="PK")), quantity=4
+        ).save()
+
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"], {"Levain froment": 1680.0, "Graines kasha": 780.0}
+        )
+        actions = order.get_actions(self.next_monday)
+        self.assertEqual(
+            actions["delivery"],
+            {
+                "Semi-complet Kasha (1 kg)/GK": 4,
+                "Semi-complet kasha (2 kg)/TGK": 2,
+                "Semi-complet kasha (500 g)/PK": 4,
+            },
+        )
+        self.assertEqual(
+            actions["bakery"],
+            {
+                "Semi-complet Kasha (1 kg)/GK": {
+                    "Eau (-trempage)": 3110.0,
+                    "Farine blé": 5990.0,
+                    "Levain froment": 1680.0,
+                    "Sel": 110.0,
+                    "Graines kasha (trempé)": 1560.0,
+                }
+            },
+        )
+        self.assertEqual(len(actions["preparation"]), 0)
+
+    def test_BR(self):
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday),
+        )
+        order.save()
+        line = OrderLine(
+            order=order, product=(Product.objects.get(ref="BR")), quantity=1
+        )
+        line.save()
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"],
+            {"Levain froment": 128.0, "Raisins secs": 47.0, "Flocons de riz": 13.455},
+        )
+        actions = order.get_actions(self.next_monday)
+        self.assertEqual(actions["delivery"], {"Brioche raisin (500g)/BR": 1})
+        self.assertEqual(
+            actions["bakery"],
+            {
+                "Brioche raisin (500g)/BR": {
+                    "Eau (-trempage)": 0.0,
+                    "Farine blé": 246.5,
+                    "Huile": 24.5,
+                    "Levain froment": 128.0,
+                    "Sel": 3.0,
+                    "Sucre": 34.5,
+                    "Raisins secs (trempé)": 94.0,
+                    "Flocons de riz (trempé)": 148.01,
+                }
+            },
+        )
+        self.assertEqual(len(actions["preparation"]), 0)
+
+
+class RestTests(TestCase):
+    fixtures = ["data/base.json"]
+    next_monday = date.today() + timedelta(days=7 - date.today().weekday())
+
+    def test_generate_delivery_dates(self):
+        count = DeliveryDate.objects.count()
+        response = self.client.post("/api/generate_delivery_dates")
+        self.assertEqual(response.data, {"message": "Delivery dates generated!"})
         self.assertEqual(response.status_code, 200)
-        products = json.loads(response.getvalue().decode('utf-8'))
+        assert count == DeliveryDate.objects.count()
+
+    def setUp(self):
+        context = populate()
+        self.client = APIClient()
+        self.client.force_authenticate(user=context["guy"])
+        for monday in DeliveryDate.objects.filter(
+            weekly_delivery=context["monday_delivery"]
+        ):
+            recurring_order = Order(customer=context["store"], delivery_date=monday)
+            recurring_order.save()
+            for product, qty in (
+                (Product.objects.get(ref="GN"), 5),
+                (Product.objects.get(ref="TGN"), 3),
+                (Product.objects.get(ref="PK"), 5),
+                (Product.objects.get(ref="BR"), 8),
+                (Product.objects.get(ref="COOKIE"), 20),
+                (Product.objects.get(ref="GSe"), 5),
+            ):
+                line = OrderLine(order=recurring_order, product=product, quantity=qty)
+                line.save()
+        for wednesday in DeliveryDate.objects.filter(
+            weekly_delivery=context["wednesday_delivery"]
+        ):
+            recurring_order2 = Order(customer=context["store"], delivery_date=wednesday)
+            recurring_order2.save()
+            for product, qty in (
+                (Product.objects.get(ref="FAR"), 5),
+                (Product.objects.get(ref="GK"), 5),
+                (Product.objects.get(ref="GL"), 5),
+                (Product.objects.get(ref="PN"), 8),
+                (Product.objects.get(ref="BC"), 10),
+                (Product.objects.get(ref="GSe"), 5),
+            ):
+                line = OrderLine(order=recurring_order2, product=product, quantity=qty)
+                line.save()
+        simple_order = Order(
+            customer=context["guy"],
+            delivery_date=DeliveryDate.objects.filter(
+                weekly_delivery=context["monday_delivery"]
+            ).get(date=self.next_monday),
+        )
+        simple_order.save()
+        for product, qty in (
+            (Product.objects.get(ref="COOKIE"), 6),
+            (Product.objects.get(ref="BR"), 1),
+            (Product.objects.get(ref="PN"), 1),
+            (Product.objects.get(ref="GSe"), 1),
+            (Product.objects.get(ref="GSa"), 1),
+        ):
+            line = OrderLine(order=simple_order, product=product, quantity=qty)
+            line.save()
+
+    def test_products(self):
+        response = self.client.get("/api/products/")
+        self.assertEqual(response.status_code, 200)
+        products = response.data
         self.assertEqual(len(products), 21)
         for product in products:
-            if product['name'] == "Semi-complet Kasha (1 kg)":
-                self.assertEqual(product['ref'], "GK")
-                self.assertEqual(product['price'], 6.5)
-                self.assertEqual(product['cost_price'], 1.62)
-                self.assertEqual(len(product['ingredients']), 5)
-            if product['name'] == "Semi-complet kasha (2 kg)":
-                self.assertEqual(product['ref'], "TGK")
-                self.assertEqual(product['price'], 13)
-                self.assertEqual(product['cost_price'], 3.23)
-                self.assertEqual(product['orig_product'], 'GK')
-                self.assertEqual(product['coef'], 2)
-                self.assertTrue('ingredients' not in product)
-        
+            if product["name"] == "Semi-complet Kasha (1 kg)":
+                GK = product
+                self.assertEqual(product["ref"], "GK")
+                self.assertEqual(product["price"], 6.5)
+                self.assertAlmostEqual(product["cost_price"], Decimal(1.62))
+                self.assertEqual(len(product["raw_ingredients"]), 5)
+            if product["name"] == "Semi-complet kasha (2 kg)":
+                self.assertEqual(product["ref"], "TGK")
+                self.assertEqual(product["price"], 13)
+                self.assertAlmostEqual(product["cost_price"], Decimal(3.23))
+                self.assertEqual(product["orig_product"], GK["url"])
+                self.assertEqual(product["coef"], 2)
+                self.assertTrue(len(product["raw_ingredients"]) == 0)
+            if product["name"] == "Cookie":
+                self.assertAlmostEqual(product["cost_price"], Decimal(0.68))
 
     def test_orders(self):
         response = self.client.get(
-            reverse(
-                "boulange:orders",
-                kwargs={"year": self.next_monday.year, "month": self.next_monday.month, "day": self.next_monday.day, "span": "week"},                
-            ), query_params={'json': True}
+            "/api/orders/",
+            query_params={
+                "min_date": self.next_monday,
+                "max_date": self.next_monday + timedelta(days=6),
+            },
         )
         self.assertEqual(response.status_code, 200)
-        ddates = json.loads(response.getvalue().decode('utf-8'))
-        print(ddates)
+        orders = response.data
+        ddates = defaultdict(list)
+        for order in orders:
+            ddates[order["delivery_date"]].append(order)
+        ddates = [(ddate, ddates[ddate]) for ddate in ddates]
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(len(ddates), 2)
-        self.assertEqual(ddates[0]['date'], self.next_monday.isoformat())
-        self.assertEqual(sum([o["price"] for o in ddates[0]['orders']]), 188)
-        self.assertEqual(sum([o["price"] for o in ddates[1]['orders']]), 219)
-        self.assertEqual(ddates[1]['date'], (self.next_monday + timedelta(days=2)).isoformat())
-
-    def test_monthly_receipt(self):
-        user = User.objects.get(email='store@toto.net')
-        response = self.client.get(
-            reverse(
-                "boulange:monthly_receipt",
-                kwargs={"customer_id": user.customer.id, "year": self.next_monday.year, "month": self.next_monday.month},                
-            ), query_params={'json': True}
+        self.assertTrue(self.next_monday.isoformat() in ddates[0][0])
+        self.assertAlmostEqual(
+            sum([o["total_price"] for o in ddates[0][1]]), Decimal(188.09)
         )
-        self.assertEqual(response.status_code, 200)
-        receipt = json.loads(response.getvalue().decode('utf-8'))
-
-    def test_actions(self):
-        dimanche = self.next_monday - timedelta(days=1)
-        lundi = self.next_monday
-        mardi = lundi + timedelta(days=1)
-        mercredi = lundi + timedelta(days=2)
-        dimanche_out = self.client.get(
-            reverse("boulange:actions", kwargs={"year": dimanche.year, "month": dimanche.month, "day": dimanche.day})
+        self.assertAlmostEqual(
+            sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69)
         )
-        self.assertEqual(dimanche_out.status_code, 200)
-        self.assertContains(dimanche_out, "Actions pour le dimanche")
-        lundi_out = self.client.get(
-            reverse("boulange:actions", kwargs={"year": lundi.year, "month": lundi.month, "day": lundi.day})
+        self.assertTrue(
+            (self.next_monday + timedelta(days=2)).isoformat() in ddates[1][0]
         )
-        self.assertEqual(lundi_out.status_code, 200)
-        self.assertContains(lundi_out, "Actions pour le lundi")
-        mardi_out = self.client.get(
-            reverse("boulange:actions", kwargs={"year": mardi.year, "month": mardi.month, "day": mardi.day})
-        )
-        self.assertEqual(mardi_out.status_code, 200)
-        self.assertContains(mardi_out, "Actions pour le mardi")
-        mercredi_out = self.client.get(
-            reverse("boulange:actions", kwargs={"year": mercredi.year, "month": mercredi.month, "day": mercredi.day})
-        )
-        self.assertEqual(mercredi_out.status_code, 200)
-        self.assertContains(mercredi_out, "Actions pour le mercredi")
-        with open('tmp.html', 'w') as out:
-            out.write(lundi_out.getvalue().decode('utf-8'))
-        with open('tmp-1.html', 'w') as out:
-            out.write(dimanche_out.getvalue().decode('utf-8'))
-        with open('tmp+1.html', 'w') as out:
-            out.write(mardi_out.getvalue().decode('utf-8'))
-        with open('tmp+2.html', 'w') as out:
-            out.write(mercredi_out.getvalue().decode('utf-8'))
-

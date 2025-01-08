@@ -1114,7 +1114,7 @@
   "fields": {
     "product": 14,
     "ingredient": 2,
-    "quantity": 134.55
+    "quantity": 181.55
   }
 },
 {
@@ -1133,24 +1133,6 @@
     "product": 15,
     "ingredient": 2,
     "quantity": 134.55
-  }
-},
-{
-  "model": "auth.user",
-  "pk": 1,
-  "fields": {
-    "password": "pbkdf2_sha256$870000$u5RDBcn9pLpaFFLAOaNBh4$ITbKjGZvKPJ9SXNcPt/Y++XW1mAykoPzwJbsyJMoIZk=",
-    "last_login": "2024-12-17T13:48:48.367Z",
-    "is_superuser": true,
-    "username": "admin",
-    "first_name": "",
-    "last_name": "",
-    "email": "lafermebioduresto@gmail.com",
-    "is_staff": true,
-    "is_active": true,
-    "date_joined": "2024-10-12T20:41:45.450Z",
-    "groups": [],
-    "user_permissions": []
   }
 }
 ]
