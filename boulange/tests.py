@@ -9,6 +9,13 @@ from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDel
 
 
 def populate():
+    admin = Customer(
+        username="admin",
+        first_name="admin",
+        last_name="admin",
+        email="admin@toto.net",
+        is_staff=True
+    )
     store = Customer(
         username="store",
         first_name="a",
@@ -47,6 +54,7 @@ def populate():
         "wednesday_delivery": wednesday_delivery,
         "store": store,
         "guy": guy,
+        "admin": admin
     }
 
 
@@ -239,13 +247,13 @@ class RestTests(TestCase):
         assert count == DeliveryDate.objects.count()
 
     def setUp(self):
-        context = populate()
+        self.context = populate()
         self.client = APIClient()
-        self.client.force_authenticate(user=context["guy"])
+        self.client.force_authenticate(user=self.context["admin"])
         for monday in DeliveryDate.objects.filter(
-            weekly_delivery=context["monday_delivery"]
+            weekly_delivery=self.context["monday_delivery"]
         ):
-            recurring_order = Order(customer=context["store"], delivery_date=monday)
+            recurring_order = Order(customer=self.context["store"], delivery_date=monday)
             recurring_order.save()
             for product, qty in (
                 (Product.objects.get(ref="GN"), 5),
@@ -258,9 +266,9 @@ class RestTests(TestCase):
                 line = OrderLine(order=recurring_order, product=product, quantity=qty)
                 line.save()
         for wednesday in DeliveryDate.objects.filter(
-            weekly_delivery=context["wednesday_delivery"]
+            weekly_delivery=self.context["wednesday_delivery"]
         ):
-            recurring_order2 = Order(customer=context["store"], delivery_date=wednesday)
+            recurring_order2 = Order(customer=self.context["store"], delivery_date=wednesday)
             recurring_order2.save()
             for product, qty in (
                 (Product.objects.get(ref="FAR"), 5),
@@ -273,9 +281,9 @@ class RestTests(TestCase):
                 line = OrderLine(order=recurring_order2, product=product, quantity=qty)
                 line.save()
         simple_order = Order(
-            customer=context["guy"],
+            customer=self.context["guy"],
             delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=context["monday_delivery"]
+                weekly_delivery=self.context["monday_delivery"]
             ).get(date=self.next_monday),
         )
         simple_order.save()
@@ -337,3 +345,10 @@ class RestTests(TestCase):
         self.assertTrue(
             (self.next_monday + timedelta(days=2)).isoformat() in ddates[1][0]
         )
+
+    def test_permission(self):
+        client = APIClient()
+        client.force_authenticate(user=self.context["guy"])
+        response = client.get("/api/products/")
+        self.assertEqual(response.status_code, 403)
+        

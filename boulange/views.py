@@ -26,43 +26,40 @@ from .serializers import (
     WeeklyDeliverySerializer,
 )
 
-# TODO: change permissions!
-
-
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all().order_by("id")
     serializer_class = IngredientSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().order_by("id")
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class ProductLineViewSet(viewsets.ModelViewSet):
     queryset = ProductLine.objects.all().order_by("id")
     serializer_class = ProductLineSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by("id")
     serializer_class = CustomerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class WeeklyDeliveryViewSet(viewsets.ModelViewSet):
     queryset = WeeklyDelivery.objects.all().order_by("id")
     serializer_class = WeeklyDeliverySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class DeliveryDateViewSet(viewsets.ModelViewSet):
     queryset = DeliveryDate.objects.all().order_by("id")
     serializer_class = DeliveryDateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class OrderFilter(filters.FilterSet):
@@ -77,14 +74,14 @@ class OrderFilter(filters.FilterSet):
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().order_by("id")
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     filterset_class = OrderFilter
 
 
 class OrderLineViewSet(viewsets.ModelViewSet):
     queryset = OrderLine.objects.all().order_by("id")
     serializer_class = OrderLineSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 @api_view(["POST"])
