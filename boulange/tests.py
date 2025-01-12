@@ -11,15 +11,13 @@ from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDel
 def populate():
     admin = Customer(
         username="admin",
-        first_name="admin",
-        last_name="admin",
+        display_name="admin",
         email="admin@toto.net",
         is_staff=True
     )
     store = Customer(
         username="store",
-        first_name="a",
-        last_name="store",
+        display_name="store",
         email="store@toto.net",
         is_professional=True,
         pro_discount_percentage=5,
@@ -43,8 +41,7 @@ def populate():
 
     guy = Customer(
         username="guy",
-        first_name="a",
-        last_name="guy",
+        display_name="guy the client",
         email="guy@toto.net",
         is_professional=False,
     )
@@ -313,7 +310,7 @@ class RestTests(TestCase):
                 self.assertEqual(product["ref"], "TGK")
                 self.assertEqual(product["price"], 13)
                 self.assertAlmostEqual(product["cost_price"], Decimal(3.23))
-                self.assertEqual(product["orig_product"], GK["url"])
+                self.assertEqual(product["orig_product"], GK["id"])
                 self.assertEqual(product["coef"], 2)
                 self.assertTrue(len(product["raw_ingredients"]) == 0)
             if product["name"] == "Cookie":
@@ -329,21 +326,23 @@ class RestTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         orders = response.data
+        print(orders)
+        self.assertEqual(list(orders[0]['lines'][0].keys()), ['product', 'quantity'])
         ddates = defaultdict(list)
         for order in orders:
             ddates[order["delivery_date"]].append(order)
         ddates = [(ddate, ddates[ddate]) for ddate in ddates]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(ddates), 2)
-        self.assertTrue(self.next_monday.isoformat() in ddates[0][0])
+        self.assertEqual(self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date)
         self.assertAlmostEqual(
             sum([o["total_price"] for o in ddates[0][1]]), Decimal(188.09)
         )
         self.assertAlmostEqual(
             sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69)
         )
-        self.assertTrue(
-            (self.next_monday + timedelta(days=2)).isoformat() in ddates[1][0]
+        self.assertEqual(
+            self.next_monday + timedelta(days=2), DeliveryDate.objects.filter(id=ddates[1][0]).first().date
         )
 
     def test_permission(self):

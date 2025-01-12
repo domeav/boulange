@@ -1,0 +1,22 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Mes commandes{% endblock %}
+
+{% block content %}
+<section>
+  {% for order in orders %}
+  <ul>
+    <li>{{ order.delivery_date }}</li>
+    {% if order.lines.all %}
+    <li>
+      <ul>
+	{% for line in order.lines.all %}
+	<li>{{ line }}</li>
+	{% endfor %}
+      </ul>
+    </li>
+    {% endif %}
+  </ul>
+  {% endfor %}
+</section>
+{% endblock %}

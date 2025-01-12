@@ -26,7 +26,7 @@ class Ingredient(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
-    ref = models.CharField(max_length=20)
+    ref = models.CharField(max_length=20, unique=True)
     price = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
     # if orig_product is set we'll be using its ingredients with quantity * coef
@@ -68,6 +68,11 @@ class Product(models.Model):
         for line in product.raw_ingredients.all():
             yield (line.ingredient, line.quantity * coef)
 
+    def get_ref_queryset(self):
+        import pdb; pdb.set_trace()
+        ref = self.request.query_params.get('ref')
+        return Product.objects.get(ref=ref)
+            
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
@@ -84,12 +89,13 @@ class ProductLine(models.Model):
 
 
 class Customer(AbstractUser):
+    display_name = models.CharField(max_length=200)
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0)
     address = models.CharField(max_length=400, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}({self.email})"
+        return f"{self.display_name} ({self.email})"
 
 
 class WeeklyDelivery(models.Model):
@@ -113,7 +119,7 @@ class WeeklyDelivery(models.Model):
         6: "dimanche",
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
-
+    
     def generate_delivery_dates(self):
         if not self.active:
             return
@@ -134,7 +140,7 @@ class WeeklyDelivery(models.Model):
 
     class Meta:
         ordering = ["day_of_week", "customer"]
-
+        unique_together = ('customer', 'day_of_week')
 
 class DeliveryDate(models.Model):
     weekly_delivery = models.ForeignKey(
@@ -225,7 +231,7 @@ class Actions(dict):
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     delivery_date = models.ForeignKey(
-        DeliveryDate, on_delete=models.CASCADE, blank=True, null=True
+        DeliveryDate, on_delete=models.CASCADE
     )
 
     def __str__(self):

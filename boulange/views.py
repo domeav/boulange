@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django_filters import rest_framework as filters
 from django.shortcuts import redirect, render
+from django.contrib.auth.decorators import login_required
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -112,17 +113,19 @@ def get_actions(request, year, month, day):
 
 ### REGULAR VIEWS
 
-
 def index(request):
     return render(request, "boulange/index.html")
 
+@login_required
+def my_orders(request):
+    context = { "orders": Order.objects.filter(customer=request.user) }
+    return render(request, "boulange/my_orders.html", context)
 
 def products(request):
-    context = {}
+    context = {"products": Product.objects.all()}
     return render(request, "boulange/products.html", context)
 
-
-def orders(request, year=None, month=None, day=None, span="week"):
+def orders_by_customer(request):
     context = {}
     return render(request, "boulange/orders.html", context)
 

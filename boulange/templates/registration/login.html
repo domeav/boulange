@@ -1,0 +1,14 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Log In</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form }}
+    <button type="submit">Log In</button>
+  </form>
+</section>
+{% endblock %}

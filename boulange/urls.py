@@ -17,12 +17,11 @@ router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("my_orders", views.my_orders, name="my_orders"),
     path("products", views.products, name="products"),
     path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions"),
     path("actions", views.actions, name="actions"),
-    path("orders/<int:year>/<int:month>/<int:day>/<span>", views.orders, name="orders"),
-    path("orders", views.orders, name="orders"),
-    path("orders", views.orders, name="orders"),
+    path("orders/by_customer/", views.orders_by_customer, name="orders_by_customer"),
     path("api/", include(router.urls)),
     path(
         "api/generate_delivery_dates",
