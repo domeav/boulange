@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "django_bootstrap5",
     "rest_framework",
     "boulange",
     "django.contrib.admin",

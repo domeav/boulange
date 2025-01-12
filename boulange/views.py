@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django_filters import rest_framework as filters
+from django.shortcuts import redirect, render
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -25,6 +26,8 @@ from .serializers import (
     ProductSerializer,
     WeeklyDeliverySerializer,
 )
+
+### REST FRAMEWORK
 
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all().order_by("id")
@@ -106,3 +109,23 @@ def get_actions(request, year, month, day):
             actions = order.get_actions(target_date, actions)
 
     return Response(actions)
+
+### REGULAR VIEWS
+
+
+def index(request):
+    return render(request, "boulange/index.html")
+
+
+def products(request):
+    context = {}
+    return render(request, "boulange/products.html", context)
+
+
+def orders(request, year=None, month=None, day=None, span="week"):
+    context = {}
+    return render(request, "boulange/orders.html", context)
+
+def actions(request, year=None, month=None, day=None):
+    context = {}
+    return render(request, "boulange/actions.html", context)

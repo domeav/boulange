@@ -3,6 +3,8 @@ from rest_framework import routers
 
 from . import views
 
+app_name = "boulange"
+
 router = routers.DefaultRouter()
 router.register(r"ingredients", views.IngredientViewSet)
 router.register(r"products", views.ProductViewSet)
@@ -14,6 +16,13 @@ router.register(r"orders", views.OrderViewSet)
 router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
+    path("", views.index, name="index"),
+    path("products", views.products, name="products"),
+    path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions"),
+    path("actions", views.actions, name="actions"),
+    path("orders/<int:year>/<int:month>/<int:day>/<span>", views.orders, name="orders"),
+    path("orders", views.orders, name="orders"),
+    path("orders", views.orders, name="orders"),
     path("api/", include(router.urls)),
     path(
         "api/generate_delivery_dates",
