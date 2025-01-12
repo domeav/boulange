@@ -646,7 +646,7 @@
   "fields": {
     "product": 10,
     "ingredient": 4,
-    "quantity": 439.20
+    "quantity": 439.2
   }
 },
 {
@@ -655,7 +655,7 @@
   "fields": {
     "product": 10,
     "ingredient": 2,
-    "quantity": 439.20
+    "quantity": 439.2
   }
 },
 {
@@ -682,7 +682,7 @@
   "fields": {
     "product": 12,
     "ingredient": 3,
-    "quantity": 157.60
+    "quantity": 157.6
   }
 },
 {
@@ -700,7 +700,7 @@
   "fields": {
     "product": 12,
     "ingredient": 2,
-    "quantity": 342.40
+    "quantity": 342.4
   }
 },
 {
@@ -709,7 +709,7 @@
   "fields": {
     "product": 12,
     "ingredient": 13,
-    "quantity": 147.20
+    "quantity": 147.2
   }
 },
 {
@@ -718,7 +718,7 @@
   "fields": {
     "product": 12,
     "ingredient": 21,
-    "quantity": 9.60
+    "quantity": 9.6
   }
 },
 {
@@ -1133,6 +1133,48 @@
     "product": 15,
     "ingredient": 2,
     "quantity": 134.55
+  }
+},
+{
+  "model": "boulange.customer",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$870000$ROR54vQ85JgRbTrwcY1a7p$F572CBv9GaM6KBh9o5fF6OSLhglCq455S77qWUXZecY=",
+    "last_login": null,
+    "is_superuser": true,
+    "username": "dom",
+    "first_name": "",
+    "last_name": "",
+    "email": "dom.eav@franceimpro.net",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-01-12T07:40:02.753Z",
+    "is_professional": false,
+    "pro_discount_percentage": 5.0,
+    "address": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "boulange.customer",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$870000$skbTJvSJZw0LFs38XU31mH$KDXsZUwTzw+rdALh1pCuUCRiNeFzQskUUH8UZt6wWVE=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "lafermebioduresto@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-01-12T07:43:46.208Z",
+    "is_professional": false,
+    "pro_discount_percentage": 5.0,
+    "address": null,
+    "groups": [],
+    "user_permissions": []
   }
 }
 ]
