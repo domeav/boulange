@@ -1,8 +1,8 @@
 from datetime import date, timedelta
 
-from django_filters import rest_framework as filters
-from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -28,7 +28,8 @@ from .serializers import (
     WeeklyDeliverySerializer,
 )
 
-### REST FRAMEWORK
+# REST FRAMEWORK
+
 
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all().order_by("id")
@@ -111,23 +112,29 @@ def get_actions(request, year, month, day):
 
     return Response(actions)
 
-### REGULAR VIEWS
+
+# REGULAR VIEWS
+
 
 def index(request):
     return render(request, "boulange/index.html")
 
+
 @login_required
 def my_orders(request):
-    context = { "orders": Order.objects.filter(customer=request.user) }
+    context = {"orders": Order.objects.filter(customer=request.user)}
     return render(request, "boulange/my_orders.html", context)
+
 
 def products(request):
     context = {"products": Product.objects.all()}
     return render(request, "boulange/products.html", context)
 
+
 def orders_by_customer(request):
     context = {}
     return render(request, "boulange/orders.html", context)
+
 
 def actions(request, year=None, month=None, day=None):
     context = {}

@@ -69,10 +69,12 @@ class Product(models.Model):
             yield (line.ingredient, line.quantity * coef)
 
     def get_ref_queryset(self):
-        import pdb; pdb.set_trace()
-        ref = self.request.query_params.get('ref')
+        import pdb
+
+        pdb.set_trace()
+        ref = self.request.query_params.get("ref")
         return Product.objects.get(ref=ref)
-            
+
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
@@ -119,7 +121,7 @@ class WeeklyDelivery(models.Model):
         6: "dimanche",
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
-    
+
     def generate_delivery_dates(self):
         if not self.active:
             return
@@ -140,7 +142,8 @@ class WeeklyDelivery(models.Model):
 
     class Meta:
         ordering = ["day_of_week", "customer"]
-        unique_together = ('customer', 'day_of_week')
+        unique_together = ("customer", "day_of_week")
+
 
 class DeliveryDate(models.Model):
     weekly_delivery = models.ForeignKey(
@@ -230,9 +233,7 @@ class Actions(dict):
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    delivery_date = models.ForeignKey(
-        DeliveryDate, on_delete=models.CASCADE
-    )
+    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.customer}/{self.delivery_date}"

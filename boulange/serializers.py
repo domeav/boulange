@@ -28,6 +28,7 @@ class ProductLineSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     raw_ingredients = ProductLineSerializer(many=True, read_only=True)
+
     class Meta:
         model = Product
         fields = [
@@ -71,25 +72,32 @@ class DeliveryDateSerializer(serializers.ModelSerializer):
 
 
 class OrderLineSerializer(serializers.ModelSerializer):
-    product = serializers.SlugRelatedField(slug_field='ref', read_only=True)
+    product = serializers.SlugRelatedField(slug_field="ref", read_only=True)
 
     class Meta:
         model = OrderLine
-        fields = ["product", "quantity"]    
-        
+        fields = ["product", "quantity"]
+
 
 class OrderSerializer(serializers.ModelSerializer):
     lines = OrderLineSerializer(many=True, required=False)
 
     class Meta:
         model = Order
-        fields = ["customer", "delivery_date", "total_price", "lines"]
+        fields = ["id", "customer", "delivery_date", "total_price", "lines"]
 
     def run_validation(self, data):
-        self.lines_data = data.pop('lines')
-        for line in self.lines_data:
-            line['product'] = Product.objects.get(ref=line['product'])
+        self.lines_data = []
+
+        for line in data["lines"]:
+            self.lines_data.append(
+                {
+                    "product": Product.objects.get(ref=line["product"]),
+                    "quantity": line["quantity"],
+                }
+            )
         validated_data = super().run_validation(data=data)
+        validated_data.pop("lines")
         return validated_data
 
     def create(self, validated_data):

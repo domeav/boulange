@@ -10,10 +10,7 @@ from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDel
 
 def populate():
     admin = Customer(
-        username="admin",
-        display_name="admin",
-        email="admin@toto.net",
-        is_staff=True
+        username="admin", display_name="admin", email="admin@toto.net", is_staff=True
     )
     store = Customer(
         username="store",
@@ -51,7 +48,7 @@ def populate():
         "wednesday_delivery": wednesday_delivery,
         "store": store,
         "guy": guy,
-        "admin": admin
+        "admin": admin,
     }
 
 
@@ -250,7 +247,9 @@ class RestTests(TestCase):
         for monday in DeliveryDate.objects.filter(
             weekly_delivery=self.context["monday_delivery"]
         ):
-            recurring_order = Order(customer=self.context["store"], delivery_date=monday)
+            recurring_order = Order(
+                customer=self.context["store"], delivery_date=monday
+            )
             recurring_order.save()
             for product, qty in (
                 (Product.objects.get(ref="GN"), 5),
@@ -265,7 +264,9 @@ class RestTests(TestCase):
         for wednesday in DeliveryDate.objects.filter(
             weekly_delivery=self.context["wednesday_delivery"]
         ):
-            recurring_order2 = Order(customer=self.context["store"], delivery_date=wednesday)
+            recurring_order2 = Order(
+                customer=self.context["store"], delivery_date=wednesday
+            )
             recurring_order2.save()
             for product, qty in (
                 (Product.objects.get(ref="FAR"), 5),
@@ -326,15 +327,16 @@ class RestTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         orders = response.data
-        print(orders)
-        self.assertEqual(list(orders[0]['lines'][0].keys()), ['product', 'quantity'])
+        self.assertEqual(list(orders[0]["lines"][0].keys()), ["product", "quantity"])
         ddates = defaultdict(list)
         for order in orders:
             ddates[order["delivery_date"]].append(order)
         ddates = [(ddate, ddates[ddate]) for ddate in ddates]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(ddates), 2)
-        self.assertEqual(self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date)
+        self.assertEqual(
+            self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date
+        )
         self.assertAlmostEqual(
             sum([o["total_price"] for o in ddates[0][1]]), Decimal(188.09)
         )
@@ -342,7 +344,8 @@ class RestTests(TestCase):
             sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69)
         )
         self.assertEqual(
-            self.next_monday + timedelta(days=2), DeliveryDate.objects.filter(id=ddates[1][0]).first().date
+            self.next_monday + timedelta(days=2),
+            DeliveryDate.objects.filter(id=ddates[1][0]).first().date,
         )
 
     def test_permission(self):
@@ -350,4 +353,21 @@ class RestTests(TestCase):
         client.force_authenticate(user=self.context["guy"])
         response = client.get("/api/products/")
         self.assertEqual(response.status_code, 403)
-        
+
+    def test_new_order(self):
+        response = self.client.post(
+            "/api/orders/",
+            {
+                "customer": self.context["guy"].id,
+                "delivery_date": self.context["monday_delivery"]
+                .deliverydate_set.first()
+                .id,
+                "lines": [
+                    {"product": "GN", "quantity": 3},
+                    {"product": "PN", "quantity": 3},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertAlmostEqual(response.data["total_price"], Decimal(23.10))
