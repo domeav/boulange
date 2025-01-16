@@ -9,9 +9,10 @@
     <header>
       <nav>
 	<img alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	Hello, {{ request.user.username }}
 	<ul>
+	  <li><a href="{% url 'boulange:products' %}">Produits</a></li>
 	  <li><a href="{% url 'boulange:my_orders' %}">Mes commandes</a></li>
-          <li><a href="{% url 'boulange:products' %}">Produits</a></li>
           <li><a href="{% url 'boulange:orders_by_customer' %}">Commandes par client</a></li>
 	  <li><a href="{% url 'boulange:actions' %}">Actions</a></li>
 	</ul>

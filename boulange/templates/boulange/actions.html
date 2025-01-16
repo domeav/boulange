@@ -4,5 +4,78 @@
 
 {% block content %}
 <section>
+  {% for d in date_nav %}
+  {% if d == target_date %}
+  {{ d|date:"D d/m" }}
+  {% else %}
+  <a href="{% url 'boulange:actions' d.year d.month d.day %}">{{ d|date:"D d/m" }}</a>
+  {% endif %}
+  {% endfor %}
 </section>
+{% if actions.preparation.levain_froment_recipe %}
+<section>
+  <h2>Levain froment</h2>
+  {% for step in actions.preparation.levain_froment_recipe %}
+  <h3>{{ step.title }}</h3>
+  <ul>
+    {% for line in step.lines %}
+    <li>{{ line }}</li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+  ⚠ futur levain chef non inclus
+</section>
+{% endif %}
+{% if actions.preparation.levain_sarrasin_recipe %}
+<section>
+  <h2>Levain sarrasin</h2>
+  {% for step in actions.preparation.levain_sarrasin_recipe %}
+  <h3>{{ step.title }}</h3>
+  <ul>
+    {% for line in step.lines %}
+    <li>{{ line }}</li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+  ⚠ 20g sont inclus pour le futur levain chef
+</section>
+{% endif %}
+{% if actions.preparation.trempage %}
+<section>
+  <h2>Trempage</h2>
+  <ul>
+    {% for name, qties in actions.preparation.trempage.items %}
+    <li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml {{ qties.warning }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% if actions.bakery %}
+<section>
+  <h2>Boulange</h2>
+  {% for recipe, ingredients in actions.bakery.items %}
+  <h3>{{ recipe }}</h3>
+  <ul>
+    {% for ing, qty in ingredients.items %}
+    {% if qty %}
+    <li>{{ ing }} : {{ qty }}</li>
+    {% endif %}
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</section>
+{% endif %}
+{% if actions.delivery %}
+<section>
+  <h2>Livraison</h2>
+  {% for delivery_date, lines in actions.delivery.items %}
+  <h3>{{ delivery_date }}</h3>
+  <ul>
+    {% for product, nb in lines.items %}
+    <li>{{ product }} : {{ nb }}</li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</section>
+{% endif %}
 {% endblock %}

@@ -13,8 +13,8 @@
       {% if product.orig_product %}
       Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
       {% else %}
-      {% for line in product.productline_set.all %}
-      <li>{{ line }}</li>
+      {% for line in product.raw_ingredients.all %}
+      <li>{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
       {% endfor %}
       {% endif %}
     </ul>

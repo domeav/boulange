@@ -60,11 +60,12 @@ class ActionsTests(TestCase):
         self.context = populate()
 
     def test_GK(self):
+        delivery_date = DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
-            delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday),
+            delivery_date=delivery_date,
         )
         order.save()
         line = OrderLine(
@@ -74,20 +75,25 @@ class ActionsTests(TestCase):
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
-            actions["preparation"], {"Levain froment": 168.0, "Graines kasha": 78.0}
+            actions["preparation"],
+            {
+                "levain": {"Levain froment": 168.0},
+                "trempage": {"Graines kasha": {"dry": 78.0, "water": 78.0}},
+            },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(actions["delivery"], {"Semi-complet Kasha (1 kg)/GK": 1})
+        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(
             actions["bakery"],
             {
-                "Semi-complet Kasha (1 kg)/GK": {
-                    "Eau (-trempage)": 311.0,
+                "Semi-complet Kasha/GK": {
+                    "Eau": 311.0,
                     "Farine blé": 599.0,
                     "Levain froment": 168.0,
                     "Sel": 11.0,
@@ -95,14 +101,16 @@ class ActionsTests(TestCase):
                 }
             },
         )
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
 
     def test_GK_previous_day(self):
+        delivery_date = DeliveryDate.objects.filter(
+                weekly_delivery=self.context["wednesday_delivery"]
+            ).get(date=self.next_monday + timedelta(2))
         order = Order(
             customer=self.context["guy"],
-            delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=self.context["wednesday_delivery"]
-            ).get(date=self.next_monday + timedelta(2)),
+            delivery_date=delivery_date,
         )
         order.save()
         line = OrderLine(
@@ -113,15 +121,19 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
-            actions["preparation"], {"Levain froment": 168.0, "Graines kasha": 78.0}
+            actions["preparation"],
+            {
+                "levain": {"Levain froment": 168.0},
+                "trempage": {"Graines kasha": {"dry": 78.0, "water": 78.0}},
+            },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(
             actions["bakery"],
             {
-                "Semi-complet Kasha (1 kg)/GK": {
-                    "Eau (-trempage)": 311.0,
+                "Semi-complet Kasha/GK": {
+                    "Eau": 311.0,
                     "Farine blé": 599.0,
                     "Levain froment": 168.0,
                     "Sel": 11.0,
@@ -129,18 +141,21 @@ class ActionsTests(TestCase):
                 }
             },
         )
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday + timedelta(2))
-        self.assertEqual(actions["delivery"], {"Semi-complet Kasha (1 kg)/GK": 1})
+        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(len(actions["bakery"]), 0)
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
     def test_GK_batch(self):
+        delivery_date = DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
-            delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday),
+            delivery_date=delivery_date,
         )
         order.save()
         OrderLine(
@@ -156,27 +171,34 @@ class ActionsTests(TestCase):
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
-            actions["preparation"], {"Levain froment": 1680.0, "Graines kasha": 780.0}
+            actions["preparation"],
+            {
+                "levain": {"Levain froment": 1680.0},
+                "trempage": {"Graines kasha": {"dry": 780.0, "water": 780.0}},
+            },
         )
         actions = order.get_actions(self.next_monday)
         self.assertEqual(
             actions["delivery"],
             {
-                "Semi-complet Kasha (1 kg)/GK": 4,
+                delivery_date:
+                {"Semi-complet Kasha (1 kg)/GK": 4,
                 "Semi-complet kasha (2 kg)/TGK": 2,
                 "Semi-complet kasha (500 g)/PK": 4,
+                 }
             },
         )
         self.assertEqual(
             actions["bakery"],
             {
-                "Semi-complet Kasha (1 kg)/GK": {
-                    "Eau (-trempage)": 3110.0,
+                "Semi-complet Kasha/GK": {
+                    "Eau": 3110.0,
                     "Farine blé": 5990.0,
                     "Levain froment": 1680.0,
                     "Sel": 110.0,
@@ -184,14 +206,16 @@ class ActionsTests(TestCase):
                 }
             },
         )
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
     def test_BR(self):
+        delivery_date = DeliveryDate.objects.filter(
+                weekly_delivery=self.context["monday_delivery"]
+            ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
-            delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday),
+            delivery_date=delivery_date,
         )
         order.save()
         line = OrderLine(
@@ -201,21 +225,32 @@ class ActionsTests(TestCase):
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"Levain froment": 128.0, "Raisins secs": 47.0, "Flocons de riz": 13.455},
+            {
+                "levain": {"Levain froment": 128.0},
+                "trempage": {
+                    "Raisins secs": {"dry": 47.0, "water": 47.0},
+                    "Flocons de riz": {
+                        "dry": 13.455,
+                        "water": 134.55,
+                        "warning": "⚠ prévoir 10% de marge",
+                    },
+                },
+            },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(actions["delivery"], {"Brioche raisin (500g)/BR": 1})
+        self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
         self.assertEqual(
             actions["bakery"],
             {
-                "Brioche raisin (500g)/BR": {
-                    "Eau (-trempage)": 0.0,
+                "Brioche raisin/BR": {
+                    "Eau": 0.0,
                     "Farine blé": 246.5,
                     "Huile": 24.5,
                     "Levain froment": 128.0,
@@ -226,7 +261,8 @@ class ActionsTests(TestCase):
                 }
             },
         )
-        self.assertEqual(len(actions["preparation"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
 
 class RestTests(TestCase):

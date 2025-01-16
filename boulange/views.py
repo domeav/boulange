@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from .models import (
@@ -62,7 +62,12 @@ class WeeklyDeliveryViewSet(viewsets.ModelViewSet):
 
 
 class DeliveryDateViewSet(viewsets.ModelViewSet):
-    queryset = DeliveryDate.objects.all().order_by("id")
+    queryset = (
+        DeliveryDate.objects.all()
+        .filter(active=True)
+        .filter(date__gte=date.today())
+        .order_by("id")
+    )
     serializer_class = DeliveryDateSerializer
     permission_classes = [permissions.IsAdminUser]
 
@@ -96,9 +101,7 @@ def generate_delivery_dates(request):
     return Response({"message": "Delivery dates generated!"})
 
 
-@api_view(["GET"])
-def get_actions(request, year, month, day):
-    target_date = date(year, month, day)
+def _get_actions(target_date):
     delivery_dates = (
         DeliveryDate.objects.filter(date__gte=target_date)
         .filter(active=True)
@@ -109,8 +112,13 @@ def get_actions(request, year, month, day):
     for delivery_date in delivery_dates:
         for order in delivery_date.order_set.all():
             actions = order.get_actions(target_date, actions)
+    return actions
 
-    return Response(actions)
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAdminUser])
+def get_actions(request, year, month, day):
+    return Response(_get_actions(date(year, month, day)))
 
 
 # REGULAR VIEWS
@@ -137,5 +145,16 @@ def orders_by_customer(request):
 
 
 def actions(request, year=None, month=None, day=None):
-    context = {}
+    if not (year and month and day):
+        target_date = date.today()
+    else:
+        target_date = date(year, month, day)
+    date_nav = []
+    for i in range(-5, 6):
+        date_nav.append(target_date + timedelta(days=i))
+    context = {
+        "actions": _get_actions(target_date),
+        "target_date": target_date,
+        "date_nav": date_nav,
+    }
     return render(request, "boulange/actions.html", context)
