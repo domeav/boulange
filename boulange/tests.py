@@ -61,8 +61,8 @@ class ActionsTests(TestCase):
 
     def test_GK(self):
         delivery_date = DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday)
+            weekly_delivery=self.context["monday_delivery"]
+        ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
@@ -88,7 +88,9 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
+        self.assertEqual(
+            actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}}
+        )
         self.assertEqual(
             actions["bakery"],
             {
@@ -106,8 +108,8 @@ class ActionsTests(TestCase):
 
     def test_GK_previous_day(self):
         delivery_date = DeliveryDate.objects.filter(
-                weekly_delivery=self.context["wednesday_delivery"]
-            ).get(date=self.next_monday + timedelta(2))
+            weekly_delivery=self.context["wednesday_delivery"]
+        ).get(date=self.next_monday + timedelta(2))
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
@@ -144,15 +146,17 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday + timedelta(2))
-        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
+        self.assertEqual(
+            actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}}
+        )
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
     def test_GK_batch(self):
         delivery_date = DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday)
+            weekly_delivery=self.context["monday_delivery"]
+        ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
@@ -187,11 +191,11 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["delivery"],
             {
-                delivery_date:
-                {"Semi-complet Kasha (1 kg)/GK": 4,
-                "Semi-complet kasha (2 kg)/TGK": 2,
-                "Semi-complet kasha (500 g)/PK": 4,
-                 }
+                delivery_date: {
+                    "Semi-complet Kasha (1 kg)/GK": 4,
+                    "Semi-complet kasha (2 kg)/TGK": 2,
+                    "Semi-complet kasha (500 g)/PK": 4,
+                }
             },
         )
         self.assertEqual(
@@ -211,8 +215,8 @@ class ActionsTests(TestCase):
 
     def test_BR(self):
         delivery_date = DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday)
+            weekly_delivery=self.context["monday_delivery"]
+        ).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
@@ -245,7 +249,9 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
+        self.assertEqual(
+            actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}}
+        )
         self.assertEqual(
             actions["bakery"],
             {

@@ -83,6 +83,7 @@ class Product(models.Model):
             models.Index(fields=["name"]),
             models.Index(fields=["ref"]),
         ]
+        verbose_name = "Produit"
 
 
 class ProductLine(models.Model):
@@ -94,13 +95,16 @@ class ProductLine(models.Model):
 
 
 class Customer(AbstractUser):
-    display_name = models.CharField(max_length=200)
+    display_name = models.CharField(max_length=200, unique=True)
     is_professional = models.BooleanField(default=False)
-    pro_discount_percentage = models.FloatField(default=5.0)
+    pro_discount_percentage = models.FloatField(default=5.0, blank=True)
     address = models.CharField(max_length=400, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.display_name} ({self.email})"
+        return f"{self.display_name}"
+
+    class Meta:
+        verbose_name = "Client"
 
 
 class WeeklyDelivery(models.Model):
@@ -146,6 +150,8 @@ class WeeklyDelivery(models.Model):
     class Meta:
         ordering = ["day_of_week", "customer"]
         unique_together = ("customer", "day_of_week")
+        verbose_name = "Livraison hebdo"
+        verbose_name_plural = "Livraisons hebdo"
 
 
 class DeliveryDate(models.Model):
@@ -163,6 +169,8 @@ class DeliveryDate(models.Model):
 
     class Meta:
         ordering = ["date", "weekly_delivery"]
+        verbose_name = "Date de livraison"
+        verbose_name_plural = "Dates de livraison"
 
 
 class DeliveryBatch(dict):
@@ -250,16 +258,16 @@ class PreparationBatch(dict):
                 "title": "1er rafraîchi (cible 300 g)",
                 "lines": [
                     "100g de levain chef",
-                    f"{ water1 } ml d'eau chaude (60%)",
-                    f"{ flour1 } g de farine de froment (40%)",
+                    f"{water1} ml d'eau chaude (60%)",
+                    f"{flour1} g de farine de froment (40%)",
                 ],
             },
             {
-                "title": f"2nd rafraîchi (cible { round_qty } g)",
+                "title": f"2nd rafraîchi (cible {round_qty} g)",
                 "lines": [
                     "300g de levain",
-                    f"{ water2 } ml d'eau tiède (50%)",
-                    f"{ flour2 } g de farine de froment (50%)",
+                    f"{water2} ml d'eau tiède (50%)",
+                    f"{flour2} g de farine de froment (50%)",
                 ],
             },
         ]
@@ -281,16 +289,16 @@ class PreparationBatch(dict):
                 "title": "1er rafraîchi (cible 100 g)",
                 "lines": [
                     "20g de levain chef",
-                    f"{ water1 } ml d'eau chaude (50%)",
-                    f"{ flour1 } g de farine de sarrasin (50%)",
+                    f"{water1} ml d'eau chaude (50%)",
+                    f"{flour1} g de farine de sarrasin (50%)",
                 ],
             },
             {
-                "title": f"2nd rafraîchi (cible { round_qty } g)",
+                "title": f"2nd rafraîchi (cible {round_qty} g)",
                 "lines": [
                     "100g de levain",
-                    f"{ water2 } ml d'eau tiède (50%)",
-                    f"{ flour2 } g de farine de sarrasin (50%)",
+                    f"{water2} ml d'eau tiède (50%)",
+                    f"{flour2} g de farine de sarrasin (50%)",
                 ],
             },
         ]
@@ -344,6 +352,9 @@ class Order(models.Model):
         if target_day == preparation_day:
             actions.add_order_for_preparation(self)
         return actions
+
+    class Meta:
+        verbose_name = "Commande"
 
 
 class OrderLine(models.Model):

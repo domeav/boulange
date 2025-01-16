@@ -5,7 +5,7 @@
 {% block content %}
 <section>
   {% for order in delivery_date.order_set.all %}
-  <h3>{{ order.customer }}</h3>
+  <h3>{{ order.customer }} {{ order.total_price }}€</h3>
   {% if order.lines.all %}
   <ul>
     {% for line in order.lines.all %}

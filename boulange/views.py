@@ -156,7 +156,5 @@ def actions(request, year=None, month=None, day=None):
 
 
 def delivery_receipt(request, delivery_date_id):
-    context = {
-        'delivery_date': DeliveryDate.objects.get(id=delivery_date_id)
-    }
+    context = {"delivery_date": DeliveryDate.objects.get(id=delivery_date_id)}
     return render(request, "boulange/delivery_receipt.html", context)

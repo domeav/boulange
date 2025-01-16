@@ -33,9 +33,9 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "django_bootstrap5",
     "rest_framework",
+    "django.contrib.auth",
     "boulange",
     "django.contrib.admin",
-    "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
