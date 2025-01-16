@@ -10,9 +10,7 @@ TVA = 5.5
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=10)
-    per_unit_price = models.DecimalField(
-        max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit"
-    )
+    per_unit_price = models.DecimalField(max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit")
     needs_soaking = models.BooleanField(default=False)
     # qty of water needed is ing weight * coef
     soaking_coef = models.FloatField(default=1)
@@ -30,9 +28,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
     # if orig_product is set we'll be using its ingredients with quantity * coef
-    orig_product = models.ForeignKey(
-        "Product", on_delete=models.CASCADE, null=True, blank=True
-    )
+    orig_product = models.ForeignKey("Product", on_delete=models.CASCADE, null=True, blank=True)
     # when product_lines are defined in another product (orig_product)
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
@@ -51,9 +47,7 @@ class Product(models.Model):
             unit_divisor = 1
             if line.ingredient.unit in ("g", "ml"):
                 unit_divisor = 1000
-            price += (
-                Decimal(line.quantity) * line.ingredient.per_unit_price / unit_divisor
-            )
+            price += Decimal(line.quantity) * line.ingredient.per_unit_price / unit_divisor
 
         return round(price * Decimal(self.coef) / Decimal(self.nb_units), 2)
 
@@ -87,9 +81,7 @@ class Product(models.Model):
 
 
 class ProductLine(models.Model):
-    product = models.ForeignKey(
-        Product, related_name="raw_ingredients", on_delete=models.CASCADE
-    )
+    product = models.ForeignKey(Product, related_name="raw_ingredients", on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     quantity = models.FloatField()
 
@@ -114,9 +106,7 @@ class WeeklyDelivery(models.Model):
         "SAME_DAY": "same day",
         "PREVIOUS_DAY": "previous day",
     }
-    batch_target = models.CharField(
-        max_length=20, choices=BATCH_TARGET, default="SAME_DAY"
-    )
+    batch_target = models.CharField(max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
     can_order_here_from_website = models.BooleanField(default=True)
     DAY_OF_WEEK = {
         0: "lundi",
@@ -155,9 +145,7 @@ class WeeklyDelivery(models.Model):
 
 
 class DeliveryDate(models.Model):
-    weekly_delivery = models.ForeignKey(
-        WeeklyDelivery, on_delete=models.CASCADE, null=True
-    )
+    weekly_delivery = models.ForeignKey(WeeklyDelivery, on_delete=models.CASCADE, null=True)
     date = models.DateField()
     active = models.BooleanField(default=True)
 
@@ -202,9 +190,7 @@ class BakeryBatch(dict):
             quantity = base_qty / base_product.nb_units
             if ingredient.needs_soaking:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[product_key][self.water_key] -= round(
-                    base_qty / base_product.nb_units * ingredient.soaking_coef, 2
-                )
+                self[product_key][self.water_key] -= round(base_qty / base_product.nb_units * ingredient.soaking_coef, 2)
             if ingredient_key not in self[product_key]:
                 self[product_key][ingredient_key] = 0
             self[product_key][ingredient_key] += round(quantity, 2)
@@ -221,21 +207,15 @@ class PreparationBatch(dict):
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0
-                self["levain"][ingredient.name] += (
-                    ing_qty / order_line.product.nb_units * order_line.quantity
-                )
+                self["levain"][ingredient.name] += ing_qty / order_line.product.nb_units * order_line.quantity
             elif ingredient.needs_soaking:
                 if ingredient.name not in self["trempage"]:
                     self["trempage"][ingredient.name] = {"dry": 0, "water": 0}
                 quantity = ing_qty / order_line.product.nb_units * order_line.quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
-                self["trempage"][ingredient.name]["water"] += round(
-                    quantity * ingredient.soaking_coef, 2
-                )
+                self["trempage"][ingredient.name]["water"] += round(quantity * ingredient.soaking_coef, 2)
                 if ingredient.name == "Flocons de riz":
-                    self["trempage"][ingredient.name][
-                        "warning"
-                    ] = "⚠ prévoir 10% de marge"
+                    self["trempage"][ingredient.name]["warning"] = "⚠ prévoir 10% de marge"
 
     def _refresh_levain(self, initial_qty, target_qty, water_percentage):
         missing = target_qty - initial_qty
@@ -368,7 +348,5 @@ class OrderLine(models.Model):
     def get_price(self):
         total = self.product.price * self.quantity
         if self.order.customer.is_professional:
-            total = (total - total * Decimal(TVA / 100)) * Decimal(
-                1 - self.order.customer.pro_discount_percentage / 100
-            )
+            total = (total - total * Decimal(TVA / 100)) * Decimal(1 - self.order.customer.pro_discount_percentage / 100)
         return round(total, 2)

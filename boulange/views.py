@@ -62,12 +62,7 @@ class WeeklyDeliveryViewSet(viewsets.ModelViewSet):
 
 
 class DeliveryDateViewSet(viewsets.ModelViewSet):
-    queryset = (
-        DeliveryDate.objects.all()
-        .filter(active=True)
-        .filter(date__gte=date.today())
-        .order_by("id")
-    )
+    queryset = DeliveryDate.objects.all().filter(active=True).filter(date__gte=date.today()).order_by("id")
     serializer_class = DeliveryDateSerializer
     permission_classes = [permissions.IsAdminUser]
 
@@ -102,12 +97,7 @@ def generate_delivery_dates(request):
 
 
 def _get_actions(target_date):
-    delivery_dates = (
-        DeliveryDate.objects.filter(date__gte=target_date)
-        .filter(active=True)
-        .filter(date__lte=target_date + timedelta(days=2))
-        .all()
-    )
+    delivery_dates = DeliveryDate.objects.filter(date__gte=target_date).filter(active=True).filter(date__lte=target_date + timedelta(days=2)).all()
     actions = None
     for delivery_date in delivery_dates:
         for order in delivery_date.order_set.all():

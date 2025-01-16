@@ -9,9 +9,7 @@ from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDel
 
 
 def populate():
-    admin = Customer(
-        username="admin", display_name="admin", email="admin@toto.net", is_staff=True
-    )
+    admin = Customer(username="admin", display_name="admin", email="admin@toto.net", is_staff=True)
     store = Customer(
         username="store",
         display_name="store",
@@ -21,14 +19,10 @@ def populate():
         address="the store address",
     )
     store.save()
-    monday_delivery = WeeklyDelivery(
-        customer=store, batch_target="SAME_DAY", day_of_week=0
-    )
+    monday_delivery = WeeklyDelivery(customer=store, batch_target="SAME_DAY", day_of_week=0)
     monday_delivery.save()
     monday_delivery.generate_delivery_dates()
-    wednesday_delivery = WeeklyDelivery(
-        customer=store, batch_target="PREVIOUS_DAY", day_of_week=2
-    )
+    wednesday_delivery = WeeklyDelivery(customer=store, batch_target="PREVIOUS_DAY", day_of_week=2)
     wednesday_delivery.save()
     wednesday_delivery.generate_delivery_dates()
     count = DeliveryDate.objects.count()
@@ -60,17 +54,13 @@ class ActionsTests(TestCase):
         self.context = populate()
 
     def test_GK(self):
-        delivery_date = DeliveryDate.objects.filter(
-            weekly_delivery=self.context["monday_delivery"]
-        ).get(date=self.next_monday)
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(
-            order=order, product=(Product.objects.get(ref="GK")), quantity=1
-        )
+        line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
@@ -88,9 +78,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(
-            actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}}
-        )
+        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(
             actions["bakery"],
             {
@@ -107,17 +95,13 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
 
     def test_GK_previous_day(self):
-        delivery_date = DeliveryDate.objects.filter(
-            weekly_delivery=self.context["wednesday_delivery"]
-        ).get(date=self.next_monday + timedelta(2))
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["wednesday_delivery"]).get(date=self.next_monday + timedelta(2))
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(
-            order=order, product=(Product.objects.get(ref="GK")), quantity=1
-        )
+        line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday)
         self.assertEqual(len(actions["delivery"]), 0)
@@ -146,31 +130,21 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday + timedelta(2))
-        self.assertEqual(
-            actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}}
-        )
+        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
     def test_GK_batch(self):
-        delivery_date = DeliveryDate.objects.filter(
-            weekly_delivery=self.context["monday_delivery"]
-        ).get(date=self.next_monday)
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
         )
         order.save()
-        OrderLine(
-            order=order, product=(Product.objects.get(ref="GK")), quantity=4
-        ).save()
-        OrderLine(
-            order=order, product=(Product.objects.get(ref="TGK")), quantity=2
-        ).save()
-        OrderLine(
-            order=order, product=(Product.objects.get(ref="PK")), quantity=4
-        ).save()
+        OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=4).save()
+        OrderLine(order=order, product=(Product.objects.get(ref="TGK")), quantity=2).save()
+        OrderLine(order=order, product=(Product.objects.get(ref="PK")), quantity=4).save()
 
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
@@ -214,17 +188,13 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
     def test_BR(self):
-        delivery_date = DeliveryDate.objects.filter(
-            weekly_delivery=self.context["monday_delivery"]
-        ).get(date=self.next_monday)
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
         order = Order(
             customer=self.context["guy"],
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(
-            order=order, product=(Product.objects.get(ref="BR")), quantity=1
-        )
+        line = OrderLine(order=order, product=(Product.objects.get(ref="BR")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
         self.assertEqual(len(actions["delivery"]), 0)
@@ -249,9 +219,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
-        self.assertEqual(
-            actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}}
-        )
+        self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
         self.assertEqual(
             actions["bakery"],
             {
@@ -286,12 +254,8 @@ class RestTests(TestCase):
         self.context = populate()
         self.client = APIClient()
         self.client.force_authenticate(user=self.context["admin"])
-        for monday in DeliveryDate.objects.filter(
-            weekly_delivery=self.context["monday_delivery"]
-        ):
-            recurring_order = Order(
-                customer=self.context["store"], delivery_date=monday
-            )
+        for monday in DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]):
+            recurring_order = Order(customer=self.context["store"], delivery_date=monday)
             recurring_order.save()
             for product, qty in (
                 (Product.objects.get(ref="GN"), 5),
@@ -303,12 +267,8 @@ class RestTests(TestCase):
             ):
                 line = OrderLine(order=recurring_order, product=product, quantity=qty)
                 line.save()
-        for wednesday in DeliveryDate.objects.filter(
-            weekly_delivery=self.context["wednesday_delivery"]
-        ):
-            recurring_order2 = Order(
-                customer=self.context["store"], delivery_date=wednesday
-            )
+        for wednesday in DeliveryDate.objects.filter(weekly_delivery=self.context["wednesday_delivery"]):
+            recurring_order2 = Order(customer=self.context["store"], delivery_date=wednesday)
             recurring_order2.save()
             for product, qty in (
                 (Product.objects.get(ref="FAR"), 5),
@@ -322,9 +282,7 @@ class RestTests(TestCase):
                 line.save()
         simple_order = Order(
             customer=self.context["guy"],
-            delivery_date=DeliveryDate.objects.filter(
-                weekly_delivery=self.context["monday_delivery"]
-            ).get(date=self.next_monday),
+            delivery_date=DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday),
         )
         simple_order.save()
         for product, qty in (
@@ -376,15 +334,9 @@ class RestTests(TestCase):
         ddates = [(ddate, ddates[ddate]) for ddate in ddates]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(ddates), 2)
-        self.assertEqual(
-            self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date
-        )
-        self.assertAlmostEqual(
-            sum([o["total_price"] for o in ddates[0][1]]), Decimal(188.09)
-        )
-        self.assertAlmostEqual(
-            sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69)
-        )
+        self.assertEqual(self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date)
+        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[0][1]]), Decimal(188.09))
+        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69))
         self.assertEqual(
             self.next_monday + timedelta(days=2),
             DeliveryDate.objects.filter(id=ddates[1][0]).first().date,
@@ -401,9 +353,7 @@ class RestTests(TestCase):
             "/api/orders/",
             {
                 "customer": self.context["guy"].id,
-                "delivery_date": self.context["monday_delivery"]
-                .deliverydate_set.first()
-                .id,
+                "delivery_date": self.context["monday_delivery"].deliverydate_set.first().id,
                 "lines": [
                     {"product": "GN", "quantity": 3},
                     {"product": "PN", "quantity": 3},
