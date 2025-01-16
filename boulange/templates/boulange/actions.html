@@ -69,7 +69,7 @@
 <section>
   <h2>Livraison</h2>
   {% for delivery_date, lines in actions.delivery.items %}
-  <h3>{{ delivery_date }}</h3>
+  <h3>{{ delivery_date }} <a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">BdL</a></h3>
   <ul>
     {% for product, nb in lines.items %}
     <li>{{ product }} : {{ nb }}</li>

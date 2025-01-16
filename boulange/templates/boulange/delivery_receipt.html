@@ -1,11 +1,11 @@
 {% extends "boulange/base.html" %}
 
-{% block title %}Mes commandes{% endblock %}
+{% block title %}Bon de livraison : {{ delivery_date }}{% endblock %}
 
 {% block content %}
 <section>
-  {% for order in orders %}
-  <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>
+  {% for order in delivery_date.order_set.all %}
+  <h3>{{ order.customer }}</h3>
   {% if order.lines.all %}
   <ul>
     {% for line in order.lines.all %}

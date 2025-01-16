@@ -139,11 +139,6 @@ def products(request):
     return render(request, "boulange/products.html", context)
 
 
-def orders_by_customer(request):
-    context = {}
-    return render(request, "boulange/orders.html", context)
-
-
 def actions(request, year=None, month=None, day=None):
     if not (year and month and day):
         target_date = date.today()
@@ -158,3 +153,10 @@ def actions(request, year=None, month=None, day=None):
         "date_nav": date_nav,
     }
     return render(request, "boulange/actions.html", context)
+
+
+def delivery_receipt(request, delivery_date_id):
+    context = {
+        'delivery_date': DeliveryDate.objects.get(id=delivery_date_id)
+    }
+    return render(request, "boulange/delivery_receipt.html", context)

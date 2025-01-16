@@ -21,7 +21,7 @@ urlpatterns = [
     path("products", views.products, name="products"),
     path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions"),
     path("actions", views.actions, name="actions"),
-    path("orders/by_customer/", views.orders_by_customer, name="orders_by_customer"),
+    path("delivery_receipt/<int:delivery_date_id>", views.delivery_receipt, name="delivery_receipt"),
     path("api/", include(router.urls)),
     path(
         "api/generate_delivery_dates",
