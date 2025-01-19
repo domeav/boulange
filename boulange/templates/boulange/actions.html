@@ -3,7 +3,7 @@
 {% block title %}Actions{% endblock %}
 
 {% block content %}
-<section>
+<section class="container">
   {% for d in date_nav %}
   {% if d == target_date %}
   {{ d|date:"D d/m" }}
@@ -12,70 +12,85 @@
   {% endif %}
   {% endfor %}
 </section>
-{% if actions.preparation.levain_froment_recipe %}
-<section>
-  <h2>Levain froment</h2>
-  {% for step in actions.preparation.levain_froment_recipe %}
-  <h3>{{ step.title }}</h3>
-  <ul>
-    {% for line in step.lines %}
-    <li>{{ line }}</li>
-    {% endfor %}
-  </ul>
-  {% endfor %}
-  ⚠ futur levain chef non inclus
-</section>
-{% endif %}
-{% if actions.preparation.levain_sarrasin_recipe %}
-<section>
-  <h2>Levain sarrasin</h2>
-  {% for step in actions.preparation.levain_sarrasin_recipe %}
-  <h3>{{ step.title }}</h3>
-  <ul>
-    {% for line in step.lines %}
-    <li>{{ line }}</li>
-    {% endfor %}
-  </ul>
-  {% endfor %}
-  ⚠ 20g sont inclus pour le futur levain chef
-</section>
-{% endif %}
-{% if actions.preparation.trempage %}
-<section>
-  <h2>Trempage</h2>
-  <ul>
-    {% for name, qties in actions.preparation.trempage.items %}
-    <li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml {{ qties.warning }}</li>
-    {% endfor %}
-  </ul>
+{% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.trempage %}
+<section class="container">
+  <hr>
+  <h2>Préparations</h2>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% if actions.preparation.levain_froment_recipe %}
+    <div class="col mt-2">
+      <h3>Levain froment</h3>
+      {% for step in actions.preparation.levain_froment_recipe %}
+      <h4>{{ step.title }}</h4>
+      <ul>
+	{% for line in step.lines %}
+	<li>{{ line }}</li>
+	{% endfor %}
+      </ul>
+      {% endfor %}
+      ⚠ futur levain chef non inclus
+    </div>
+    {% endif %}
+    {% if actions.preparation.levain_sarrasin_recipe %}
+    <div class="col mt-2">
+      <h3>Levain sarrasin</h3>
+      {% for step in actions.preparation.levain_sarrasin_recipe %}
+      <h4>{{ step.title }}</h4>
+      <ul>
+	{% for line in step.lines %}
+	<li>{{ line }}</li>
+	{% endfor %}
+      </ul>
+      {% endfor %}
+      ⚠ 20g sont inclus pour le futur levain chef
+    </div>
+    {% endif %}
+    {% if actions.preparation.trempage %}
+    <div class="col mt-2">
+      <h3>Trempage</h3>
+      <ul>
+	{% for name, qties in actions.preparation.trempage.items %}
+	<li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml {{ qties.warning }}</li>
+	{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
 </section>
 {% endif %}
 {% if actions.bakery %}
-<section>
+<section class="container">
+  <hr>
   <h2>Boulange</h2>
-  {% for recipe, ingredients in actions.bakery.items %}
-  <h3>{{ recipe }}</h3>
-  <ul>
-    {% for ing, qty in ingredients.items %}
-    {% if qty %}
-    <li>{{ ing }} : {{ qty }}</li>
-    {% endif %}
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% for recipe, ingredients in actions.bakery.items %}
+    <div class="col mt-2">
+      <h3>{{ recipe }}</h3>
+      <ul>
+	{% for ing, qty in ingredients.items %}
+	{% if qty %}
+	<li>{{ ing }} : {{ qty }}</li>
+	{% endif %}
+	{% endfor %}
+      </ul>
+    </div>
     {% endfor %}
-  </ul>
-  {% endfor %}
 </section>
 {% endif %}
 {% if actions.delivery %}
-<section>
+<section class="container">
+  <hr>
   <h2>Livraison</h2>
-  {% for delivery_date, lines in actions.delivery.items %}
-  <h3>{{ delivery_date }} <a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">BdL</a></h3>
-  <ul>
-    {% for product, nb in lines.items %}
-    <li>{{ product }} : {{ nb }}</li>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% for delivery_date, lines in actions.delivery.items %}
+    <div class="col mt-2">
+      <h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
+      <ul>
+	{% for product, nb in lines.items %}
+	<li>{{ product }} : {{ nb }}</li>
+	{% endfor %}
+      </ul>
+    </div>
     {% endfor %}
-  </ul>
-  {% endfor %}
 </section>
 {% endif %}
 {% endblock %}

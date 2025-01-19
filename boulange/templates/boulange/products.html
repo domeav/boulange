@@ -3,24 +3,26 @@
 {% block title %}Produits{% endblock %}
 
 {% block content %}
-<section>
-  {% for product in products %}
-  {% if product.active %}
-  <div>
-    <h2>{{ product.name }}</h2>
-    <h3>Référence/prix : {{ product.ref }}/{{ product.price }}€</h3>
-    <ul>
-      {% if product.orig_product %}
-      Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
-      {% else %}
-      {% for line in product.raw_ingredients.all %}
-      <li>{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
-      {% endfor %}
-      {% endif %}
-    </ul>
-    Prix de revient : {{ product.cost_price|floatformat:2 }}€
-  </div>
-  {% endif %}
+<section class="container">
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% for product in products %}
+    {% if product.active %}
+    <div class="col mt-5">
+      <h2>{{ product.name }}</h2>
+      <h3>Référence/prix : {{ product.ref }}/{{ product.price }}€</h3>
+      <ul>
+	{% if product.orig_product %}
+	Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
+	{% else %}
+	{% for line in product.raw_ingredients.all %}
+	<li>{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
+	{% endfor %}
+	{% endif %}
+      </ul>
+      Prix de revient : {{ product.cost_price|floatformat:2 }}€
+    </div>
+    {% endif %}
   {% endfor %}
+  </div>
 </section>
 {% endblock %}

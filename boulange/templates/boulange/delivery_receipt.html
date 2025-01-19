@@ -3,16 +3,18 @@
 {% block title %}Bon de livraison : {{ delivery_date }}{% endblock %}
 
 {% block content %}
-<section>
+<section class="container">
   {% for order in delivery_date.order_set.all %}
-  <h3>{{ order.customer }} {{ order.total_price }}€</h3>
-  {% if order.lines.all %}
-  <ul>
-    {% for line in order.lines.all %}
-    <li>{{ line }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+  <div class="mt-5">
+    <h3>{{ order.customer }} {{ order.total_price }}€</h3>
+    {% if order.lines.all %}
+    <ul>
+      {% for line in order.lines.all %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
   {% endfor %}
 </section>
 {% endblock %}

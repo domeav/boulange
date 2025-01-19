@@ -140,7 +140,7 @@ class WeeklyDelivery(models.Model):
     def save(self, **kwargs):
         super().save(**kwargs)
         self.generate_delivery_dates()
-    
+
     class Meta:
         ordering = ["day_of_week", "customer"]
         unique_together = ("customer", "day_of_week")

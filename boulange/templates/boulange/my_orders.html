@@ -3,16 +3,18 @@
 {% block title %}Mes commandes{% endblock %}
 
 {% block content %}
-<section>
+<section class="container">
   {% for order in orders %}
-  <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>
-  {% if order.lines.all %}
-  <ul>
-    {% for line in order.lines.all %}
-    <li>{{ line }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+  <div class="mt-5">
+    <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>
+    {% if order.lines.all %}
+    <ul>
+      {% for line in order.lines.all %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
   {% endfor %}
 </section>
 {% endblock %}

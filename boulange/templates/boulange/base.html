@@ -1,20 +1,31 @@
 <!DOCTYPE html>
 {% load static %}
+{% load django_bootstrap5 %}
 <html lang="fr">
   <head>
     <title>La boulange de la ferme du Resto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
   </head>
 
   <body>
-    <header>
-      <nav>
-	<img alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
-	Hello, {{ request.user.username }}
-	<ul>
-	  <li><a href="{% url 'boulange:products' %}">Produits</a></li>
-	  <li><a href="{% url 'boulange:my_orders' %}">Mes commandes</a></li>
-	  <li><a href="{% url 'boulange:actions' %}">Actions</a></li>
-	</ul>
+    <header class="container">
+      <nav class="row align-items-center">
+	<div class="col">
+	  <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	</div>
+	<div class="col">
+	  Hello, {{ request.user.username }}
+	</div>
+	<div class="col">
+	  <a href="{% url 'boulange:products' %}">Produits</a>
+	  <br>
+	  <a href="{% url 'boulange:my_orders' %}">Mes commandes</a>
+	  <br>
+	  <a href="{% url 'boulange:actions' %}">Actions</a>
+	</div>
       </nav>
       <h1>{% block title %}{% endblock %}</h1>
       {% block page_actions %}{% endblock %}
