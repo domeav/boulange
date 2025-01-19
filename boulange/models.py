@@ -137,6 +137,10 @@ class WeeklyDelivery(models.Model):
     def __str__(self):
         return f"{self.customer}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
+    def save(self, **kwargs):
+        super().save(**kwargs)
+        self.generate_delivery_dates()
+    
     class Meta:
         ordering = ["day_of_week", "customer"]
         unique_together = ("customer", "day_of_week")
