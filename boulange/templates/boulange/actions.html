@@ -50,7 +50,7 @@
       <h3>Trempage</h3>
       <ul>
 	{% for name, qties in actions.preparation.trempage.items %}
-	<li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml {{ qties.warning }}</li>
+	<li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
 	{% endfor %}
       </ul>
     </div>
@@ -74,6 +74,19 @@
       </ul>
     </div>
     {% endfor %}
+</section>
+{% endif %}
+{% if actions.division %}
+<section class="container">
+  <hr>
+  <h2>Division</h2>
+  <div>
+    <ul>
+      {% for product, nb in actions.division.items %}
+      <li>{{ product }} : {{ nb }}</li>
+      {% endfor %}
+    </ul>
+  </div>
 </section>
 {% endif %}
 {% if actions.delivery %}

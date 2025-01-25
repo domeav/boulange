@@ -70,6 +70,7 @@ class ActionsTests(TestCase):
         actions = order.get_actions(self.next_monday - timedelta(1))
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["division"]), 0)
         self.assertEqual(
             actions["preparation"],
             {
@@ -79,6 +80,7 @@ class ActionsTests(TestCase):
         )
         actions = order.get_actions(self.next_monday)
         self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
+        self.assertEqual(actions["division"], {"Semi-complet Kasha (1 kg)/GK": 1})
         self.assertEqual(
             actions["bakery"],
             {

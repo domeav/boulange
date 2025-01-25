@@ -165,6 +165,14 @@ class DeliveryDate(models.Model):
         verbose_name_plural = "Dates de livraison"
 
 
+class DivisionBatch(dict):
+    def add_line(self, order_line):
+        key = str(order_line.product)
+        if key not in self:
+            self[key] = 0
+        self[key] += order_line.quantity
+
+
 class DeliveryBatch(dict):
     def add_line(self, order_line):
         dd = order_line.order.delivery_date
@@ -291,12 +299,17 @@ class PreparationBatch(dict):
 class Actions(dict):
     def __init__(self):
         self["delivery"] = DeliveryBatch()
+        self["division"] = DivisionBatch()
         self["bakery"] = BakeryBatch()
         self["preparation"] = PreparationBatch()
 
     def add_order_for_delivery(self, order):
         for line in order.lines.all():
             self["delivery"].add_line(line)
+
+    def add_order_for_division(self, order):
+        for line in order.lines.all():
+            self["division"].add_line(line)
 
     def add_order_for_bakery(self, order):
         for line in order.lines.all():
@@ -326,6 +339,7 @@ class Order(models.Model):
             actions = Actions()
         if self.delivery_date.date == target_day:
             actions.add_order_for_delivery(self)
+            actions.add_order_for_division(self)
         if self.delivery_date.weekly_delivery.batch_target == "SAME_DAY":
             bakery_day = self.delivery_date.date
         elif self.delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY":
