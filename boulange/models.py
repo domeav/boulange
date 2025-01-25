@@ -20,6 +20,7 @@ class Ingredient(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
+        ordering = ['name']
 
 
 class Product(models.Model):
@@ -92,12 +93,16 @@ class Product(models.Model):
             models.Index(fields=["ref"]),
         ]
         verbose_name = "Produit"
+        ordering = ['name']
 
 
 class ProductLine(models.Model):
     product = models.ForeignKey(Product, related_name="raw_ingredients", on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     quantity = models.FloatField()
+
+    class Meta:
+        ordering = ['ingredient__name']
 
 
 class Customer(AbstractUser):
@@ -111,6 +116,7 @@ class Customer(AbstractUser):
 
     class Meta:
         verbose_name = "Client"
+        ordering = ['display_name']
 
 
 class WeeklyDelivery(models.Model):
@@ -367,6 +373,7 @@ class Order(models.Model):
 
     class Meta:
         verbose_name = "Commande"
+        ordering = ['-delivery_date', 'customer']
 
 
 class OrderLine(models.Model):
@@ -382,3 +389,6 @@ class OrderLine(models.Model):
         if self.order.customer.is_professional:
             total = (total - total * Decimal(TVA / 100)) * Decimal(1 - self.order.customer.pro_discount_percentage / 100)
         return round(total, 2)
+
+    class Meta:
+        ordering = ['product__name']

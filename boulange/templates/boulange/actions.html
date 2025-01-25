@@ -49,7 +49,7 @@
     <div class="col mt-2">
       <h3>Trempage</h3>
       <ul>
-	{% for name, qties in actions.preparation.trempage.items %}
+	{% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
 	<li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
 	{% endfor %}
       </ul>
@@ -62,11 +62,11 @@
   <hr>
   <h2>Boulange</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for recipe, ingredients in actions.bakery.items %}
+    {% for recipe, ingredients in actions.bakery.items|dictsort:0 %}
     <div class="col mt-2">
       <h3>{{ recipe }}</h3>
       <ul>
-	{% for ing, qty in ingredients.items %}
+	{% for ing, qty in ingredients.items|dictsort:0 %}
 	{% if qty %}
 	<li>{{ ing }} : {{ qty }}</li>
 	{% endif %}
@@ -82,7 +82,7 @@
   <h2>Division</h2>
   <div>
     <ul>
-      {% for product, nb in actions.division.items %}
+      {% for product, nb in actions.division.items|dictsort:0 %}
       <li>{{ product }} : {{ nb }}</li>
       {% endfor %}
     </ul>
@@ -94,11 +94,11 @@
   <hr>
   <h2>Livraison</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for delivery_date, lines in actions.delivery.items %}
+    {% for delivery_date, lines in actions.delivery.items|dictsort:0 %}
     <div class="col mt-2">
       <h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
       <ul>
-	{% for product, nb in lines.items %}
+	{% for product, nb in lines.items|dictsort:0 %}
 	<li>{{ product }} : {{ nb }}</li>
 	{% endfor %}
       </ul>

@@ -120,13 +120,13 @@ def index(request):
 
 @login_required
 def my_orders(request):
-    context = {"orders": Order.objects.filter(customer=request.user)}
+    context = {"orders": Order.objects.filter(customer=request.user).order_by('-id')}
     return render(request, "boulange/my_orders.html", context)
 
 
 @login_required
 def products(request):
-    context = {"products": Product.objects.all()}
+    context = {"products": Product.objects.all().order_by('name')}
     return render(request, "boulange/products.html", context)
 
 
