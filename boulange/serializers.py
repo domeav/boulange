@@ -38,6 +38,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "price",
             "raw_ingredients",
             "cost_price",
+            "weight",
             "active",
             "orig_product",
             "coef",

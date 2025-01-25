@@ -51,6 +51,20 @@ class Product(models.Model):
 
         return round(price * Decimal(self.coef) / Decimal(self.nb_units), 2)
 
+    @property
+    def weight(self):
+        weight = 0
+        product = self.orig_product or self
+        for line in product.raw_ingredients.all():
+            if line.ingredient.unit in ("g", "ml"):
+                weight += line.quantity
+            elif line.ingredient.name == "Oeufs":
+                weight += line.quantity * 60
+            else:
+                raise ValueError(f"Can't add weight for {line.ingredient.name}!")
+        return round(weight * self.coef / self.nb_units, 2)
+    
+    
     def get_base_product_and_coef(self):
         product = self
         coef = 1

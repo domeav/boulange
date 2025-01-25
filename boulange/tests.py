@@ -308,16 +308,19 @@ class RestTests(TestCase):
                 self.assertEqual(product["ref"], "GK")
                 self.assertEqual(product["price"], 6.5)
                 self.assertAlmostEqual(product["cost_price"], Decimal(1.62))
+                self.assertAlmostEqual(product["weight"], 1245)
                 self.assertEqual(len(product["raw_ingredients"]), 5)
             if product["name"] == "Semi-complet kasha (2 kg)":
                 self.assertEqual(product["ref"], "TGK")
                 self.assertEqual(product["price"], 13)
                 self.assertAlmostEqual(product["cost_price"], Decimal(3.23))
+                self.assertAlmostEqual(product["weight"], 2490)
                 self.assertEqual(product["orig_product"], GK["id"])
                 self.assertEqual(product["coef"], 2)
                 self.assertTrue(len(product["raw_ingredients"]) == 0)
             if product["name"] == "Cookie":
                 self.assertAlmostEqual(product["cost_price"], Decimal(0.68))
+                self.assertAlmostEqual(product["weight"], 122.5)
 
     def test_orders(self):
         response = self.client.get(
