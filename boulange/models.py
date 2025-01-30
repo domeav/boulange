@@ -20,7 +20,7 @@ class Ingredient(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
-        ordering = ['name']
+        ordering = ["name"]
 
 
 class Product(models.Model):
@@ -63,9 +63,8 @@ class Product(models.Model):
                 weight += line.quantity * 60
             else:
                 raise ValueError(f"Can't add weight for {line.ingredient.name}!")
-        return round(weight * self.coef / self.nb_units, 2)
-    
-    
+        return round(weight * self.coef / self.nb_units / 10) * 10
+
     def get_base_product_and_coef(self):
         product = self
         coef = 1
@@ -93,7 +92,7 @@ class Product(models.Model):
             models.Index(fields=["ref"]),
         ]
         verbose_name = "Produit"
-        ordering = ['name']
+        ordering = ["name"]
 
 
 class ProductLine(models.Model):
@@ -102,7 +101,7 @@ class ProductLine(models.Model):
     quantity = models.FloatField()
 
     class Meta:
-        ordering = ['ingredient__name']
+        ordering = ["ingredient__name"]
 
 
 class Customer(AbstractUser):
@@ -116,7 +115,7 @@ class Customer(AbstractUser):
 
     class Meta:
         verbose_name = "Client"
-        ordering = ['display_name']
+        ordering = ["display_name"]
 
 
 class WeeklyDelivery(models.Model):
@@ -192,6 +191,9 @@ class DivisionBatch(dict):
             self[key] = 0
         self[key] += order_line.quantity
 
+    def round(self):
+        pass
+
 
 class DeliveryBatch(dict):
     def add_line(self, order_line):
@@ -202,6 +204,9 @@ class DeliveryBatch(dict):
         if key not in self[dd]:
             self[dd][key] = 0
         self[dd][key] += order_line.quantity
+
+    def round(self):
+        pass
 
 
 class BakeryBatch(dict):
@@ -222,10 +227,18 @@ class BakeryBatch(dict):
             quantity = base_qty / base_product.nb_units
             if ingredient.needs_soaking:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[product_key][self.water_key] -= round(base_qty / base_product.nb_units * ingredient.soaking_coef, 2)
+                self[product_key][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
             if ingredient_key not in self[product_key]:
                 self[product_key][ingredient_key] = 0
-            self[product_key][ingredient_key] += round(quantity, 2)
+            self[product_key][ingredient_key] += quantity
+
+    def round(self):
+        for product in self:
+            for ingredient in self[product]:
+                if ingredient == "Sel":
+                    self[product][ingredient] = round(self[product][ingredient])
+                else:
+                    self[product][ingredient] = round(self[product][ingredient] / 10) * 10
 
 
 class PreparationBatch(dict):
@@ -245,26 +258,22 @@ class PreparationBatch(dict):
                     self["trempage"][ingredient.name] = {"dry": 0, "water": 0}
                 quantity = ing_qty / order_line.product.nb_units * order_line.quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
-                self["trempage"][ingredient.name]["water"] += round(quantity * ingredient.soaking_coef, 2)
+                self["trempage"][ingredient.name]["water"] += quantity * ingredient.soaking_coef
                 if ingredient.name == "Flocons de riz":
                     self["trempage"][ingredient.name]["warning"] = "⚠ prévoir 10% de marge"
 
     def _refresh_levain(self, initial_qty, target_qty, water_percentage):
         missing = target_qty - initial_qty
-        water = missing * water_percentage / 100
-        flour = missing - water
+        water = round(missing * water_percentage / 100)
+        flour = round(missing - water)
         return flour, water
 
     def levain_froment_recipe(self):
         if "Levain froment" not in self["levain"]:
             return {}
         qty = self["levain"]["Levain froment"]
-        if qty % 10 == 0:
-            round_qty = qty
-        else:
-            round_qty = (int(qty / 10) + 1) * 10
         flour1, water1 = self._refresh_levain(100, 300, 60)
-        flour2, water2 = self._refresh_levain(300, round_qty, 50)
+        flour2, water2 = self._refresh_levain(300, qty, 50)
         return [
             {
                 "title": "1er rafraîchi (cible 300 g)",
@@ -275,7 +284,7 @@ class PreparationBatch(dict):
                 ],
             },
             {
-                "title": f"2nd rafraîchi (cible {round_qty} g)",
+                "title": f"2nd rafraîchi (cible {qty} g)",
                 "lines": [
                     "300g de levain",
                     f"{water2} ml d'eau tiède (50%)",
@@ -290,12 +299,8 @@ class PreparationBatch(dict):
         qty = self["levain"]["Levain sarrasin"]
         # including future levain chef
         qty += 20
-        if qty % 10 == 0:
-            round_qty = qty
-        else:
-            round_qty = (int(qty / 10) + 1) * 10
         flour1, water1 = self._refresh_levain(20, 100, 50)
-        flour2, water2 = self._refresh_levain(100, round_qty, 50)
+        flour2, water2 = self._refresh_levain(100, qty, 50)
         return [
             {
                 "title": "1er rafraîchi (cible 100 g)",
@@ -306,7 +311,7 @@ class PreparationBatch(dict):
                 ],
             },
             {
-                "title": f"2nd rafraîchi (cible {round_qty} g)",
+                "title": f"2nd rafraîchi (cible {qty} g)",
                 "lines": [
                     "100g de levain",
                     f"{water2} ml d'eau tiède (50%)",
@@ -314,6 +319,13 @@ class PreparationBatch(dict):
                 ],
             },
         ]
+
+    def round(self):
+        for ingredient in self["trempage"]:
+            self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
+            self["trempage"][ingredient]["water"] = round(self["trempage"][ingredient]["water"] / 10) * 10
+        for levain in self["levain"]:
+            self["levain"][levain] = round(self["levain"][levain] / 10) * 10
 
 
 class Actions(dict):
@@ -338,6 +350,10 @@ class Actions(dict):
     def add_order_for_preparation(self, order):
         for line in order.lines.all():
             self["preparation"].add_line(line)
+
+    def round(self):
+        for batch in self.values():
+            batch.round()
 
 
 class Order(models.Model):
@@ -369,11 +385,12 @@ class Order(models.Model):
         preparation_day = bakery_day - timedelta(days=1)
         if target_day == preparation_day:
             actions.add_order_for_preparation(self)
+        actions.round()
         return actions
 
     class Meta:
         verbose_name = "Commande"
-        ordering = ['-delivery_date', 'customer']
+        ordering = ["-delivery_date", "customer"]
 
 
 class OrderLine(models.Model):
@@ -391,4 +408,4 @@ class OrderLine(models.Model):
         return round(total, 2)
 
     class Meta:
-        ordering = ['product__name']
+        ordering = ["product__name"]
