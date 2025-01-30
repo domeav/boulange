@@ -10,7 +10,7 @@
     {% if order.lines.all %}
     <ul>
       {% for line in order.lines.all %}
-      <li>{{ line }}</li>
+      <li>{{ line.product.name }} : {{ line.quantity }}</li>
       {% endfor %}
     </ul>
     {% endif %}

@@ -94,7 +94,7 @@
   <hr>
   <h2>Livraison</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for delivery_date, lines in actions.delivery.items|dictsort:0 %}
+    {% for delivery_date, lines in actions.delivery.items %}
     <div class="col mt-2">
       <h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
       <ul>
