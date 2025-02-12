@@ -4,6 +4,15 @@
 
 {% block content %}
 <section class="container">
+  <h2>Nouvelle commande</h2>
+  <form method="post">
+    {{ order_form }}
+    {{ line_formset }}
+    <input type="submit" value="Enregistrer la commande">
+  </form>
+</section>
+<section class="container">
+  <h2>Mes commandes</h2>
   {% for order in orders %}
   <div class="mt-5">
     <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>

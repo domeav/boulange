@@ -1,11 +1,14 @@
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.forms import inlineformset_factory
 from django.shortcuts import render
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+
+from boulange import forms
 
 from .models import (
     Customer,
@@ -120,13 +123,15 @@ def index(request):
 
 @login_required
 def my_orders(request):
-    context = {"orders": Order.objects.filter(customer=request.user).order_by('-id')}
+    # https://stackoverflow.com/questions/25321423/django-create-inline-forms-similar-to-django-admin
+    OrderLineFormSet = inlineformset_factory(Order, OrderLine, form=forms.OrderLineForm, extra=5)
+    context = {"orders": Order.objects.filter(customer=request.user).order_by("-id"), "order_form": forms.OrderForm(prefix="order"), "line_formset": OrderLineFormSet(prefix="line")}
     return render(request, "boulange/my_orders.html", context)
 
 
 @login_required
 def products(request):
-    context = {"products": Product.objects.all().order_by('name')}
+    context = {"products": Product.objects.all().order_by("name")}
     return render(request, "boulange/products.html", context)
 
 
