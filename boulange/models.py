@@ -365,9 +365,11 @@ class Actions(dict):
         for line in order.lines.all():
             self["preparation"].add_line(line)
 
-    def round(self):
+    def finalize(self):
+        'To be called after all orders have been processed'
         for batch in self.values():
             batch.round()
+        self["bakery"] = self["bakery"].sorted()
 
 
 class Order(models.Model):
@@ -400,7 +402,6 @@ class Order(models.Model):
         preparation_day = bakery_day - timedelta(days=1)
         if target_day == preparation_day:
             actions.add_order_for_preparation(self)
-        actions.round()
         return actions
 
     class Meta:

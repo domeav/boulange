@@ -102,6 +102,7 @@ def _get_actions(target_date):
     for delivery_date in delivery_dates:
         for order in delivery_date.order_set.all():
             actions = order.get_actions(target_date, actions)
+    actions.finalize()
     return actions
 
 

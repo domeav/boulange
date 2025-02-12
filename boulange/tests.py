@@ -63,11 +63,13 @@ class ActionsTests(TestCase):
         line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["division"]), 0)
@@ -79,6 +81,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
+        actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(actions["division"], {"Semi-complet Kasha (1 kg)/GK": 1})
         self.assertEqual(
@@ -106,6 +109,7 @@ class ActionsTests(TestCase):
         line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday)
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
@@ -116,6 +120,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(
             actions["bakery"],
@@ -132,6 +137,7 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday + timedelta(2))
+        actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -149,11 +155,13 @@ class ActionsTests(TestCase):
         OrderLine(order=order, product=(Product.objects.get(ref="PK")), quantity=4).save()
 
         actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
@@ -164,6 +172,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
+        actions.finalize()
         self.assertEqual(
             actions["delivery"],
             {
@@ -199,11 +208,13 @@ class ActionsTests(TestCase):
         line = OrderLine(order=order, product=(Product.objects.get(ref="BR")), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
@@ -221,6 +232,7 @@ class ActionsTests(TestCase):
             },
         )
         actions = order.get_actions(self.next_monday)
+        actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
         self.assertEqual(
             actions["bakery"],
@@ -250,11 +262,13 @@ class ActionsTests(TestCase):
         line = OrderLine(order=order, product=(Product.objects.get(ref="GSe")), quantity=6)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
@@ -262,6 +276,7 @@ class ActionsTests(TestCase):
             {"levain": {"Levain froment": 880}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
+        actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {"Seigle 100% (800 g)/GSe": 6}})
         self.assertEqual(
             actions["bakery"],
