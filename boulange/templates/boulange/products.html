@@ -8,8 +8,8 @@
     {% for product in products %}
     {% if product.active %}
     <div class="col mt-5">
-      <h2>{{ product.name }}</h2>
-      <h3>Référence/prix : {{ product.ref }}/{{ product.price }}€</h3>
+      <h2>{{ product.ref }}</h2>
+      <b>{{ product.name }}</b>
       <ul>
 	{% if product.orig_product %}
 	Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
@@ -19,9 +19,11 @@
 	{% endfor %}
 	{% endif %}
       </ul>
+      Prix de vente : {{ product.price|floatformat:2 }}€
+      <br>
       Prix de revient : {{ product.cost_price|floatformat:2 }}€
       <br>
-      Poids (hors évaporation) : {{ product.weight|floatformat:2 }}g
+      Poids pâte : {{ product.weight|floatformat:2 }}g
       {% if product.notes %}
       <pre>{{ product.notes }}</pre>
       {% endif %}
