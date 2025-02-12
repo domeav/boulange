@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -5,7 +6,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 TVA = 5.5
-
+# these small breads need to be baked in double quantity then split in 2 so target number cannot be odd
+SMALL_BREADS = ['Sarrasin 100% (400 g)/PSa', 'Seigle 70% (400 g)/PSe']
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
@@ -195,8 +197,10 @@ class DivisionBatch(dict):
             self[key] = 0
         self[key] += order_line.quantity
 
-    def round(self):
-        pass
+    def finalize(self):
+        for key in SMALL_BREADS:
+            if key in self and self[key] % 2 != 0:
+                self[key] += 1
 
 
 class DeliveryBatch(dict):
@@ -209,25 +213,32 @@ class DeliveryBatch(dict):
             self[dd][key] = 0
         self[dd][key] += order_line.quantity
 
-    def round(self):
+    def finalize(self):
         pass
 
 
 class BakeryBatch(dict):
-    water_key = "Eau"
+    def __init__(self):
+        self.water_key = "Eau"
+        self['small_breads'] = defaultdict(int)
 
     def add_line(self, order_line):
-        base_product, _ = order_line.product.get_base_product_and_coef()
+        self.add_product(order_line.product, order_line.quantity)
+
+    def add_product(self, product, line_quantity):
+        if str(product) in SMALL_BREADS:
+            self['small_breads'][str(product)] += line_quantity
+        base_product, _ = product.get_base_product_and_coef()
         product_key = base_product.base_recipe_name()
         if product_key not in self:
             self[product_key] = {self.water_key: 0}
-        for ingredient, ing_qty in order_line.product.get_ingredients():
+        for ingredient, ing_qty in product.get_ingredients():
             ingredient_key = str(ingredient)
             if ingredient.name == "Eau":
                 ingredient_key = self.water_key
             elif ingredient.needs_soaking:
                 ingredient_key += " (trempé)"
-            base_qty = order_line.quantity * ing_qty
+            base_qty = line_quantity * ing_qty
             quantity = base_qty / base_product.nb_units
             if ingredient.needs_soaking:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
@@ -236,15 +247,20 @@ class BakeryBatch(dict):
                 self[product_key][ingredient_key] = 0
             self[product_key][ingredient_key] += quantity
 
-    def round(self):
+    def finalize(self):
+        for product in self["small_breads"]:
+            if self["small_breads"][product] % 2 != 0:
+                 self.add_product(Product.objects.get(ref=product.split('/')[1]), 1)
+        del self['small_breads']
         for product in self:
             for ingredient in self[product]:
                 if ingredient == "Sel":
                     self[product][ingredient] = round(self[product][ingredient])
                 else:
                     self[product][ingredient] = round(self[product][ingredient] / 10) * 10
+        self.sort()
 
-    def sorted(self):
+    def sort(self):
         new_dict = {}
         order = ['Sarrasin 100%/GSa', 'Seigle 70%/GSe', "Semi-complet lin/GL", "Semi-complet kasha/GK", "Semi-complet nature/GN", "Brioche raisin/BR", "Brioche chocolat/BC"]
         for product_key in order:
@@ -252,7 +268,8 @@ class BakeryBatch(dict):
                 new_dict[product_key] = self[product_key]
         for product_key in self.keys() - set(order):
             new_dict[product_key] = self[product_key]
-        return new_dict
+        self.clear()
+        self.update(new_dict)
 
 
 class PreparationBatch(dict):
@@ -260,17 +277,23 @@ class PreparationBatch(dict):
         super().__init__()
         self["levain"] = {}
         self["trempage"] = {}
+        self['small_breads'] = defaultdict(int)
 
     def add_line(self, order_line):
-        for ingredient, ing_qty in order_line.product.get_ingredients():
+        self.add_product(order_line.product, order_line.quantity)
+
+    def add_product(self, product, line_quantity):
+        if str(product) in SMALL_BREADS:
+            self['small_breads'][str(product)] += line_quantity
+        for ingredient, ing_qty in product.get_ingredients():
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0
-                self["levain"][ingredient.name] += ing_qty / order_line.product.nb_units * order_line.quantity
+                self["levain"][ingredient.name] += ing_qty / product.nb_units * line_quantity
             elif ingredient.needs_soaking:
                 if ingredient.name not in self["trempage"]:
                     self["trempage"][ingredient.name] = {"dry": 0, "water": 0}
-                quantity = ing_qty / order_line.product.nb_units * order_line.quantity
+                quantity = ing_qty / product.nb_units * line_quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
                 self["trempage"][ingredient.name]["water"] += quantity * ingredient.soaking_coef
                 if ingredient.name == "Flocons de riz":
@@ -334,7 +357,11 @@ class PreparationBatch(dict):
             },
         ]
 
-    def round(self):
+    def finalize(self):
+        for product in self["small_breads"]:
+            if self["small_breads"][product] % 2 != 0:
+                 self.add_product(Product.objects.get(ref=product.split('/')[1]), 1)
+        del self['small_breads']
         for ingredient in self["trempage"]:
             self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
             self["trempage"][ingredient]["water"] = round(self["trempage"][ingredient]["water"] / 10) * 10
@@ -368,8 +395,7 @@ class Actions(dict):
     def finalize(self):
         'To be called after all orders have been processed'
         for batch in self.values():
-            batch.round()
-        self["bakery"] = self["bakery"].sorted()
+            batch.finalize()
 
 
 class Order(models.Model):

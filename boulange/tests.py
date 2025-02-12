@@ -143,6 +143,47 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
+    def test_small_breads_batch(self):
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=delivery_date,
+        )
+        order.save()
+        OrderLine(order=order, product=(Product.objects.get(ref="PSa")), quantity=5).save()
+        OrderLine(order=order, product=(Product.objects.get(ref="PSe")), quantity=3).save()
+
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"],
+            {
+                'levain': {'Levain sarrasin': 400, 'Levain froment': 220}, 'trempage': {}
+            },
+        )
+        actions = order.get_actions(self.next_monday)
+        actions.finalize()
+        self.assertEqual(
+            actions["delivery"],
+            {
+                delivery_date: {'Sarrasin 100% (400 g)/PSa': 5, 'Seigle 100% (400 g)/PSe': 3}
+            },
+        )
+        self.assertEqual(
+            actions["bakery"],
+            {'Sarrasin 100%/GSa': {'Eau': 1320, 'Farine sarrasin': 1320, 'Levain sarrasin': 400, 'Sel': 26}, 'Seigle 100%/GSe': {'Eau': 510, 'Farine blé': 240, 'Farine seigle': 550, 'Levain froment': 220, 'Sel': 14}}
+        )
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+
     def test_GK_batch(self):
         delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
         order = Order(
