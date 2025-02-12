@@ -1,3 +1,4 @@
+from datetime import date
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
@@ -27,7 +28,7 @@ class ProductLineInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     list_display = ("name", "ref", "price", "active")
     inlines = [ProductLineInline]
-    search_fields = ["ref", "name"]
+    search_fields = ["ref"]
 
 
 admin.site.register(Ingredient, IngredientAdmin)
@@ -41,7 +42,7 @@ class CustomerAdmin(admin.ModelAdmin):
         "email",
         "is_professional",
         "pro_discount_percentage",
-        "address",
+        "address"
     )
     fieldsets = [
         (
@@ -54,6 +55,7 @@ class CustomerAdmin(admin.ModelAdmin):
                     "is_professional",
                     "pro_discount_percentage",
                     "address",
+                    "notes"
                 ]
             },
         ),
@@ -83,6 +85,10 @@ class DeliveryDateAdmin(admin.ModelAdmin):
         "weekly_delivery__customer__username",
         "date",
     ]
+    def get_search_results(self, request, queryset, search_term):
+        queryset, may_have_duplicates =  super().get_search_results(request, queryset, search_term)
+        queryset = queryset
+        return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
 
 
 admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
@@ -101,6 +107,8 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderLineInline]
     save_as = True
     autocomplete_fields = ["delivery_date"]
+    list_filter = ["delivery_date__date", "customer__display_name"]
+    
 
 
 admin.site.register(Order, OrderAdmin)

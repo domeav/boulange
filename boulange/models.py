@@ -33,6 +33,7 @@ class Product(models.Model):
     # when product_lines are defined in another product (orig_product)
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.name}/{self.ref}"
@@ -109,6 +110,7 @@ class Customer(AbstractUser):
     is_professional = models.BooleanField(default=False)
     pro_discount_percentage = models.FloatField(default=5.0, blank=True)
     address = models.CharField(max_length=400, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.display_name}"
@@ -137,6 +139,7 @@ class WeeklyDelivery(models.Model):
         6: "dimanche",
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
+    notes = models.TextField(blank=True, null=True)
 
     def generate_delivery_dates(self):
         if not self.active:
@@ -171,6 +174,7 @@ class DeliveryDate(models.Model):
     weekly_delivery = models.ForeignKey(WeeklyDelivery, on_delete=models.CASCADE, null=True)
     date = models.DateField()
     active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         inactive = ""
@@ -369,6 +373,7 @@ class Actions(dict):
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.customer}/{self.delivery_date}"

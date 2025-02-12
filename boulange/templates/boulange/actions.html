@@ -1,9 +1,9 @@
 {% extends "boulange/base.html" %}
 
-{% block title %}Actions{% endblock %}
+{% block title %}Actions <a href="javascript:if(window.print)window.print()">🖶</a>{% endblock %}
 
 {% block content %}
-<section class="container">
+<section class="container d-print-none">
   {% for d in date_nav %}
   {% if d == target_date %}
   {{ d|date:"D d/m" }}

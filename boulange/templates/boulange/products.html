@@ -22,6 +22,9 @@
       Prix de revient : {{ product.cost_price|floatformat:2 }}€
       <br>
       Poids (hors évaporation) : {{ product.weight|floatformat:2 }}g
+      {% if product.notes %}
+      <pre>{{ product.notes }}</pre>
+      {% endif %}
     </div>
     {% endif %}
   {% endfor %}
