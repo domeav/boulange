@@ -240,6 +240,16 @@ class BakeryBatch(dict):
                 else:
                     self[product][ingredient] = round(self[product][ingredient] / 10) * 10
 
+    def sorted(self):
+        new_dict = {}
+        order = ['Sarrasin 100%/GSa', 'Seigle 70%/GSe', "Semi-complet lin/GL", "Semi-complet kasha/GK", "Semi-complet nature/GN", "Brioche raisin/BR", "Brioche chocolat/BC"]
+        for product_key in order:
+            if product_key in self:
+                new_dict[product_key] = self[product_key]
+        for product_key in self.keys() - set(order):
+            new_dict[product_key] = self[product_key]
+        return new_dict
+
 
 class PreparationBatch(dict):
     def __init__(self):

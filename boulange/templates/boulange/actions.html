@@ -17,44 +17,45 @@
   <hr>
   <h2>Préparations</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% if actions.preparation.levain_froment_recipe %}
-    <div class="col mt-2">
-      <h3>Levain froment</h3>
-      {% for step in actions.preparation.levain_froment_recipe %}
-      <h4>{{ step.title }}</h4>
-      <ul>
-	{% for line in step.lines %}
-	<li>{{ line }}</li>
-	{% endfor %}
-      </ul>
-      {% endfor %}
-      ⚠ futur levain chef non inclus
-    </div>
-    {% endif %}
     {% if actions.preparation.levain_sarrasin_recipe %}
     <div class="col mt-2">
       <h3>Levain sarrasin</h3>
       {% for step in actions.preparation.levain_sarrasin_recipe %}
       <h4>{{ step.title }}</h4>
       <ul>
-	{% for line in step.lines %}
-	<li>{{ line }}</li>
-	{% endfor %}
+        {% for line in step.lines %}
+        <li>{{ line }}</li>
+        {% endfor %}
       </ul>
       {% endfor %}
       ⚠ 20g sont inclus pour le futur levain chef
+    </div>
+    {% endif %}
+    {% if actions.preparation.levain_froment_recipe %}
+    <div class="col mt-2">
+      <h3>Levain froment</h3>
+      {% for step in actions.preparation.levain_froment_recipe %}
+      <h4>{{ step.title }}</h4>
+      <ul>
+        {% for line in step.lines %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+      ⚠ futur levain chef non inclus
     </div>
     {% endif %}
     {% if actions.preparation.trempage %}
     <div class="col mt-2">
       <h3>Trempage</h3>
       <ul>
-	{% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
-	<li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
-	{% endfor %}
+        {% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
+        <li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
+        {% endfor %}
       </ul>
     </div>
     {% endif %}
+  </div>
 </section>
 {% endif %}
 {% if actions.bakery %}
@@ -62,18 +63,19 @@
   <hr>
   <h2>Boulange</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for recipe, ingredients in actions.bakery.items|dictsort:0 %}
+    {% for recipe, ingredients in actions.bakery.sorted.items %}
     <div class="col mt-2">
       <h3>{{ recipe }}</h3>
       <ul>
-	{% for ing, qty in ingredients.items|dictsort:0 %}
-	{% if qty %}
-	<li>{{ ing }} : {{ qty }}</li>
-	{% endif %}
-	{% endfor %}
+        {% for ing, qty in ingredients.items|dictsort:0 %}
+        {% if qty %}
+        <li>{{ ing }} : {{ qty }}</li>
+        {% endif %}
+        {% endfor %}
       </ul>
     </div>
     {% endfor %}
+  </div>
 </section>
 {% endif %}
 {% if actions.division %}
@@ -98,12 +100,13 @@
     <div class="col mt-2">
       <h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
       <ul>
-	{% for product, nb in lines.items|dictsort:0 %}
-	<li>{{ product }} : {{ nb }}</li>
-	{% endfor %}
+        {% for product, nb in lines.items|dictsort:0 %}
+        <li>{{ product }} : {{ nb }}</li>
+        {% endfor %}
       </ul>
     </div>
     {% endfor %}
+  </div>
 </section>
 {% endif %}
 {% endblock %}
