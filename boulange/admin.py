@@ -36,6 +36,7 @@ admin.site.register(Product, ProductAdmin)
 
 
 class CustomerAdmin(admin.ModelAdmin):
+    list_filter = ("is_professional",)
     list_display = (
         "username",
         "display_name",
@@ -73,6 +74,8 @@ def generate_delivery_dates(modeladmin, request, queryset):
 
 
 class WeeklyDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("customer", "day_of_week", "active")
+    list_filter = ("active", "day_of_week")
     model = WeeklyDelivery
     actions = [generate_delivery_dates]
     search_fields = ["customer__display_name", "customer__username", "day_of_week"]
@@ -80,6 +83,8 @@ class WeeklyDeliveryAdmin(admin.ModelAdmin):
 
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
+    list_filter = ("active", "date", "weekly_delivery")
+    readonly_fields = ("date", "weekly_delivery")
     search_fields = [
         "weekly_delivery__customer__display_name",
         "weekly_delivery__customer__username",
