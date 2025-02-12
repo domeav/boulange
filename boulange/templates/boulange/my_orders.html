@@ -5,12 +5,14 @@
 {% block content %}
 <section class="container">
   {% for order in orders %}
-  <div class="mt-5">
+  <div class="mt-5 card">
+    <div class="card-header">
     <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>
+    </div>
     {% if order.lines.all %}
-    <ul>
+    <ul class="list-group list-group-flush">
       {% for line in order.lines.all %}
-      <li>{{ line }}</li>
+      <li class="list-group-item">{{ line }}</li>
       {% endfor %}
     </ul>
     {% endif %}

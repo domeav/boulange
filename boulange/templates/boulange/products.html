@@ -7,29 +7,33 @@
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for product in products %}
     {% if product.active %}
-    <div class="col mt-5">
-      <h2>{{ product.ref }}</h2>
-      <b>{{ product.name }}</b>
-      <ul>
-	{% if product.orig_product %}
-	Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
-	{% else %}
-	{% for line in product.raw_ingredients.all %}
-	<li>{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
-	{% endfor %}
-	{% endif %}
+    <div class="col mt-5 card">
+      <div class="card-body">
+        <h2 class="card-title">{{ product.ref }}</h2>
+        <b class="card-subtitle mb-2 text-muted">{{ product.name }}</b>
+        <ul class="list-group list-group-flush">
+        {% if product.orig_product %}
+          <li class="list-group-item">Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}</li>
+        {% else %}
+        {% for line in product.raw_ingredients.all %}
+          <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
+        {% endfor %}
+        {% endif %}
       </ul>
+        <p class="card-text">
       Prix de vente : {{ product.price|floatformat:2 }}€
       <br>
       Prix de revient : {{ product.cost_price|floatformat:2 }}€
       <br>
       Poids pâte : {{ product.weight|floatformat:2 }}g
+        </p>
       {% if product.notes %}
-      <pre>{{ product.notes }}</pre>
+        <pre class="card-text">{{ product.notes }}</pre>
       {% endif %}
     </div>
+  </div>
     {% endif %}
-  {% endfor %}
+    {% endfor %}
   </div>
 </section>
 {% endblock %}

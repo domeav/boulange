@@ -13,97 +13,117 @@
   {% endfor %}
 </section>
 {% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.trempage %}
-<section class="container">
-  <hr>
-  <h2>Préparations</h2>
+<section class="container mt-5">
+  <hr class="mb-4">
+  <h2 class="mb-4">Préparations</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% if actions.preparation.levain_sarrasin_recipe %}
     <div class="col mt-2">
-      <h3>Levain sarrasin</h3>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Levain sarrasin</h3>
       {% for step in actions.preparation.levain_sarrasin_recipe %}
-      <h4>{{ step.title }}</h4>
-      <ul>
+          <h4 class="card-subtitle mb-2">{{ step.title }}</h4>
+          <ul class="list-group list-group-flush">
         {% for line in step.lines %}
-        <li>{{ line }}</li>
+            <li class="list-group-item">{{ line }}</li>
         {% endfor %}
       </ul>
       {% endfor %}
-      ⚠ 20g sont inclus pour le futur levain chef
+          <p class="card-text">⚠ 20g sont inclus pour le futur levain chef</p>
+    </div>
+    </div>
     </div>
     {% endif %}
     {% if actions.preparation.levain_froment_recipe %}
     <div class="col mt-2">
-      <h3>Levain froment</h3>
-      {% for step in actions.preparation.levain_froment_recipe %}
-      <h4>{{ step.title }}</h4>
-      <ul>
-        {% for line in step.lines %}
-        <li>{{ line }}</li>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Levain froment</h3>
+          {% for step in actions.preparation.levain_froment_recipe %}
+          <h4 class="card-subtitle mb-2">{{ step.title }}</h4>
+          <ul class="list-group list-group-flush">
+            {% for line in step.lines %}
+            <li class="list-group-item">{{ line }}</li>
         {% endfor %}
       </ul>
-      {% endfor %}
-      ⚠ futur levain chef non inclus
+    {% endfor %}
+          <p class="card-text">⚠ futur levain chef non inclus</p>
+  </div>
+  </div>
     </div>
     {% endif %}
     {% if actions.preparation.trempage %}
     <div class="col mt-2">
-      <h3>Trempage</h3>
-      <ul>
-        {% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
-        <li>{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
-        {% endfor %}
-      </ul>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Trempage</h3>
+          <ul class="list-group list-group-flush">
+            {% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
+            <li class="list-group-item">{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
+            {% endfor %}
+          </ul>
+  </div>
+      </div>
     </div>
-    {% endif %}
+{% endif %}
   </div>
 </section>
 {% endif %}
 {% if actions.bakery %}
-<section class="container">
-  <hr>
-  <h2>Boulange</h2>
+<section class="container mt-5">
+  <hr class="mb-4">
+  <h2 class="mb-4">Boulange</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for recipe, ingredients in actions.bakery.sorted.items %}
     <div class="col mt-2">
-      <h3>{{ recipe }}</h3>
-      <ul>
-        {% for ing, qty in ingredients.items|dictsort:0 %}
-        {% if qty %}
-        <li>{{ ing }} : {{ qty }}</li>
-        {% endif %}
-        {% endfor %}
-      </ul>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">{{ recipe }}</h3>
+          <ul class="list-group list-group-flush">
+            {% for ing, qty in ingredients.items|dictsort:0 %}
+            {% if qty %}
+            <li class="list-group-item">{{ ing }} : {{ qty }}</li>
+            {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 {% if actions.division %}
-<section class="container">
-  <hr>
-  <h2>Division</h2>
+<section class="container mt-5">
+  <hr class="mb-4">
+  <h2 class="mb-4">Division</h2>
   <div>
-    <ul>
+    <ul class="list-group">
       {% for product, nb in actions.division.items|dictsort:0 %}
-      <li>{{ product }} : {{ nb }}</li>
+      <li class="list-group-item">{{ product }} : {{ nb }}</li>
       {% endfor %}
     </ul>
   </div>
 </section>
 {% endif %}
 {% if actions.delivery %}
-<section class="container">
-  <hr>
-  <h2>Livraison</h2>
+<section class="container mt-5">
+  <hr class="mb-4">
+  <h2 class="mb-4">Livraison</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for delivery_date, lines in actions.delivery.items %}
     <div class="col mt-2">
-      <h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
-      <ul>
-        {% for product, nb in lines.items|dictsort:0 %}
-        <li>{{ product }} : {{ nb }}</li>
-        {% endfor %}
-      </ul>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title"><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
+          <ul class="list-group list-group-flush">
+            {% for product, nb in lines.items|dictsort:0 %}
+            <li class="list-group-item">{{ product }} : {{ nb }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
     {% endfor %}
   </div>

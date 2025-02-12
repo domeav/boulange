@@ -8,29 +8,30 @@
     <meta charset="utf-8">
     {% bootstrap_css %}
     {% bootstrap_javascript %}
+    <link rel="stylesheet" href="{% static 'boulange/custom.css' %}"> <!-- Ajoutez cette ligne -->
   </head>
 
   <body>
     <header class="container d-print-none">
       <nav class="row align-items-center">
-	<div class="col">
-	  <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
-	</div>
-	<div class="col">
-	  Hello, {{ request.user.username }}
-	</div>
-	<div class="col">
-	  <a href="{% url 'boulange:products' %}">Produits</a>
-	  <br>
-	  <a href="{% url 'boulange:my_orders' %}">Mes commandes</a>
-	  <br>
-	  <a href="{% url 'boulange:actions' %}">Actions</a>
-	</div>
+        <div class="col">
+          <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+        </div>
+        <div class="col">
+          Hello, {{ request.user.username }}
+        </div>
+        <div class="col">
+          <a href="{% url 'boulange:products' %}">Produits</a>
+          <br>
+          <a href="{% url 'boulange:my_orders' %}">Mes commandes</a>
+          <br>
+          <a href="{% url 'boulange:actions' %}">Actions</a>
+        </div>
       </nav>
       <h1>{% block title %}{% endblock %}</h1>
       {% block page_actions %}{% endblock %}
     </header>
-    
+
     <main>
       {% block content %}{% endblock %}
     </main>
