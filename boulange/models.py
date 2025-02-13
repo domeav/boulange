@@ -6,8 +6,6 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 TVA = 5.5
-# these small breads need to be baked in double quantity then split in 2 so target number cannot be odd
-SMALL_BREADS = ['Sarrasin 100% (400 g)/PSa', 'Seigle 70% (400 g)/PSe']
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
@@ -36,11 +34,14 @@ class Product(models.Model):
     coef = models.FloatField(default=1)
     nb_units = models.IntegerField(default=1)
     notes = models.TextField(blank=True, null=True)
+    # these small breads need to be baked in double quantity then split in 2 so target number cannot be odd
+    baked_by_two = models.BooleanField(default=False)
+    display_priority = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.name}/{self.ref}"
 
-    def base_recipe_name(self):
+    def get_short_recipe_name(self):
         return f"{self.name.split(' (')[0]}/{self.ref}"
 
     @property
@@ -82,12 +83,6 @@ class Product(models.Model):
         for line in product.raw_ingredients.all():
             yield (line.ingredient, line.quantity * coef)
 
-    def get_ref_queryset(self):
-        import pdb
-
-        pdb.set_trace()
-        ref = self.request.query_params.get("ref")
-        return Product.objects.get(ref=ref)
 
     class Meta:
         indexes = [
@@ -190,48 +185,42 @@ class DeliveryDate(models.Model):
         verbose_name_plural = "Dates de livraison"
 
 
-class DivisionBatch(dict):
-    def add_line(self, order_line):
-        key = str(order_line.product)
-        if key not in self:
-            self[key] = 0
-        self[key] += order_line.quantity
-
-    def finalize(self):
-        for key in SMALL_BREADS:
-            if key in self and self[key] % 2 != 0:
-                self[key] += 1
-
-
 class DeliveryBatch(dict):
     def add_line(self, order_line):
         dd = order_line.order.delivery_date
         if dd not in self:
             self[dd] = {}
-        key = str(order_line.product)
-        if key not in self[dd]:
-            self[dd][key] = 0
-        self[dd][key] += order_line.quantity
+        if order_line.product not in self[dd]:
+            self[dd][order_line.product] = 0
+        self[dd][order_line.product] += order_line.quantity
 
     def finalize(self):
-        pass
+        for dd in self:
+            new_dict = { str(key): value for key, value in sorted(self[dd].items(), key=lambda items: items[0].display_priority, reverse=True) }
+            self[dd].clear()
+            self[dd].update(new_dict)
 
 
 class BakeryBatch(dict):
     def __init__(self):
         self.water_key = "Eau"
-        self['small_breads'] = defaultdict(int)
+        self.small_breads = defaultdict(int)
 
     def add_line(self, order_line):
         self.add_product(order_line.product, order_line.quantity)
 
     def add_product(self, product, line_quantity):
-        if str(product) in SMALL_BREADS:
-            self['small_breads'][str(product)] += line_quantity
+        if product.baked_by_two:
+            self.small_breads[product] += line_quantity
         base_product, _ = product.get_base_product_and_coef()
-        product_key = base_product.base_recipe_name()
-        if product_key not in self:
-            self[product_key] = {self.water_key: 0}
+        if base_product not in self:
+            self[base_product] = {}
+        if 'ingredients' not in self[base_product]:            
+            self[base_product]['ingredients'] = {self.water_key: 0}
+            self[base_product]['division'] = {}
+        if product not in self[base_product]['division']:
+            self[base_product]['division'][product] = 0
+        self[base_product]['division'][product] += line_quantity
         for ingredient, ing_qty in product.get_ingredients():
             ingredient_key = str(ingredient)
             if ingredient.name == "Eau":
@@ -242,32 +231,25 @@ class BakeryBatch(dict):
             quantity = base_qty / base_product.nb_units
             if ingredient.needs_soaking:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[product_key][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
-            if ingredient_key not in self[product_key]:
-                self[product_key][ingredient_key] = 0
-            self[product_key][ingredient_key] += quantity
+                self[base_product]['ingredients'][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
+            if ingredient_key not in self[base_product]['ingredients']:
+                self[base_product]['ingredients'][ingredient_key] = 0
+            self[base_product]['ingredients'][ingredient_key] += quantity
 
     def finalize(self):
-        for product in self["small_breads"]:
-            if self["small_breads"][product] % 2 != 0:
-                 self.add_product(Product.objects.get(ref=product.split('/')[1]), 1)
-        del self['small_breads']
+        for product in self.small_breads:
+            if self.small_breads[product] % 2 != 0:
+                 self.add_product(product, 1)
         for product in self:
-            for ingredient in self[product]:
+            for ingredient in self[product]['ingredients']:
                 if ingredient == "Sel":
-                    self[product][ingredient] = round(self[product][ingredient])
+                    self[product]['ingredients'][ingredient] = round(self[product]['ingredients'][ingredient])
                 else:
-                    self[product][ingredient] = round(self[product][ingredient] / 10) * 10
-        self.sort()
-
-    def sort(self):
-        new_dict = {}
-        order = ['Sarrasin 100%/GSa', 'Seigle 70%/GSe', "Semi-complet lin/GL", "Semi-complet kasha/GK", "Semi-complet nature/GN", "Brioche raisin/BR", "Brioche chocolat/BC"]
-        for product_key in order:
-            if product_key in self:
-                new_dict[product_key] = self[product_key]
-        for product_key in self.keys() - set(order):
-            new_dict[product_key] = self[product_key]
+                    self[product]['ingredients'][ingredient] = round(self[product]['ingredients'][ingredient] / 10) * 10
+            self[product]['weight'] = sum([ product.weight * qty for product, qty in self[product]['division'].items() ])
+        new_dict = { key.get_short_recipe_name(): value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True) }
+        for base_product in new_dict:
+            new_dict[base_product]['division'] = { str(product): qty for product, qty in new_dict[base_product]['division'].items() }
         self.clear()
         self.update(new_dict)
 
@@ -277,14 +259,14 @@ class PreparationBatch(dict):
         super().__init__()
         self["levain"] = {}
         self["trempage"] = {}
-        self['small_breads'] = defaultdict(int)
+        self.small_breads = defaultdict(int)
 
     def add_line(self, order_line):
         self.add_product(order_line.product, order_line.quantity)
 
     def add_product(self, product, line_quantity):
-        if str(product) in SMALL_BREADS:
-            self['small_breads'][str(product)] += line_quantity
+        if product.baked_by_two:
+            self.small_breads[product] += line_quantity
         for ingredient, ing_qty in product.get_ingredients():
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
@@ -358,10 +340,9 @@ class PreparationBatch(dict):
         ]
 
     def finalize(self):
-        for product in self["small_breads"]:
-            if self["small_breads"][product] % 2 != 0:
-                 self.add_product(Product.objects.get(ref=product.split('/')[1]), 1)
-        del self['small_breads']
+        for product in self.small_breads:
+            if self.small_breads[product] % 2 != 0:
+                 self.add_product(product, 1)
         for ingredient in self["trempage"]:
             self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
             self["trempage"][ingredient]["water"] = round(self["trempage"][ingredient]["water"] / 10) * 10
@@ -372,17 +353,12 @@ class PreparationBatch(dict):
 class Actions(dict):
     def __init__(self):
         self["delivery"] = DeliveryBatch()
-        self["division"] = DivisionBatch()
         self["bakery"] = BakeryBatch()
         self["preparation"] = PreparationBatch()
 
     def add_order_for_delivery(self, order):
         for line in order.lines.all():
             self["delivery"].add_line(line)
-
-    def add_order_for_division(self, order):
-        for line in order.lines.all():
-            self["division"].add_line(line)
 
     def add_order_for_bakery(self, order):
         for line in order.lines.all():
@@ -418,7 +394,6 @@ class Order(models.Model):
             actions = Actions()
         if self.delivery_date.date == target_day:
             actions.add_order_for_delivery(self)
-            actions.add_order_for_division(self)
         if self.delivery_date.weekly_delivery.batch_target == "SAME_DAY":
             bakery_day = self.delivery_date.date
         elif self.delivery_date.weekly_delivery.batch_target == "PREVIOUS_DAY":

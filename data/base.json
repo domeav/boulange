@@ -381,14 +381,15 @@
     "active": true,
     "orig_product": 10,
     "coef": 0.5,
-    "nb_units": 1
+    "nb_units": 1,
+    "baked_by_two": true
   }
 },
 {
   "model": "boulange.product",
   "pk": 12,
   "fields": {
-    "name": "Seigle 100% (800 g)",
+    "name": "Seigle 70% (800 g)",
     "ref": "GSe",
     "price": "5.00",
     "active": true,
@@ -401,13 +402,14 @@
   "model": "boulange.product",
   "pk": 13,
   "fields": {
-    "name": "Seigle 100% (400 g)",
+    "name": "Seigle 70% (400 g)",
     "ref": "PSe",
     "price": "2.70",
     "active": true,
     "orig_product": 12,
     "coef": 0.5,
-    "nb_units": 1
+    "nb_units": 1,
+    "baked_by_two": true
   }
 },
 {
