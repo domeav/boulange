@@ -105,6 +105,9 @@ class DeliveryDateAdmin(admin.ModelAdmin):
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates =  super().get_search_results(request, queryset, search_term)
         return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
+    
+    def has_add_permission(self, request):
+        return False
 
 
 admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
