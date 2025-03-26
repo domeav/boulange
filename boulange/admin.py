@@ -29,6 +29,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ("name", "ref", "price", "active")
     inlines = [ProductLineInline]
     search_fields = ["ref"]
+    save_as = True
 
 
 admin.site.register(Ingredient, IngredientAdmin)
@@ -79,6 +80,7 @@ class WeeklyDeliveryAdmin(admin.ModelAdmin):
     model = WeeklyDelivery
     actions = [generate_delivery_dates]
     search_fields = ["customer__display_name", "customer__username", "day_of_week"]
+    save_as = True
 
 class MyDateFilter(admin.DateFieldListFilter):
     def __init__(self, *args, **kwargs):
