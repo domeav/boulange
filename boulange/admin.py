@@ -83,7 +83,7 @@ class WeeklyDeliveryAdmin(admin.ModelAdmin):
 
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
-    list_filter = ("active", "date", "weekly_delivery")
+    list_filter = ("active", "date", "weekly_delivery__day_of_week", "weekly_delivery")
     readonly_fields = ("date", "weekly_delivery")
     search_fields = [
         "weekly_delivery__customer__display_name",
@@ -92,7 +92,6 @@ class DeliveryDateAdmin(admin.ModelAdmin):
     ]
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates =  super().get_search_results(request, queryset, search_term)
-        queryset = queryset
         return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
 
 
