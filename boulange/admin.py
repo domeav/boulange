@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
@@ -80,10 +80,20 @@ class WeeklyDeliveryAdmin(admin.ModelAdmin):
     actions = [generate_delivery_dates]
     search_fields = ["customer__display_name", "customer__username", "day_of_week"]
 
+class MyDateFilter(admin.DateFieldListFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        newlinks = []
+        for linkname, linkinfo in self.links:
+            if linkname != "Les 7 derniers jours":
+                newlinks.append((linkname, linkinfo))
+        self.links = newlinks
+        self.links.insert(2,  ("Demain", {"date__gte": date.today() + timedelta(days=1),
+                                          "date__lt": date.today() + timedelta(days=2)}))
 
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
-    list_filter = ("active", "date", "weekly_delivery__day_of_week", "weekly_delivery")
+    list_filter = ("active", ("date", MyDateFilter), "weekly_delivery__day_of_week", "weekly_delivery")
     readonly_fields = ("date", "weekly_delivery")
     search_fields = [
         "weekly_delivery__customer__display_name",
