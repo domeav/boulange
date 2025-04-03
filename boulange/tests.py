@@ -352,7 +352,7 @@ class RestTests(TestCase):
 
     def test_generate_delivery_dates(self):
         count = DeliveryDate.objects.count()
-        response = self.client.post("/api/generate_delivery_dates")
+        response = self.client.post("/api/generate_delivery_dates/")
         self.assertEqual(response.data, {"message": "Delivery dates generated!"})
         self.assertEqual(response.status_code, 200)
         assert count == DeliveryDate.objects.count()

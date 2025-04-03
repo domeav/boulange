@@ -6,7 +6,7 @@
     <title>La boulange de la ferme du Resto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8">
-    {% if not print %}
+    {% if not to_print %}
     {% bootstrap_css %}
     {% bootstrap_javascript %}
     <link rel="stylesheet" href="{% static 'boulange/custom.css' %}">
@@ -24,7 +24,7 @@
   </head>
 
   <body>
-    {% if not print %}
+    {% if not to_print %}
     <header class="container d-print-none">
       <nav class="row align-items-center">
         <div class="col">

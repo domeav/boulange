@@ -37,6 +37,7 @@ class Product(models.Model):
     # these small breads need to be baked in double quantity then split in 2 so target number cannot be odd
     baked_by_two = models.BooleanField(default=False)
     display_priority = models.IntegerField(default=0)
+    is_bread = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name}/{self.ref}"
@@ -205,9 +206,12 @@ class BakeryBatch(dict):
     def __init__(self):
         self.water_key = "Eau"
         self.small_breads = defaultdict(int)
+        self.nb_breads = 0
 
     def add_line(self, order_line):
         self.add_product(order_line.product, order_line.quantity)
+        if order_line.product.is_bread:
+            self.nb_breads += order_line.quantity
 
     def add_product(self, product, line_quantity):
         if product.baked_by_two:
@@ -240,6 +244,7 @@ class BakeryBatch(dict):
         for product in self.small_breads:
             if self.small_breads[product] % 2 != 0:
                  self.add_product(product, 1)
+                 self.nb_breads += 1
         for product in self:
             for ingredient in self[product]['ingredients']:
                 if ingredient == "Sel":

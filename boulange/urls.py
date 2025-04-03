@@ -17,24 +17,24 @@ router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("my_orders", views.my_orders, name="my_orders"),
-    path("products", views.products, name="products"),
-    path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions", kwargs={"print": False}),
-    path("actions_print/<int:year>/<int:month>/<int:day>", views.actions, name="actions_print", kwargs={"print": True}),
-    path("actions", views.actions, name="actions"),
+    path("my_orders/", views.my_orders, name="my_orders"),
+    path("products/", views.products, name="products"),
+    path("actions/<int:year>/<int:month>/<int:day>/", views.actions, name="actions", kwargs={"to_print": False}),
+    path("actions_print/<int:year>/<int:month>/<int:day>/", views.actions, name="actions_print", kwargs={"to_print": True}),
+    path("actions/", views.actions, name="actions"),
     path(
-        "delivery_receipt/<int:delivery_date_id>",
+        "delivery_receipt/<int:delivery_date_id>/",
         views.delivery_receipt,
         name="delivery_receipt",
     ),
     path("api/", include(router.urls)),
     path(
-        "api/generate_delivery_dates",
+        "api/generate_delivery_dates/",
         views.generate_delivery_dates,
         name="generate_delivery_dates",
     ),
     path(
-        "api/actions/<int:year>-<int:month>-<int:day>",
+        "api/actions/<int:year>-<int:month>-<int:day>/",
         views.get_actions,
         name="get_actions",
     ),

@@ -3,7 +3,7 @@
 {% block title %}Actions <a target="_blank" href="{% url 'boulange:actions_print' target_date.year target_date.month target_date.day %}">🖶</a>{% endblock %}
 
 {% block content %}
-{% if not print %}
+{% if not to_print %}
 <section class="container d-print-none">
   {% for d in date_nav %}
   {% if d == target_date %}
@@ -76,6 +76,7 @@
 {% if actions.bakery %}
 <section class="container mt-5">
   <h2 class="mb-4">Boulange</h2>
+  Nb de pains cuits : {{ actions.bakery.nb_breads }}
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for recipe, data in actions.bakery.items %}
     <div class="col mt-2">
@@ -103,7 +104,7 @@
   </div>
 </section>
 {% endif %}
-{% if actions.delivery and not print %}
+{% if actions.delivery and not to_print %}
 <section class="container mt-5">
   <h2 class="mb-4">Livraison</h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
