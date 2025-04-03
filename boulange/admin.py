@@ -76,6 +76,7 @@ class MyDateFilter(admin.DateFieldListFilter):
             if linkname != "Les 7 derniers jours":
                 newlinks.append((linkname, linkinfo))
         self.links = newlinks
+        self.links.insert(2, ("Aujourd'hui et après", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=365)}))
         self.links.insert(2, ("Demain", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=2)}))
 
 
@@ -112,7 +113,9 @@ class DeliveryDateAdmin(admin.ModelAdmin):
 
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
-        return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
+        if "/autocomplete/" in request.path:
+            return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
+        return queryset, may_have_duplicates
 
     def has_add_permission(self, request):
         return False
