@@ -133,7 +133,7 @@ def products(request):
 
 
 @login_required
-def actions(request, year=None, month=None, day=None):
+def actions(request, year=None, month=None, day=None, print=False):
     if not (year and month and day):
         target_date = date.today()
     else:
@@ -145,6 +145,7 @@ def actions(request, year=None, month=None, day=None):
         "actions": _get_actions(target_date),
         "target_date": target_date,
         "date_nav": date_nav,
+        "print": print
     }
     return render(request, "boulange/actions.html", context)
 

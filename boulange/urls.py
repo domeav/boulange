@@ -19,7 +19,8 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("my_orders", views.my_orders, name="my_orders"),
     path("products", views.products, name="products"),
-    path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions"),
+    path("actions/<int:year>/<int:month>/<int:day>", views.actions, name="actions", kwargs={"print": False}),
+    path("actions_print/<int:year>/<int:month>/<int:day>", views.actions, name="actions_print", kwargs={"print": True}),
     path("actions", views.actions, name="actions"),
     path(
         "delivery_receipt/<int:delivery_date_id>",
