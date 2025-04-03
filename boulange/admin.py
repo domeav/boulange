@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
@@ -10,6 +11,7 @@ from .models import (
     OrderLine,
     Product,
     ProductLine,
+    Settings,
     WeeklyDelivery,
 )
 
@@ -38,28 +40,11 @@ admin.site.register(Product, ProductAdmin)
 
 class CustomerAdmin(admin.ModelAdmin):
     list_filter = ("is_professional",)
-    list_display = (
-        "username",
-        "display_name",
-        "email",
-        "is_professional",
-        "pro_discount_percentage",
-        "address"
-    )
+    list_display = ("username", "display_name", "email", "is_professional", "pro_discount_percentage", "address")
     fieldsets = [
         (
             None,
-            {
-                "fields": [
-                    "username",
-                    "display_name",
-                    "email",
-                    "is_professional",
-                    "pro_discount_percentage",
-                    "address",
-                    "notes"
-                ]
-            },
+            {"fields": ["username", "display_name", "email", "is_professional", "pro_discount_percentage", "address", "notes"]},
         ),
         ("Utilisateur", {"fields": ["is_staff", "is_superuser", "is_active"]}),
     ]
@@ -82,6 +67,7 @@ class WeeklyDeliveryAdmin(admin.ModelAdmin):
     search_fields = ["customer__display_name", "customer__username", "day_of_week"]
     save_as = True
 
+
 class MyDateFilter(admin.DateFieldListFilter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -90,8 +76,8 @@ class MyDateFilter(admin.DateFieldListFilter):
             if linkname != "Les 7 derniers jours":
                 newlinks.append((linkname, linkinfo))
         self.links = newlinks
-        self.links.insert(2,  ("Demain", {"date__gte": date.today() + timedelta(days=1),
-                                          "date__lt": date.today() + timedelta(days=2)}))
+        self.links.insert(2, ("Demain", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=2)}))
+
 
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
@@ -102,10 +88,11 @@ class DeliveryDateAdmin(admin.ModelAdmin):
         "weekly_delivery__customer__username",
         "date",
     ]
+
     def get_search_results(self, request, queryset, search_term):
-        queryset, may_have_duplicates =  super().get_search_results(request, queryset, search_term)
+        queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         return queryset.filter(date__gte=date.today()).filter(active=True), may_have_duplicates
-    
+
     def has_add_permission(self, request):
         return False
 
@@ -127,7 +114,15 @@ class OrderAdmin(admin.ModelAdmin):
     save_as = True
     autocomplete_fields = ["delivery_date"]
     list_filter = ["delivery_date__date", "customer__display_name"]
-    
 
 
 admin.site.register(Order, OrderAdmin)
+
+
+class SettingsAdmin(admin.ModelAdmin):
+    list_display = ("name", "value")
+    search_fields = ["name"]
+    save_as = True
+
+
+admin.site.register(Settings, SettingsAdmin)

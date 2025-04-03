@@ -84,18 +84,19 @@ class ActionsTests(TestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet Kasha (1 kg)/GK": 1}})
         self.assertEqual(
             actions["bakery"],
-            {'Semi-complet Kasha/GK':
             {
-                "ingredients": {
-                    "Eau": 310,
-                    "Farine blé": 600,
-                    "Levain froment": 170,
-                    "Sel": 11,
-                    "Graines kasha (trempé)": 160,
-                }, 
-                "division" : {"Semi-complet Kasha (1 kg)/GK": 1},
-                "weight": 1240
-            }},
+                "Semi-complet Kasha/GK": {
+                    "ingredients": {
+                        "Eau": 310,
+                        "Farine blé": 600,
+                        "Levain froment": 170,
+                        "Sel": 11,
+                        "Graines kasha (trempé)": 160,
+                    },
+                    "division": {"Semi-complet Kasha (1 kg)/GK": 1},
+                    "weight": 1240,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -125,20 +126,21 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(
             actions["bakery"],
-            {'Semi-complet Kasha/GK':
             {
-                "ingredients": {
-                    "Eau": 310,
-                    "Farine blé": 600,
-                    "Levain froment": 170,
-                    "Sel": 11,
-                    "Graines kasha (trempé)": 160,
-                },
-                "division": {
-                    "Semi-complet Kasha (1 kg)/GK": 1,
-                },
-                "weight": 1240,
-            }},
+                "Semi-complet Kasha/GK": {
+                    "ingredients": {
+                        "Eau": 310,
+                        "Farine blé": 600,
+                        "Levain froment": 170,
+                        "Sel": 11,
+                        "Graines kasha (trempé)": 160,
+                    },
+                    "division": {
+                        "Semi-complet Kasha (1 kg)/GK": 1,
+                    },
+                    "weight": 1240,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -171,26 +173,20 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {
-                'levain': {'Levain sarrasin': 400, 'Levain froment': 290}, 'trempage': {}
-            },
+            {"levain": {"Levain sarrasin": 400, "Levain froment": 290}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
         self.assertEqual(
             actions["delivery"],
-            {
-                delivery_date: {'Sarrasin 100% (400 g)/PSa': 5, 'Seigle 70% (400 g)/PSe': 3}
-            },
+            {delivery_date: {"Sarrasin 100% (400 g)/PSa": 5, "Seigle 70% (400 g)/PSe": 3}},
         )
         self.assertEqual(
             actions["bakery"],
-            {'Sarrasin 100%/GSa':{'ingredients': {'Eau': 1320, 'Farine sarrasin': 1320, 'Levain sarrasin': 400, 'Sel': 26},
-                                  "division": {"Sarrasin 100% (400 g)/PSa": 6},
-                                  "weight": 3060}, 
-             'Seigle 70%/GSe': {'ingredients': {'Eau': 680, 'Farine blé': 320, 'Farine seigle': 740, 'Levain froment': 290, 'Sel': 19},
-                                 "division": {"Seigle 70% (400 g)/PSe": 4},
-                                 "weight": 2040}}
+            {
+                "Sarrasin 100%/GSa": {"ingredients": {"Eau": 1320, "Farine sarrasin": 1320, "Levain sarrasin": 400, "Sel": 26}, "division": {"Sarrasin 100% (400 g)/PSa": 6}, "weight": 3060},
+                "Seigle 70%/GSe": {"ingredients": {"Eau": 680, "Farine blé": 320, "Farine seigle": 740, "Levain froment": 290, "Sel": 19}, "division": {"Seigle 70% (400 g)/PSe": 4}, "weight": 2040},
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -237,19 +233,19 @@ class ActionsTests(TestCase):
         )
         self.assertEqual(
             actions["bakery"],
-            {'Semi-complet Kasha/GK':{
-                "ingredients": {
-                    "Eau": 3110.0,
-                    "Farine blé": 5990.0,
-                    "Levain froment": 1680.0,
-                    "Sel": 110.0,
-                    "Graines kasha (trempé)": 1560.0,
-                },
-                "division": {"Semi-complet Kasha (1 kg)/GK": 4,
-                    "Semi-complet kasha (2 kg)/TGK": 2,
-                    "Semi-complet kasha (500 g)/PK": 4},
-                "weight": 12420
-            }},
+            {
+                "Semi-complet Kasha/GK": {
+                    "ingredients": {
+                        "Eau": 3110.0,
+                        "Farine blé": 5990.0,
+                        "Levain froment": 1680.0,
+                        "Sel": 110.0,
+                        "Graines kasha (trempé)": 1560.0,
+                    },
+                    "division": {"Semi-complet Kasha (1 kg)/GK": 4, "Semi-complet kasha (2 kg)/TGK": 2, "Semi-complet kasha (500 g)/PK": 4},
+                    "weight": 12420,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -292,20 +288,22 @@ class ActionsTests(TestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
         self.assertEqual(
             actions["bakery"],
-            {'Brioche raisin/BR':{
-                "ingredients": {
-                    "Eau": 0,
-                    "Farine blé": 250,
-                    "Huile": 20,
-                    "Levain froment": 130,
-                    "Sel": 3,
-                    "Sucre": 30,
-                    "Raisins secs (trempé)": 90,
-                    "Flocons de riz (trempé)": 150,
-                },
-                "division":{ 'Brioche raisin (500g)/BR': 1},
-                "weight": 680
-            }},
+            {
+                "Brioche raisin/BR": {
+                    "ingredients": {
+                        "Eau": 0,
+                        "Farine blé": 250,
+                        "Huile": 20,
+                        "Levain froment": 130,
+                        "Sel": 3,
+                        "Sucre": 30,
+                        "Raisins secs (trempé)": 90,
+                        "Flocons de riz (trempé)": 150,
+                    },
+                    "division": {"Brioche raisin (500g)/BR": 1},
+                    "weight": 680,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -338,9 +336,7 @@ class ActionsTests(TestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {"Seigle 70% (800 g)/GSe": 6}})
         self.assertEqual(
             actions["bakery"],
-            {'Seigle 70%/GSe':{"ingredients": {"Eau": 2050, "Farine blé": 950, "Farine seigle": 2210, "Levain froment": 880, "Sel": 58},
-                               "division": {"Seigle 70% (800 g)/GSe": 6},
-                               "weight": 6180}},
+            {"Seigle 70%/GSe": {"ingredients": {"Eau": 2050, "Farine blé": 950, "Farine seigle": 2210, "Levain froment": 880, "Sel": 58}, "division": {"Seigle 70% (800 g)/GSe": 6}, "weight": 6180}},
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)

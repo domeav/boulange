@@ -122,13 +122,13 @@ def index(request):
 
 @login_required
 def my_orders(request):
-    context = {"orders": Order.objects.filter(customer=request.user).order_by('-id')}
+    context = {"orders": Order.objects.filter(customer=request.user).order_by("-id")}
     return render(request, "boulange/my_orders.html", context)
 
 
 @login_required
 def products(request):
-    context = {"products": Product.objects.all().order_by('name')}
+    context = {"products": Product.objects.all().order_by("name")}
     return render(request, "boulange/products.html", context)
 
 
@@ -141,12 +141,7 @@ def actions(request, year=None, month=None, day=None, to_print=False):
     date_nav = []
     for i in range(-5, 6):
         date_nav.append(target_date + timedelta(days=i))
-    context = {
-        "actions": _get_actions(target_date),
-        "target_date": target_date,
-        "date_nav": date_nav,
-        "to_print": to_print
-    }
+    context = {"actions": _get_actions(target_date), "target_date": target_date, "date_nav": date_nav, "to_print": to_print}
     return render(request, "boulange/actions.html", context)
 
 

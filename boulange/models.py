@@ -7,6 +7,18 @@ from django.db import models
 
 TVA = 5.5
 
+
+class Settings(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    value = models.CharField(max_length=200)
+
+    def __str__(self):
+        return f"{self.name}={self.value}"
+
+    class Meta:
+        verbose_name = "Paramètre"
+
+
 class Ingredient(models.Model):
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=10)
@@ -83,7 +95,6 @@ class Product(models.Model):
         product, coef = self.get_base_product_and_coef()
         for line in product.raw_ingredients.all():
             yield (line.ingredient, line.quantity * coef)
-
 
     class Meta:
         indexes = [
@@ -185,6 +196,12 @@ class DeliveryDate(models.Model):
         verbose_name = "Date de livraison"
         verbose_name_plural = "Dates de livraison"
 
+    def get_total(self):
+        total = 0
+        for order in self.order_set.all():
+            total += order.total_price
+        return round(total, 2)
+
 
 class DeliveryBatch(dict):
     def add_line(self, order_line):
@@ -197,7 +214,7 @@ class DeliveryBatch(dict):
 
     def finalize(self):
         for dd in self:
-            new_dict = { str(key): value for key, value in sorted(self[dd].items(), key=lambda items: items[0].display_priority, reverse=True) }
+            new_dict = {str(key): value for key, value in sorted(self[dd].items(), key=lambda items: items[0].display_priority, reverse=True)}
             self[dd].clear()
             self[dd].update(new_dict)
 
@@ -219,12 +236,12 @@ class BakeryBatch(dict):
         base_product, _ = product.get_base_product_and_coef()
         if base_product not in self:
             self[base_product] = {}
-        if 'ingredients' not in self[base_product]:            
-            self[base_product]['ingredients'] = {self.water_key: 0}
-            self[base_product]['division'] = {}
-        if product not in self[base_product]['division']:
-            self[base_product]['division'][product] = 0
-        self[base_product]['division'][product] += line_quantity
+        if "ingredients" not in self[base_product]:
+            self[base_product]["ingredients"] = {self.water_key: 0}
+            self[base_product]["division"] = {}
+        if product not in self[base_product]["division"]:
+            self[base_product]["division"][product] = 0
+        self[base_product]["division"][product] += line_quantity
         for ingredient, ing_qty in product.get_ingredients():
             ingredient_key = str(ingredient)
             if ingredient.name == "Eau":
@@ -235,26 +252,26 @@ class BakeryBatch(dict):
             quantity = base_qty / base_product.nb_units
             if ingredient.needs_soaking:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[base_product]['ingredients'][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
-            if ingredient_key not in self[base_product]['ingredients']:
-                self[base_product]['ingredients'][ingredient_key] = 0
-            self[base_product]['ingredients'][ingredient_key] += quantity
+                self[base_product]["ingredients"][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
+            if ingredient_key not in self[base_product]["ingredients"]:
+                self[base_product]["ingredients"][ingredient_key] = 0
+            self[base_product]["ingredients"][ingredient_key] += quantity
 
     def finalize(self):
         for product in self.small_breads:
             if self.small_breads[product] % 2 != 0:
-                 self.add_product(product, 1)
-                 self.nb_breads += 1
+                self.add_product(product, 1)
+                self.nb_breads += 1
         for product in self:
-            for ingredient in self[product]['ingredients']:
+            for ingredient in self[product]["ingredients"]:
                 if ingredient == "Sel":
-                    self[product]['ingredients'][ingredient] = round(self[product]['ingredients'][ingredient])
+                    self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient])
                 else:
-                    self[product]['ingredients'][ingredient] = round(self[product]['ingredients'][ingredient] / 10) * 10
-            self[product]['weight'] = sum([ product.weight * qty for product, qty in self[product]['division'].items() ])
-        new_dict = { key.get_short_recipe_name(): value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True) }
+                    self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient] / 10) * 10
+            self[product]["weight"] = sum([product.weight * qty for product, qty in self[product]["division"].items()])
+        new_dict = {key.get_short_recipe_name(): value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
-            new_dict[base_product]['division'] = { str(product): qty for product, qty in new_dict[base_product]['division'].items() }
+            new_dict[base_product]["division"] = {str(product): qty for product, qty in new_dict[base_product]["division"].items()}
         self.clear()
         self.update(new_dict)
 
@@ -296,58 +313,106 @@ class PreparationBatch(dict):
         if "Levain froment" not in self["levain"]:
             return {}
         qty = self["levain"]["Levain froment"]
-        flour1, water1 = self._refresh_levain(100, 300, 60)
-        flour2, water2 = self._refresh_levain(300, qty, 50)
-        return [
-            {
-                "title": "1er rafraîchi (cible 300 g)",
-                "lines": [
-                    "100g de levain chef",
-                    f"{water1} ml d'eau chaude (60%)",
-                    f"{flour1} g de farine de froment (40%)",
-                ],
-            },
-            {
-                "title": f"2nd rafraîchi (cible {qty} g)",
-                "lines": [
-                    "300g de levain",
-                    f"{water2} ml d'eau tiède (50%)",
-                    f"{flour2} g de farine de froment (50%)",
-                ],
-            },
-        ]
+        cold_recipe = Settings.objects.get(name="il fait froid (pour le levain)")
+        if cold_recipe and cold_recipe.value == "oui":
+            flour1, water1 = self._refresh_levain(100, 300, 60)
+            flour2, water2 = self._refresh_levain(300, qty, 50)
+            return [
+                {
+                    "title": "1er rafraîchi (cible 300 g)",
+                    "lines": [
+                        "100g de levain chef",
+                        f"{water1} ml d'eau chaude (60%)",
+                        f"{flour1} g de farine de froment (40%)",
+                    ],
+                },
+                {
+                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "300g de levain",
+                        f"{water2} ml d'eau tiède (50%)",
+                        f"{flour2} g de farine de froment (50%)",
+                    ],
+                },
+            ]
+        else:
+            flour1, water1 = self._refresh_levain(100, 300, 60)
+            flour2, water2 = self._refresh_levain(300, qty, 50)
+            return [
+                {
+                    "title": "1er rafraîchi (cible 300 g)",
+                    "lines": [
+                        "100g de levain chef",
+                        f"{water1} ml d'eau chaude (60%)",
+                        f"{flour1} g de farine de froment (40%)",
+                    ],
+                },
+                {
+                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "300g de levain",
+                        f"{water2} ml d'eau tiède (50%)",
+                        f"{flour2} g de farine de froment (50%)",
+                    ],
+                },
+            ]
 
     def levain_sarrasin_recipe(self):
         if "Levain sarrasin" not in self["levain"]:
             return {}
         qty = self["levain"]["Levain sarrasin"]
-        # including future levain chef
-        qty += 20
-        flour1, water1 = self._refresh_levain(20, 100, 50)
-        flour2, water2 = self._refresh_levain(100, qty, 50)
-        return [
-            {
-                "title": "1er rafraîchi (cible 100 g)",
-                "lines": [
-                    "20g de levain chef",
-                    f"{water1} ml d'eau chaude (50%)",
-                    f"{flour1} g de farine de sarrasin (50%)",
-                ],
-            },
-            {
-                "title": f"2nd rafraîchi (cible {qty} g)",
-                "lines": [
-                    "100g de levain",
-                    f"{water2} ml d'eau tiède (50%)",
-                    f"{flour2} g de farine de sarrasin (50%)",
-                ],
-            },
-        ]
+        cold_recipe = Settings.objects.get(name="il fait froid (pour le levain)")
+        if cold_recipe and cold_recipe.value == "oui":
+            # including future levain chef
+            qty += 20
+            flour1, water1 = self._refresh_levain(20, 100, 50)
+            flour2, water2 = self._refresh_levain(100, qty, 50)
+            return [
+                {
+                    "title": "1er rafraîchi (cible 100 g)",
+                    "lines": [
+                        "20g de levain chef",
+                        f"{water1} ml d'eau chaude (50%)",
+                        f"{flour1} g de farine de sarrasin (50%)",
+                    ],
+                },
+                {
+                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "100g de levain",
+                        f"{water2} ml d'eau tiède (50%)",
+                        f"{flour2} g de farine de sarrasin (50%)",
+                    ],
+                },
+            ]
+        else:
+            # including future levain chef
+            qty += 20
+            flour1, water1 = self._refresh_levain(20, 100, 50)
+            flour2, water2 = self._refresh_levain(100, qty, 50)
+            return [
+                {
+                    "title": "1er rafraîchi (cible 100 g)",
+                    "lines": [
+                        "20g de levain chef",
+                        f"{water1} ml d'eau chaude (50%)",
+                        f"{flour1} g de farine de sarrasin (50%)",
+                    ],
+                },
+                {
+                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "100g de levain",
+                        f"{water2} ml d'eau tiède (50%)",
+                        f"{flour2} g de farine de sarrasin (50%)",
+                    ],
+                },
+            ]
 
     def finalize(self):
         for product in self.small_breads:
             if self.small_breads[product] % 2 != 0:
-                 self.add_product(product, 1)
+                self.add_product(product, 1)
         for ingredient in self["trempage"]:
             self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
             self["trempage"][ingredient]["water"] = round(self["trempage"][ingredient]["water"] / 10) * 10
@@ -374,7 +439,7 @@ class Actions(dict):
             self["preparation"].add_line(line)
 
     def finalize(self):
-        'To be called after all orders have been processed'
+        "To be called after all orders have been processed"
         for batch in self.values():
             batch.finalize()
 

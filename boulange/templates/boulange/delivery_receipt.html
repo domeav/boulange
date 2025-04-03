@@ -4,6 +4,7 @@
 
 {% block content %}
 <section class="container">
+  Total pdl : {{ delivery_date.get_total }}€
   {% for order in delivery_date.order_set.all %}
   <div class="card">
     <div class="card-body">
