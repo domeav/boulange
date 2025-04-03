@@ -202,6 +202,10 @@ class DeliveryDate(models.Model):
             total += order.total_price
         return round(total, 2)
 
+    def duplicate_commands_from(self, original_delivery_date):
+        for order in original_delivery_date.order_set.all():
+            order.duplicate_to_delivery_date(self)
+
 
 class DeliveryBatch(dict):
     def add_line(self, order_line):
@@ -474,6 +478,14 @@ class Order(models.Model):
         if target_day == preparation_day:
             actions.add_order_for_preparation(self)
         return actions
+
+    def duplicate_to_delivery_date(self, delivery_date):
+        new_order = Order(customer=self.customer, delivery_date=delivery_date, notes=self.notes)
+        new_order.save()
+        for line in self.lines.all():
+            new_line = OrderLine(order=new_order, product=line.product, quantity=line.quantity)
+            new_line.save()
+        return new_order
 
     class Meta:
         verbose_name = "Commande"

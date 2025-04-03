@@ -79,15 +79,36 @@ class MyDateFilter(admin.DateFieldListFilter):
         self.links.insert(2, ("Demain", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=2)}))
 
 
+@admin.action(description="Duplicate commands from the older selected deliverydate to the newer ones")
+def duplicate_delivery_date_commands(modeladmin, request, queryset):
+    original_delivery_date = None
+    for delivery_date in queryset.order_by("date"):
+        if original_delivery_date is None:
+            original_delivery_date = delivery_date
+        else:
+            delivery_date.duplicate_commands_from(original_delivery_date)
+
+
+class OrderInline(admin.TabularInline):
+    model = Order
+    extra = 0
+    fields = ["customer", "total_price"]
+    readonly_fields = ["customer", "total_price"]
+    can_delete = True
+    show_change_link = True
+
+
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
     list_filter = ("active", ("date", MyDateFilter), "weekly_delivery__day_of_week", "weekly_delivery")
     readonly_fields = ("date", "weekly_delivery")
+    inlines = [OrderInline]
     search_fields = [
         "weekly_delivery__customer__display_name",
         "weekly_delivery__customer__username",
         "date",
     ]
+    actions = [duplicate_delivery_date_commands]
 
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
