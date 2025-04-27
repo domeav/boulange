@@ -317,13 +317,17 @@ class PreparationBatch(dict):
         if "Levain froment" not in self["levain"]:
             return {}
         qty = self["levain"]["Levain froment"]
-        cold_recipe = Settings.objects.get(name="il fait froid (pour le levain)")
-        if cold_recipe and cold_recipe.value == "oui":
-            flour1, water1 = self._refresh_levain(100, 300, 60)
-            flour2, water2 = self._refresh_levain(300, qty, 50)
+        try:
+            nb_steps = int(Settings.objects.get(name="Nb steps levain").value)
+        except Settings.DoesNotExist:
+            nb_steps = 2
+        if nb_steps == 3:
+            flour1, water1 = self._refresh_levain(100, 1000, 65)
+            flour2, water2 = self._refresh_levain(1000, 3000, 50)
+            flour3, water3 = self._refresh_levain(3000, qty, 40)
             return [
                 {
-                    "title": "1er rafraîchi (cible 300 g)",
+                    "title": "1er rafraîchi (cible 1000 g)",
                     "lines": [
                         "100g de levain chef",
                         f"{water1} ml d'eau chaude (60%)",
@@ -331,13 +335,21 @@ class PreparationBatch(dict):
                     ],
                 },
                 {
-                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "title": f"2nd rafraîchi (cible 3000 g)",
                     "lines": [
-                        "300g de levain",
+                        "1000g de levain",
                         f"{water2} ml d'eau tiède (50%)",
                         f"{flour2} g de farine de froment (50%)",
                     ],
                 },
+                {
+                    "title": f"3ème rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "3000g de levain",
+                        f"{water3} ml d'eau tiède (40%)",
+                        f"{flour3} g de farine de froment (60%)",
+                    ],
+                }
             ]
         else:
             flour1, water1 = self._refresh_levain(100, 300, 60)
