@@ -377,12 +377,16 @@ class PreparationBatch(dict):
         if "Levain sarrasin" not in self["levain"]:
             return {}
         qty = self["levain"]["Levain sarrasin"]
-        cold_recipe = Settings.objects.get(name="il fait froid (pour le levain)")
-        if cold_recipe and cold_recipe.value == "oui":
+        try:
+            nb_steps = int(Settings.objects.get(name="Nb steps levain").value)
+        except Settings.DoesNotExist:
+            nb_steps = 2
+        if nb_steps == 3:
             # including future levain chef
             qty += 20
             flour1, water1 = self._refresh_levain(20, 100, 50)
-            flour2, water2 = self._refresh_levain(100, qty, 50)
+            flour2, water2 = self._refresh_levain(100, 300, 50)
+            flour3, water3 = self._refresh_levain(300, qty, 43)
             return [
                 {
                     "title": "1er rafraîchi (cible 100 g)",
@@ -393,11 +397,20 @@ class PreparationBatch(dict):
                     ],
                 },
                 {
-                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "title": "2nd rafraîchi (cible 300 g)",
                     "lines": [
-                        "100g de levain",
-                        f"{water2} ml d'eau tiède (50%)",
+                        "100g de levain chef",
+                        f"{water2} ml d'eau chaude (50%)",
                         f"{flour2} g de farine de sarrasin (50%)",
+                    ],
+                },
+
+                {
+                    "title": f"3ème rafraîchi (cible {qty} g)",
+                    "lines": [
+                        "300g de levain",
+                        f"{water3} ml d'eau tiède (43%)",
+                        f"{flour3} g de farine de sarrasin (67%)",
                     ],
                 },
             ]
