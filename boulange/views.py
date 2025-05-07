@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
@@ -143,6 +144,20 @@ def actions(request, year=None, month=None, day=None, to_print=False):
         date_nav.append(target_date + timedelta(days=i))
     context = {"actions": _get_actions(target_date), "target_date": target_date, "date_nav": date_nav, "to_print": to_print}
     return render(request, "boulange/actions.html", context)
+
+
+@login_required
+def check_delivery_dates_consistency(request):
+    delivery_dates = DeliveryDate.objects.all()
+    dds_by_weeklydelivery_and_date = defaultdict(list)
+    for dd in delivery_dates:
+        dds_by_weeklydelivery_and_date[(dd.weekly_delivery.id, dd.date)].append(dd)
+    annoying = {}
+    for key, dds in dds_by_weeklydelivery_and_date.items():
+        if len(dds) > 1:
+            annoying[key] = dds
+    context = {"annoying_dds": annoying}
+    return render(request, "boulange/check_delivery_dates_consistency.html", context)
 
 
 @login_required

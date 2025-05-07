@@ -335,7 +335,7 @@ class PreparationBatch(dict):
                     ],
                 },
                 {
-                    "title": f"2nd rafraîchi (cible 3000 g)",
+                    "title": "2nd rafraîchi (cible 3000 g)",
                     "lines": [
                         "1000g de levain",
                         f"{water2} ml d'eau tiède (50%)",
@@ -349,7 +349,7 @@ class PreparationBatch(dict):
                         f"{water3} ml d'eau tiède (40%)",
                         f"{flour3} g de farine de froment (60%)",
                     ],
-                }
+                },
             ]
         else:
             flour1, water1 = self._refresh_levain(100, 300, 60)
@@ -404,7 +404,6 @@ class PreparationBatch(dict):
                         f"{flour2} g de farine de sarrasin (50%)",
                     ],
                 },
-
                 {
                     "title": f"3ème rafraîchi (cible {qty} g)",
                     "lines": [

@@ -22,6 +22,7 @@ urlpatterns = [
     path("actions/<int:year>/<int:month>/<int:day>/", views.actions, name="actions", kwargs={"to_print": False}),
     path("actions_print/<int:year>/<int:month>/<int:day>/", views.actions, name="actions_print", kwargs={"to_print": True}),
     path("actions/", views.actions, name="actions"),
+    path("check_delivery_dates_consistency/", views.check_delivery_dates_consistency, name="check_delivery_dates_consistency"),
     path(
         "delivery_receipt/<int:delivery_date_id>/",
         views.delivery_receipt,
