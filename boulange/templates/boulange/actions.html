@@ -16,6 +16,58 @@
 {% else %}
 {{ d|date:"D d/m" }}
 {% endif %}
+{% if actions.bakery %}
+<section class="container mt-5">
+  <h2 class="mb-4">Boulange</h2>
+  Nb de pains cuits : {{ actions.bakery.nb_breads }}
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% for recipe, data in actions.bakery.items %}
+    <div class="col mt-2">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">{{ recipe }}</h3>
+          <ul class="list-group list-group-flush">
+            {% for ing, qty in data.ingredients.items|dictsort:0 %}
+            {% if qty %}
+            <li class="list-group-item">{{ ing }} : {{ qty }}</li>
+            {% endif %}
+            {% endfor %}
+          </ul>
+          <p>Poids total : {{ data.weight }} g</p>
+          <b>Division</b>
+          <ul class="list-group list-group-flush">
+            {% for product, qty in data.division.items|dictsort:0 %}
+            <li class="list-group-item">{{ product }} : {{ qty }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% if actions.delivery %}
+<section class="container mt-5">
+  <h2 class="mb-4">Livraison</h2>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% for delivery_date, lines in actions.delivery.items %}
+    <div class="col mt-2">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title"><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
+          <ul class="list-group list-group-flush">
+            {% for product, nb in lines.items|dictsort:0 %}
+            <li class="list-group-item">{{ product }} : {{ nb }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 {% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.trempage %}
 <section class="container mt-5">
   <h2 class="mb-4">Préparations</h2>
@@ -70,58 +122,6 @@
       </div>
     </div>
 {% endif %}
-  </div>
-</section>
-{% endif %}
-{% if actions.bakery %}
-<section class="container mt-5">
-  <h2 class="mb-4">Boulange</h2>
-  Nb de pains cuits : {{ actions.bakery.nb_breads }}
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for recipe, data in actions.bakery.items %}
-    <div class="col mt-2">
-      <div class="card">
-        <div class="card-body">
-          <h3 class="card-title">{{ recipe }}</h3>
-          <ul class="list-group list-group-flush">
-            {% for ing, qty in data.ingredients.items|dictsort:0 %}
-            {% if qty %}
-            <li class="list-group-item">{{ ing }} : {{ qty }}</li>
-            {% endif %}
-            {% endfor %}
-          </ul>
-          <p>Poids total : {{ data.weight }} g</p>
-          <b>Division</b>
-          <ul class="list-group list-group-flush">
-            {% for product, qty in data.division.items|dictsort:0 %}
-            <li class="list-group-item">{{ product }} : {{ qty }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-{% endif %}
-{% if actions.delivery %}
-<section class="container mt-5">
-  <h2 class="mb-4">Livraison</h2>
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for delivery_date, lines in actions.delivery.items %}
-    <div class="col mt-2">
-      <div class="card">
-        <div class="card-body">
-          <h3 class="card-title"><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
-          <ul class="list-group list-group-flush">
-            {% for product, nb in lines.items|dictsort:0 %}
-            <li class="list-group-item">{{ product }} : {{ nb }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
   </div>
 </section>
 {% endif %}
