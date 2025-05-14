@@ -80,14 +80,14 @@ class MyDateFilter(admin.DateFieldListFilter):
         self.links.insert(2, ("Demain", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=2)}))
 
 
-@admin.action(description="Duplicate commands from the older selected deliverydate to the newer ones")
+@admin.action(description="Duplicate commands from the older selected deliverydate to the newer ones, by weeklydelivery")
 def duplicate_delivery_date_commands(modeladmin, request, queryset):
-    original_delivery_date = None
+    original_delivery_dates = {}
     for delivery_date in queryset.order_by("date"):
-        if original_delivery_date is None:
-            original_delivery_date = delivery_date
+        if delivery_date.weekly_delivery not in original_delivery_dates:
+            original_delivery_dates[delivery_date.weekly_delivery] = delivery_date
         else:
-            delivery_date.duplicate_commands_from(original_delivery_date)
+            delivery_date.duplicate_commands_from(original_delivery_dates[delivery_date.weekly_delivery])
 
 
 class OrderInline(admin.TabularInline):
