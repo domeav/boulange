@@ -134,7 +134,7 @@ def products(request):
 
 
 @login_required
-def actions(request, year=None, month=None, day=None, to_print=False):
+def actions(request, year=None, month=None, day=None, to_print=False, section=None):
     if not (year and month and day):
         target_date = date.today()
     else:
@@ -142,7 +142,11 @@ def actions(request, year=None, month=None, day=None, to_print=False):
     date_nav = []
     for i in range(-5, 6):
         date_nav.append(target_date + timedelta(days=i))
-    context = {"actions": _get_actions(target_date), "target_date": target_date, "date_nav": date_nav, "to_print": to_print}
+    context = {"actions": _get_actions(target_date),
+               "target_date": target_date,
+               "date_nav": date_nav,
+               "to_print": to_print,
+               "section": section}
     return render(request, "boulange/actions.html", context)
 
 

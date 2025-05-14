@@ -1,6 +1,6 @@
 {% extends "boulange/base.html" %}
 
-{% block title %}Actions <a target="_blank" href="{% url 'boulange:actions_print' target_date.year target_date.month target_date.day %}">🖶</a>{% endblock %}
+{% block title %}Actions{% endblock %}
 
 {% block content %}
 {% if not to_print %}
@@ -17,8 +17,12 @@
 {{ d|date:"D d/m" }}
 {% endif %}
 {% if actions.bakery %}
+{% if section is None or section == 'boulange' %}
 <section class="container mt-5">
-  <h2 class="mb-4">Boulange</h2>
+  <h2 class="mb-4">
+    Boulange
+    <a target="_blank" href="{% url 'boulange:actions_print' 'boulange' target_date.year target_date.month target_date.day %}">🖶</a>
+  </h2>
   Nb de pains cuits : {{ actions.bakery.nb_breads }}
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for recipe, data in actions.bakery.items %}
@@ -47,9 +51,14 @@
   </div>
 </section>
 {% endif %}
+{% endif %}
 {% if actions.delivery %}
+{% if section is None or section == 'livraison' %}
 <section class="container mt-5">
-  <h2 class="mb-4">Livraison</h2>
+  <h2 class="mb-4">
+    Livraison
+    <a target="_blank" href="{% url 'boulange:actions_print' 'livraison' target_date.year target_date.month target_date.day %}">🖶</a>
+  </h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for delivery_date, lines in actions.delivery.items %}
     <div class="col mt-2">
@@ -68,9 +77,14 @@
   </div>
 </section>
 {% endif %}
+{% endif %}
 {% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.trempage %}
+{% if section is None or section == 'preparations' %}
 <section class="container mt-5">
-  <h2 class="mb-4">Préparations</h2>
+  <h2 class="mb-4">
+    Préparations
+    <a target="_blank" href="{% url 'boulange:actions_print' 'preparations' target_date.year target_date.month target_date.day %}">🖶</a>
+  </h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% if actions.preparation.levain_sarrasin_recipe %}
     <div class="col mt-2">
@@ -124,5 +138,6 @@
 {% endif %}
   </div>
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}
