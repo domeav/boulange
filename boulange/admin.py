@@ -137,7 +137,7 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderLineInline]
     save_as = True
     autocomplete_fields = ["delivery_date"]
-    list_filter = ["delivery_date__date", "customer__display_name"]
+    list_filter = [("delivery_date__date", MyDateFilter), "customer__display_name"]
 
 
 admin.site.register(Order, OrderAdmin)
