@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDelivery
 
+from .BatchSplitter import split_quantities
 
 def populate():
     admin = Customer(username="admin", display_name="admin", email="admin@toto.net", is_staff=True)
@@ -469,3 +470,13 @@ class RestTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertAlmostEqual(response.data["total_price"], Decimal(23.10))
+
+        
+class BatchSplitterTests(TestCase):
+    def test_batch_splitter(self):
+        self.assertEqual(split_quantities({'q1': 25, 'q2': 30, 'q3': 8, 'q4': 11},
+                                          {'c1': 20, 'c2': 20, 'c3': 10, 'c4': 10, 'c5': 5, 'c6': 10, 'c7': 8}),
+                         {'q2': {'c3': 33.33, 'c1': 66.67}, 'q1': {'c4': 40.0, 'c2': 60.0}, 'q4': {'c5': 45.45, 'c6': 54.55}, 'q3': {'c7': 100}})
+        self.assertEqual(split_quantities({'q1': 32, 'q2': 33, 'q3': 39, 'q4': 21, 'q5': 10, 'q6': 8, 'q7': 44, 'q8': 19, 'q9': 32, 'q10': 49},
+                                          {'c1': 38, 'c2': 26, 'c3': 10, 'c4': 45, 'c5': 6, 'c6': 22, 'c7': 32, 'c8': 30, 'c9': 22, 'c10': 22, 'c11': 26, 'c12': 14, 'c13': 26, 'c14': 43}),
+                         {})
