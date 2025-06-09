@@ -373,6 +373,22 @@ class PreparationBatch(dict):
                 },
             ]
 
+    def levain_petit_epeautre_recipe(self):
+        if "Levain de petit epeautre" not in self["levain"]:
+            return {}
+        qty = self["levain"]["Levain de petit epeautre"]
+        return [
+            {
+                "title": f"1er rafraîchi (cible {qty} g)",
+                "lines": [
+                    f"{qty*7/110:.0f}g de levain de froment",
+                    f"{qty*58/110:.0f}g de farine de petit épeautre",
+                    f"{qty*44/110:.0f} ml d'eau",
+                    f"{qty*1/110:.0f} g de sel",
+                ],
+            }
+        ]
+
     def levain_sarrasin_recipe(self):
         if "Levain sarrasin" not in self["levain"]:
             return {}

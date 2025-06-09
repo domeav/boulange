@@ -78,7 +78,7 @@
 </section>
 {% endif %}
 {% endif %}
-{% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.trempage %}
+{% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.levain_petit_epeautre_recipe or actions.preparation.trempage %}
 {% if section is None or section == 'preparations' %}
 <section class="container mt-5">
   <h2 class="mb-4">
@@ -86,6 +86,23 @@
     <a target="_blank" href="{% url 'boulange:actions_print' 'preparations' target_date.year target_date.month target_date.day %}">🖶</a>
   </h2>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
+    {% if actions.preparation.levain_petit_epeautre_recipe %}
+    <div class="col mt-2">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Levain de petit épeautre</h3>
+	  {% for step in actions.preparation.levain_petit_epeautre_recipe %}
+          <h4 class="card-subtitle mb-2">{{ step.title }}</h4>
+          <ul class="list-group list-group-flush">
+            {% for line in step.lines %}
+            <li class="list-group-item">{{ line }}</li>
+            {% endfor %}
+	  </ul>
+	  {% endfor %}
+	</div>
+      </div>
+    </div>
+    {% endif %}
     {% if actions.preparation.levain_sarrasin_recipe %}
     <div class="col mt-2">
       <div class="card">
