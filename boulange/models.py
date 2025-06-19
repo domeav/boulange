@@ -268,7 +268,7 @@ class BakeryBatch(dict):
                 self.nb_breads += 1
         for product in self:
             for ingredient in self[product]["ingredients"]:
-                if ingredient == "Sel":
+                if ingredient in ("Sel", "Oeufs"):
                     self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient])
                 else:
                     self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient] / 10) * 10
