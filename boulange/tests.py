@@ -76,7 +76,7 @@ class ActionsTests(TestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 170},
-                "trempage": {"Graines kasha": {"dry": 80, "water": 80}},
+                "trempage": {"Graines kasha": {"dry": 80, "soaking_qty": 80, "soaking_ingredient": "Eau"}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -118,7 +118,7 @@ class ActionsTests(TestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 170},
-                "trempage": {"Graines kasha": {"dry": 80, "water": 80}},
+                "trempage": {"Graines kasha": {"dry": 80, "soaking_qty": 80, "soaking_ingredient": "Eau"}},
             },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
@@ -216,7 +216,7 @@ class ActionsTests(TestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 1680.0},
-                "trempage": {"Graines kasha": {"dry": 780.0, "water": 780.0}},
+                "trempage": {"Graines kasha": {"dry": 780.0, "soaking_qty": 780.0, "soaking_ingredient": "Eau"}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -274,10 +274,11 @@ class ActionsTests(TestCase):
             {
                 "levain": {"Levain froment": 130},
                 "trempage": {
-                    "Raisins secs": {"dry": 50, "water": 50},
+                    "Raisins secs": {"dry": 50, "soaking_qty": 50, "soaking_ingredient": "Eau"},
                     "Flocons de riz": {
                         "dry": 10,
-                        "water": 130,
+                        "soaking_qty": 130,
+                        "soaking_ingredient": "Eau",
                         "warning": "⚠ prévoir 10% de marge",
                     },
                 },

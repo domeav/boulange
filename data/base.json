@@ -6,7 +6,7 @@
     "name": "Beurre",
     "unit": "g",
     "per_unit_price": "13.000",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -17,7 +17,7 @@
     "name": "Eau",
     "unit": "ml",
     "per_unit_price": "0.300",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -28,7 +28,7 @@
     "name": "Farine blé",
     "unit": "g",
     "per_unit_price": "1.430",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -39,7 +39,7 @@
     "name": "Farine sarrasin",
     "unit": "g",
     "per_unit_price": "2.200",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -50,7 +50,7 @@
     "name": "Farine seigle",
     "unit": "g",
     "per_unit_price": "1.600",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -61,7 +61,7 @@
     "name": "Graines kasha",
     "unit": "g",
     "per_unit_price": "5.000",
-    "needs_soaking": true,
+    "soaking_ingredient": 2,
     "soaking_coef": 1.0
   }
 },
@@ -72,7 +72,7 @@
     "name": "Graines lin",
     "unit": "g",
     "per_unit_price": "4.000",
-    "needs_soaking": true,
+    "soaking_ingredient": 2,
     "soaking_coef": 1.0
   }
 },
@@ -83,7 +83,7 @@
     "name": "Herbes de provence",
     "unit": "g",
     "per_unit_price": "20.000",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -94,7 +94,7 @@
     "name": "Huile",
     "unit": "ml",
     "per_unit_price": "4.350",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -105,7 +105,7 @@
     "name": "Huile olive",
     "unit": "ml",
     "per_unit_price": "4.350",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -116,7 +116,7 @@
     "name": "Lait",
     "unit": "ml",
     "per_unit_price": "1.100",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -127,7 +127,7 @@
     "name": "Levain froment",
     "unit": "g",
     "per_unit_price": "1.430",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -138,7 +138,7 @@
     "name": "Levain sarrasin",
     "unit": "g",
     "per_unit_price": "2.200",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -149,7 +149,7 @@
     "name": "Noisettes",
     "unit": "g",
     "per_unit_price": "12.500",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -160,7 +160,7 @@
     "name": "Noix",
     "unit": "g",
     "per_unit_price": "18.000",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -171,7 +171,7 @@
     "name": "Oeufs",
     "unit": "oeufs",
     "per_unit_price": "0.400",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -182,7 +182,7 @@
     "name": "Pruneaux",
     "unit": "g",
     "per_unit_price": "13.000",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -193,7 +193,7 @@
     "name": "Pépites de chocolat",
     "unit": "g",
     "per_unit_price": "9.400",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -204,7 +204,7 @@
     "name": "Raisins secs",
     "unit": "g",
     "per_unit_price": "3.780",
-    "needs_soaking": true,
+    "soaking_ingredient": 2,
     "soaking_coef": 1.0
   }
 },
@@ -215,7 +215,7 @@
     "name": "Sel",
     "unit": "g",
     "per_unit_price": "1.140",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -226,7 +226,7 @@
     "name": "Sucre",
     "unit": "g",
     "per_unit_price": "1.920",
-    "needs_soaking": false,
+
     "soaking_coef": 1.0
   }
 },
@@ -237,7 +237,7 @@
     "name": "Flocons de riz",
     "unit": "g",
     "per_unit_price": "3.950",
-    "needs_soaking": true,
+    "soaking_ingredient": 2,
     "soaking_coef": 10.0
   }
 },

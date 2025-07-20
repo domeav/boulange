@@ -23,7 +23,7 @@ class Ingredient(models.Model):
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=10)
     per_unit_price = models.DecimalField(max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit")
-    needs_soaking = models.BooleanField(default=False)
+    soaking_ingredient = models.ForeignKey("Ingredient", on_delete=models.PROTECT, null=True, blank=True)
     # qty of water needed is ing weight * coef
     soaking_coef = models.FloatField(default=1)
 
@@ -248,15 +248,13 @@ class BakeryBatch(dict):
         self[base_product]["division"][product] += line_quantity
         for ingredient, ing_qty in product.get_ingredients():
             ingredient_key = str(ingredient)
-            if ingredient.name == "Eau":
-                ingredient_key = self.water_key
-            elif ingredient.needs_soaking:
+            if ingredient.soaking_ingredient:
                 ingredient_key += " (trempé)"
             base_qty = line_quantity * ing_qty
             quantity = base_qty / base_product.nb_units
-            if ingredient.needs_soaking:
+            if ingredient.soaking_ingredient:
                 quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[base_product]["ingredients"][self.water_key] -= base_qty / base_product.nb_units * ingredient.soaking_coef
+                self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] -= base_qty / base_product.nb_units * ingredient.soaking_coef
             if ingredient_key not in self[base_product]["ingredients"]:
                 self[base_product]["ingredients"][ingredient_key] = 0
             self[base_product]["ingredients"][ingredient_key] += quantity
@@ -298,12 +296,13 @@ class PreparationBatch(dict):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0
                 self["levain"][ingredient.name] += ing_qty / product.nb_units * line_quantity
-            elif ingredient.needs_soaking:
+            elif ingredient.soaking_ingredient:
                 if ingredient.name not in self["trempage"]:
-                    self["trempage"][ingredient.name] = {"dry": 0, "water": 0}
+                    self["trempage"][ingredient.name] = {"dry": 0, "soaking_qty": 0}
                 quantity = ing_qty / product.nb_units * line_quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
-                self["trempage"][ingredient.name]["water"] += quantity * ingredient.soaking_coef
+                self["trempage"][ingredient.name]["soaking_qty"] += quantity * ingredient.soaking_coef
+                self["trempage"][ingredient.name]["soaking_ingredient"] = str(ingredient.soaking_ingredient)
                 if ingredient.name == "Flocons de riz":
                     self["trempage"][ingredient.name]["warning"] = "⚠ prévoir 10% de marge"
 
@@ -459,7 +458,7 @@ class PreparationBatch(dict):
                 self.add_product(product, 1)
         for ingredient in self["trempage"]:
             self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
-            self["trempage"][ingredient]["water"] = round(self["trempage"][ingredient]["water"] / 10) * 10
+            self["trempage"][ingredient]["soaking_qty"] = round(self["trempage"][ingredient]["soaking_qty"] / 10) * 10
         for levain in self["levain"]:
             self["levain"][levain] = round(self["levain"][levain] / 10) * 10
 

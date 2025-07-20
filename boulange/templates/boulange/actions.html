@@ -153,7 +153,7 @@
           <h3 class="card-title">Trempage</h3>
           <ul class="list-group list-group-flush">
             {% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
-            <li class="list-group-item">{{ name }} : {{ qties.dry }} g + {{ qties.water }} ml<br>{{ qties.warning }}</li>
+            <li class="list-group-item">{{ name }} : {{ qties.dry }} g + {{qties.soaking_ingredient}}: {{ qties.soaking_qty }} g<br>{{ qties.warning }}</li>
             {% endfor %}
           </ul>
   </div>
