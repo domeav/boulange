@@ -150,9 +150,17 @@ def actions(request, year=None, month=None, day=None, to_print=False, section=No
 def check_delivery_dates_consistency(request):
     delivery_dates = DeliveryDate.objects.all()
     dds_by_weeklydelivery_and_date = defaultdict(list)
+    annoying = {}
     for dd in delivery_dates:
         dds_by_weeklydelivery_and_date[(dd.weekly_delivery.id, dd.date)].append(dd)
-    annoying = {}
+        # delete empty deliverydates that have been generated on wrong weekday
+        if dd.date.weekday() != dd.weekly_delivery.day_of_week:
+            if dd.order_set.count() == 0:
+                dd.delete()
+            else:
+                if 'wrong_dow' not in annoying:
+                    annoying['wrong_dow'] = []
+                annoying['wrong_dow'].append(dd)
     for key, dds in dds_by_weeklydelivery_and_date.items():
         if len(dds) > 1:
             annoying[key] = dds
