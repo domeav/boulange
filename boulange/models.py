@@ -63,7 +63,7 @@ class Product(models.Model):
         product = self.orig_product or self
         for line in product.raw_ingredients.all():
             unit_divisor = 1
-            if line.ingredient.unit in ("g", "ml"):
+            if line.ingredient.unit == "g":
                 unit_divisor = 1000
             price += Decimal(line.quantity) * line.ingredient.per_unit_price / unit_divisor
 
@@ -74,7 +74,7 @@ class Product(models.Model):
         weight = 0
         product = self.orig_product or self
         for line in product.raw_ingredients.all():
-            if line.ingredient.unit in ("g", "ml"):
+            if line.ingredient.unit == "g":
                 weight += line.quantity
             elif line.ingredient.name == "Oeufs":
                 weight += line.quantity * 60
@@ -329,7 +329,7 @@ class PreparationBatch(dict):
                     "title": "1er rafraîchi (cible 1000 g)",
                     "lines": [
                         "100g de levain chef",
-                        f"{water1} ml d'eau chaude (60%)",
+                        f"{water1} g d'eau chaude (60%)",
                         f"{flour1} g de farine de froment (40%)",
                     ],
                 },
@@ -337,7 +337,7 @@ class PreparationBatch(dict):
                     "title": "2nd rafraîchi (cible 3000 g)",
                     "lines": [
                         "1000g de levain",
-                        f"{water2} ml d'eau tiède (50%)",
+                        f"{water2} g d'eau tiède (50%)",
                         f"{flour2} g de farine de froment (50%)",
                     ],
                 },
@@ -345,7 +345,7 @@ class PreparationBatch(dict):
                     "title": f"3ème rafraîchi (cible {qty} g)",
                     "lines": [
                         "3000g de levain",
-                        f"{water3} ml d'eau tiède (40%)",
+                        f"{water3} g d'eau tiède (40%)",
                         f"{flour3} g de farine de froment (60%)",
                     ],
                 },
@@ -358,7 +358,7 @@ class PreparationBatch(dict):
                     "title": "1er rafraîchi (cible 300 g)",
                     "lines": [
                         "100g de levain chef",
-                        f"{water1} ml d'eau chaude (60%)",
+                        f"{water1} g d'eau chaude (60%)",
                         f"{flour1} g de farine de froment (40%)",
                     ],
                 },
@@ -366,7 +366,7 @@ class PreparationBatch(dict):
                     "title": f"2nd rafraîchi (cible {qty} g)",
                     "lines": [
                         "300g de levain",
-                        f"{water2} ml d'eau tiède (50%)",
+                        f"{water2} g d'eau tiède (50%)",
                         f"{flour2} g de farine de froment (50%)",
                     ],
                 },
@@ -382,7 +382,7 @@ class PreparationBatch(dict):
                 "lines": [
                     f"{qty*7/110:.0f}g de levain de froment",
                     f"{qty*58/110:.0f}g de farine de petit épeautre",
-                    f"{qty*44/110:.0f} ml d'eau",
+                    f"{qty*44/110:.0f} g d'eau",
                     f"{qty*1/110:.0f} g de sel",
                 ],
             }
@@ -407,7 +407,7 @@ class PreparationBatch(dict):
                     "title": "1er rafraîchi (cible 100 g)",
                     "lines": [
                         "20g de levain chef",
-                        f"{water1} ml d'eau chaude (50%)",
+                        f"{water1} g d'eau chaude (50%)",
                         f"{flour1} g de farine de sarrasin (50%)",
                     ],
                 },
@@ -415,7 +415,7 @@ class PreparationBatch(dict):
                     "title": "2nd rafraîchi (cible 300 g)",
                     "lines": [
                         "100g de levain chef",
-                        f"{water2} ml d'eau chaude (50%)",
+                        f"{water2} g d'eau chaude (50%)",
                         f"{flour2} g de farine de sarrasin (50%)",
                     ],
                 },
@@ -423,7 +423,7 @@ class PreparationBatch(dict):
                     "title": f"3ème rafraîchi (cible {qty} g)",
                     "lines": [
                         "300g de levain",
-                        f"{water3} ml d'eau tiède (43%)",
+                        f"{water3} g d'eau tiède (43%)",
                         f"{flour3} g de farine de sarrasin (67%)",
                     ],
                 },
@@ -438,7 +438,7 @@ class PreparationBatch(dict):
                     "title": "1er rafraîchi (cible 100 g)",
                     "lines": [
                         "20g de levain chef",
-                        f"{water1} ml d'eau chaude (50%)",
+                        f"{water1} g d'eau chaude (50%)",
                         f"{flour1} g de farine de sarrasin (50%)",
                     ],
                 },
@@ -446,7 +446,7 @@ class PreparationBatch(dict):
                     "title": f"2nd rafraîchi (cible {qty} g)",
                     "lines": [
                         "100g de levain",
-                        f"{water2} ml d'eau tiède (50%)",
+                        f"{water2} g d'eau tiède (50%)",
                         f"{flour2} g de farine de sarrasin (50%)",
                     ],
                 },

@@ -15,7 +15,7 @@
   "pk": 2,
   "fields": {
     "name": "Eau",
-    "unit": "ml",
+    "unit": "g",
     "per_unit_price": "0.300",
 
     "soaking_coef": 1.0
@@ -92,7 +92,7 @@
   "pk": 9,
   "fields": {
     "name": "Huile",
-    "unit": "ml",
+    "unit": "g",
     "per_unit_price": "4.350",
 
     "soaking_coef": 1.0
@@ -103,7 +103,7 @@
   "pk": 10,
   "fields": {
     "name": "Huile olive",
-    "unit": "ml",
+    "unit": "g",
     "per_unit_price": "4.350",
 
     "soaking_coef": 1.0
@@ -114,7 +114,7 @@
   "pk": 12,
   "fields": {
     "name": "Lait",
-    "unit": "ml",
+    "unit": "g",
     "per_unit_price": "1.100",
 
     "soaking_coef": 1.0
