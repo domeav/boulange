@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, Client
 from rest_framework.test import APIClient
 
 from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDelivery
@@ -10,6 +10,7 @@ from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDel
 
 def populate():
     admin = Customer(username="admin", display_name="admin", email="admin@toto.net", is_staff=True)
+    admin.save()
     store = Customer(
         username="store",
         display_name="store",
@@ -94,7 +95,7 @@ class ActionsTests(TestCase):
                         "Sel": 12,
                     },
                     "division": {"Semi-complet kasha (1 kg)/GK": 1},
-                    "weight": 1310,
+                    "weight": 1312,
                 }
             },
         )
@@ -138,7 +139,7 @@ class ActionsTests(TestCase):
                     "division": {
                         "Semi-complet kasha (1 kg)/GK": 1,
                     },
-                    "weight": 1310,
+                    "weight": 1312,
                 }
             },
         )
@@ -184,8 +185,8 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["bakery"],
             {
-                "Sarrasin 100%/GSa": {"ingredients": {"Eau": 1270, "Farine sarrasin": 1360, "Levain sarrasin": 410, "Sel": 27}, "division": {"Sarrasin 100% (400 g)/PSa": 6}, "weight": 3060},
-                "Seigle 70%/GSe": {"ingredients": {"Eau": 740, "Farine blé": 320, "Farine seigle": 740, "Levain froment": 290, "Sel": 19}, "division": {"Seigle 70% (400 g)/PSe": 4}, "weight": 2120},
+                "Sarrasin 100%/GSa": {"ingredients": {"Eau": 1270, "Farine sarrasin": 1360, "Levain sarrasin": 410, "Sel": 27}, "division": {"Sarrasin 100% (400 g)/PSa": 6}, "weight": 3067},
+                "Seigle 70%/GSe": {"ingredients": {"Eau": 740, "Farine blé": 320, "Farine seigle": 740, "Levain froment": 290, "Sel": 19}, "division": {"Seigle 70% (400 g)/PSe": 4}, "weight": 2109},
             },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -302,7 +303,7 @@ class ActionsTests(TestCase):
                         "Sucre": 30,
                     },
                     "division": {"Brioche raisin (500g)/BR": 1},
-                    "weight": 650,
+                    "weight": 643,
                 }
             },
         )
@@ -337,7 +338,7 @@ class ActionsTests(TestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {"Seigle 70% (800 g)/GSe": 6}})
         self.assertEqual(
             actions["bakery"],
-            {"Seigle 70%/GSe": {"ingredients": {"Eau": 2210, "Farine blé": 950, "Farine seigle": 2210, "Levain froment": 880, "Sel": 58}, "division": {"Seigle 70% (800 g)/GSe": 6}, "weight": 6300}},
+            {"Seigle 70%/GSe": {"ingredients": {"Eau": 2210, "Farine blé": 950, "Farine seigle": 2210, "Levain froment": 880, "Sel": 58}, "division": {"Seigle 70% (800 g)/GSe": 6}, "weight": 6308}},
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -471,5 +472,32 @@ class RestTests(TestCase):
         self.assertAlmostEqual(response.data["total_price"], Decimal(23.10))
 
 
-class Tests(TestCase):
+class ViewTests(TestCase):
     fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.client = Client()
+        self.context = populate()
+        self.client.force_login(self.context["admin"])
+        
+    def test_focaccia_recipe(self):
+        response = self.client.get("/products/")
+        self.assertEqual(response.status_code, 200)
+        self.assertInHTML('''
+        <h2 class="card-title">FOC</h2>
+        <b class="card-subtitle mb-2 text-muted">Focaccia (part)</b>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 24 unités</li>
+          <li class="list-group-item">Huile olive : 150,0 g</li>
+          <li class="list-group-item">Tomates séchées : 100,0 g</li>
+        </ul>
+        <p class="card-text">
+          Prix de vente : 2,20€
+          <br>
+          Prix de revient : 0,22€
+          <br>
+          Poids pâte : 140,00g
+        </p>
+        ''',
+                          response.content.decode('utf-8'))
+

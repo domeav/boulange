@@ -13,7 +13,12 @@
         <b class="card-subtitle mb-2 text-muted">{{ product.name }}</b>
         <ul class="list-group list-group-flush">
         {% if product.orig_product %}
-          <li class="list-group-item">Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}</li>
+        <li class="list-group-item">
+	  Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
+	  {% if product.nb_units and product.nb_units != 1 %}
+	  pour {{ product.nb_units }} unités
+	  {% endif %}
+	</li>
         {% endif %}
         {% for line in product.raw_ingredients.all %}
           <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>

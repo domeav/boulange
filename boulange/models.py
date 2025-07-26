@@ -44,10 +44,11 @@ class Product(models.Model):
     orig_product = models.ForeignKey("Product", on_delete=models.CASCADE, null=True, blank=True)
     # when product_lines are defined in another product (orig_product)
     coef = models.FloatField(default=1)
+    # recipe quantities are set for a given number of units
     nb_units = models.IntegerField(default=1)
+    # baking is set as a multiple of nb_units - can't divide
+    baked_by_batch = models.BooleanField(default=False)
     notes = models.TextField(blank=True, null=True)
-    # these small breads need to be baked in double quantity then split in 2 so target number cannot be odd
-    baked_by_two = models.BooleanField(default=False)
     display_priority = models.IntegerField(default=0)
     is_bread = models.BooleanField(default=False)
 
@@ -94,20 +95,19 @@ class Product(models.Model):
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         return round(weight / self.nb_units / 10) * 10
 
-    def get_base_product_and_coef(self):
-        product = self
-        coef = 1
-        if self.orig_product:
-            product = self.orig_product
-            coef = self.coef
-        return product, coef
 
-    def get_batch_ingredients(self):
-        "Eventually fetch ingredient list from base product"
-        product, coef = self.get_base_product_and_coef()
+    def get_batch_ingredients(self, direct=False, preparation=False, soaked=False):
+        "Eventually fetch batch ingredient list from base product"
+        # TODO handle preparation/soaked calls
+        if direct:
+            product = self
+        else:
+            product = self.orig_product or self
+        lines = []
         for line in product.raw_ingredients.all():
-            yield (line.ingredient, line.quantity * coef)
-
+            lines.append((line.ingredient, line.quantity * self.coef / self.nb_units))
+        return lines
+            
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
@@ -237,23 +237,28 @@ class DeliveryBatch(dict):
 
 class BakeryBatch(dict):
     def __init__(self):
-        self.water_key = "Eau"
-        self.small_breads = defaultdict(int)
-        self.nb_breads = 0
+        self.temp_products = defaultdict(int)
 
     def add_line(self, order_line):
-        self.add_product(order_line.product, order_line.quantity)
-        if order_line.product.is_bread:
-            self.nb_breads += order_line.quantity
+        self.temp_products[order_line.product] += order_line.quantity
+        self.sub_batches = defaultdict(dict)
+        self.nb_breads = 0
 
-    def add_product(self, product, line_quantity):
-        if product.baked_by_two:
-            self.small_breads[product] += line_quantity
-        base_product, _ = product.get_base_product_and_coef()
+    def finalize_product(self, product, line_quantity):
+        base_product = product.orig_product or product
+        if product.baked_by_batch and line_quantity % product.nb_units != 0:
+            # adjust quantities for products that need to be batch-baked
+            line_quantity += product.nb_units - (line_quantity % product.nb_units)
+        direct_ingredients = [(i, q * line_quantity) for i, q in product.get_batch_ingredients(direct=True)]
+        if direct_ingredients and product.orig_product:
+            # need sub-batch
+            self.sub_batches[base_product][product] = direct_ingredients
+        if product.is_bread:
+            self.nb_breads += line_quantity
         if base_product not in self:
             self[base_product] = {}
         if "ingredients" not in self[base_product]:
-            self[base_product]["ingredients"] = {self.water_key: 0}
+            self[base_product]["ingredients"] = {}
             self[base_product]["division"] = {}
         if product not in self[base_product]["division"]:
             self[base_product]["division"][product] = 0
@@ -262,27 +267,29 @@ class BakeryBatch(dict):
             ingredient_key = str(ingredient)
             if ingredient.soaking_ingredient:
                 ingredient_key += " (trempé)"
-            base_qty = line_quantity * ing_qty
-            quantity = base_qty / base_product.nb_units
-            if ingredient.soaking_ingredient:
-                quantity += base_qty / base_product.nb_units * ingredient.soaking_coef
-                self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] -= base_qty / base_product.nb_units * ingredient.soaking_coef
+            quantity = line_quantity * ing_qty
             if ingredient_key not in self[base_product]["ingredients"]:
                 self[base_product]["ingredients"][ingredient_key] = 0
-            self[base_product]["ingredients"][ingredient_key] += quantity
+            if not ingredient.soaking_ingredient:
+                self[base_product]["ingredients"][ingredient_key] += quantity
+            else:
+                soaking_qty = quantity * ingredient.soaking_coef
+                self[base_product]["ingredients"][ingredient_key] += quantity + soaking_qty
+                if str(ingredient.soaking_ingredient) not in self[base_product]["ingredients"]:
+                    self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] = 0
+                self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] -= soaking_qty
 
     def finalize(self):
-        for product in self.small_breads:
-            if self.small_breads[product] % 2 != 0:
-                self.add_product(product, 1)
-                self.nb_breads += 1
+        for product, qty in self.temp_products.items():
+            self.finalize_product(product, qty)
         for product in self:
+            self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
                 if ingredient in ("Sel", "Oeufs"):
                     self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient])
                 else:
                     self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient] / 10) * 10
-            self[product]["weight"] = sum([product.weight * qty for product, qty in self[product]["division"].items()])
+                self[product]["weight"] += self[product]["ingredients"][ingredient]
         new_dict = {key.get_short_recipe_name(): value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
             new_dict[base_product]["division"] = {str(product): qty for product, qty in new_dict[base_product]["division"].items()}
@@ -292,26 +299,26 @@ class BakeryBatch(dict):
 
 class PreparationBatch(dict):
     def __init__(self):
-        super().__init__()
         self["levain"] = {}
         self["trempage"] = {}
-        self.small_breads = defaultdict(int)
+        self.temp_products = defaultdict(int)
 
     def add_line(self, order_line):
-        self.add_product(order_line.product, order_line.quantity)
+        self.temp_products[order_line.product] += order_line.quantity
 
-    def add_product(self, product, line_quantity):
-        if product.baked_by_two:
-            self.small_breads[product] += line_quantity
+    def finalize_product(self, product, line_quantity):
+        if product.baked_by_batch and line_quantity % product.nb_units != 0:
+            # adjust quantities for products that need to be batch-baked
+            line_quantity += product.nb_units - (line_quantity % product.nb_units)
         for ingredient, ing_qty in product.get_batch_ingredients():
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0
-                self["levain"][ingredient.name] += ing_qty / product.nb_units * line_quantity
+                self["levain"][ingredient.name] += ing_qty * line_quantity
             elif ingredient.soaking_ingredient:
                 if ingredient.name not in self["trempage"]:
                     self["trempage"][ingredient.name] = {"dry": 0, "soaking_qty": 0}
-                quantity = ing_qty / product.nb_units * line_quantity
+                quantity = ing_qty * line_quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
                 self["trempage"][ingredient.name]["soaking_qty"] += quantity * ingredient.soaking_coef
                 self["trempage"][ingredient.name]["soaking_ingredient"] = str(ingredient.soaking_ingredient)
@@ -465,9 +472,8 @@ class PreparationBatch(dict):
             ]
 
     def finalize(self):
-        for product in self.small_breads:
-            if self.small_breads[product] % 2 != 0:
-                self.add_product(product, 1)
+        for product, qty in self.temp_products.items():
+            self.finalize_product(product, qty)
         for ingredient in self["trempage"]:
             self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
             self["trempage"][ingredient]["soaking_qty"] = round(self["trempage"][ingredient]["soaking_qty"] / 10) * 10

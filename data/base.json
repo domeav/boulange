@@ -304,8 +304,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 60,
     "is_bread": true
   }
@@ -321,8 +321,8 @@
     "orig_product": 1,
     "coef": 2.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -338,8 +338,8 @@
     "orig_product": 1,
     "coef": 0.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -355,8 +355,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 80,
     "is_bread": true
   }
@@ -372,8 +372,8 @@
     "orig_product": 4,
     "coef": 2.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -389,8 +389,8 @@
     "orig_product": 4,
     "coef": 0.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -406,8 +406,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 70,
     "is_bread": true
   }
@@ -423,8 +423,8 @@
     "orig_product": 7,
     "coef": 2.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -438,10 +438,10 @@
     "price": "3.50",
     "active": true,
     "orig_product": 7,
-    "coef": 0.5,
-    "nb_units": 1,
+    "coef": 1.0,
+    "nb_units": 2,
+    "baked_by_batch": true,
     "notes": "",
-    "baked_by_two": true,
     "display_priority": 0,
     "is_bread": true
   }
@@ -457,8 +457,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 100,
     "is_bread": true
   }
@@ -472,10 +472,10 @@
     "price": "3.50",
     "active": true,
     "orig_product": 10,
-    "coef": 0.5,
-    "nb_units": 1,
+    "coef": 1.0,
+    "nb_units": 2,
+    "baked_by_batch": true,
     "notes": "",
-    "baked_by_two": true,
     "display_priority": 0,
     "is_bread": true
   }
@@ -491,8 +491,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 90,
     "is_bread": true
   }
@@ -506,10 +506,10 @@
     "price": "2.70",
     "active": true,
     "orig_product": 12,
-    "coef": 0.5,
-    "nb_units": 1,
+    "coef": 1.0,
+    "nb_units": 2,
+    "baked_by_batch": true,
     "notes": "",
-    "baked_by_two": true,
     "display_priority": 0,
     "is_bread": true
   }
@@ -525,8 +525,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 30,
     "is_bread": false
   }
@@ -542,8 +542,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 20,
     "is_bread": false
   }
@@ -559,8 +559,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 12,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -576,8 +576,8 @@
     "orig_product": null,
     "coef": 0.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -593,8 +593,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 15,
+    "baked_by_batch": false,
     "notes": null,
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -610,8 +610,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": null,
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -627,8 +627,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": null,
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -644,8 +644,8 @@
     "orig_product": 20,
     "coef": 5.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": null,
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -661,8 +661,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 70,
     "is_bread": true
   }
@@ -678,8 +678,8 @@
     "orig_product": 22,
     "coef": 0.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -695,8 +695,8 @@
     "orig_product": 4,
     "coef": 1.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -712,8 +712,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 40,
     "is_bread": false
   }
@@ -729,8 +729,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -746,8 +746,8 @@
     "orig_product": 26,
     "coef": 2.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -763,8 +763,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 40,
     "is_bread": false
   }
@@ -780,8 +780,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -797,8 +797,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -812,10 +812,10 @@
     "price": "4.00",
     "active": true,
     "orig_product": 28,
-    "coef": 0.5,
-    "nb_units": 1,
+    "coef": 1.0,
+    "nb_units": 2,
+    "baked_by_batch": true,
     "notes": "",
-    "baked_by_two": true,
     "display_priority": 0,
     "is_bread": false
   }
@@ -831,8 +831,8 @@
     "orig_product": 22,
     "coef": 2.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -848,8 +848,8 @@
     "orig_product": 29,
     "coef": 10.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -865,8 +865,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -882,8 +882,8 @@
     "orig_product": 34,
     "coef": 5.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -899,8 +899,8 @@
     "orig_product": 34,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -916,8 +916,8 @@
     "orig_product": 25,
     "coef": 2.5,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 8,
     "is_bread": false
   }
@@ -933,8 +933,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 2,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -950,8 +950,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 10,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -967,8 +967,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -984,8 +984,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -1001,8 +1001,8 @@
     "orig_product": null,
     "coef": 1.0,
     "nb_units": 1,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": true
   }
@@ -1018,8 +1018,8 @@
     "orig_product": 1,
     "coef": 2.5,
     "nb_units": 24,
+    "baked_by_batch": false,
     "notes": "",
-    "baked_by_two": false,
     "display_priority": 0,
     "is_bread": false
   }
@@ -1994,29 +1994,6 @@
     "product": 43,
     "ingredient": 10,
     "quantity": 150.0
-  }
-},
-{
-  "model": "boulange.customer",
-  "pk": 1,
-  "fields": {
-    "password": "pbkdf2_sha256$870000$ROR54vQ85JgRbTrwcY1a7p$F572CBv9GaM6KBh9o5fF6OSLhglCq455S77qWUXZecY=",
-    "last_login": "2025-02-12T21:56:12.727Z",
-    "is_superuser": true,
-    "username": "dom",
-    "first_name": "",
-    "last_name": "",
-    "email": "dom.eav@franceimpro.net",
-    "is_staff": true,
-    "is_active": true,
-    "date_joined": "2025-01-12T07:40:02.753Z",
-    "display_name": "dom",
-    "is_professional": false,
-    "pro_discount_percentage": 5.0,
-    "address": null,
-    "notes": null,
-    "groups": [],
-    "user_permissions": []
   }
 }
 ]

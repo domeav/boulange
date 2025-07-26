@@ -24,6 +24,7 @@
     <a target="_blank" href="{% url 'boulange:actions_print' 'boulange' target_date.year target_date.month target_date.day %}">🖶</a>
   </h2>
   Nb de pains cuits : {{ actions.bakery.nb_breads }}
+  {{ actions.bakery.sub_batches }}
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for recipe, data in actions.bakery.items %}
     <div class="col mt-2">
