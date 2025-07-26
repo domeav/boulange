@@ -14,11 +14,10 @@
         <ul class="list-group list-group-flush">
         {% if product.orig_product %}
           <li class="list-group-item">Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}</li>
-        {% else %}
+        {% endif %}
         {% for line in product.raw_ingredients.all %}
           <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
         {% endfor %}
-        {% endif %}
       </ul>
         <p class="card-text">
       Prix de vente : {{ product.price|floatformat:2 }}€

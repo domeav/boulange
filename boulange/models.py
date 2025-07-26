@@ -60,27 +60,39 @@ class Product(models.Model):
     @property
     def cost_price(self):
         price = 0
-        product = self.orig_product or self
-        for line in product.raw_ingredients.all():
+        for line in self.raw_ingredients.all():
             unit_divisor = 1
             if line.ingredient.unit == "g":
                 unit_divisor = 1000
             price += Decimal(line.quantity) * line.ingredient.per_unit_price / unit_divisor
+        if self.orig_product:
+            for line in self.orig_product.raw_ingredients.all():
+                unit_divisor = 1
+                if line.ingredient.unit == "g":
+                    unit_divisor = 1000
+                price += Decimal(line.quantity) * Decimal(self.coef) * line.ingredient.per_unit_price / unit_divisor
 
-        return round(price * Decimal(self.coef) / Decimal(self.nb_units), 2)
+        return round(price / Decimal(self.nb_units), 2)
 
     @property
     def weight(self):
         weight = 0
-        product = self.orig_product or self
-        for line in product.raw_ingredients.all():
+        for line in self.raw_ingredients.all():
             if line.ingredient.unit == "g":
                 weight += line.quantity
             elif line.ingredient.name == "Oeufs":
                 weight += line.quantity * 60
             else:
                 raise ValueError(f"Can't add weight for {line.ingredient.name}!")
-        return round(weight * self.coef / self.nb_units / 10) * 10
+        if self.orig_product:
+            for line in self.orig_product.raw_ingredients.all():
+                if line.ingredient.unit == "g":
+                    weight += line.quantity * self.coef
+                elif line.ingredient.name == "Oeufs":
+                    weight += line.quantity * 60 * self.coef
+                else:
+                    raise ValueError(f"Can't add weight for {line.ingredient.name}!")
+        return round(weight / self.nb_units / 10) * 10
 
     def get_base_product_and_coef(self):
         product = self
@@ -90,7 +102,7 @@ class Product(models.Model):
             coef = self.coef
         return product, coef
 
-    def get_ingredients(self):
+    def get_batch_ingredients(self):
         "Eventually fetch ingredient list from base product"
         product, coef = self.get_base_product_and_coef()
         for line in product.raw_ingredients.all():
@@ -246,7 +258,7 @@ class BakeryBatch(dict):
         if product not in self[base_product]["division"]:
             self[base_product]["division"][product] = 0
         self[base_product]["division"][product] += line_quantity
-        for ingredient, ing_qty in product.get_ingredients():
+        for ingredient, ing_qty in product.get_batch_ingredients():
             ingredient_key = str(ingredient)
             if ingredient.soaking_ingredient:
                 ingredient_key += " (trempé)"
@@ -291,7 +303,7 @@ class PreparationBatch(dict):
     def add_product(self, product, line_quantity):
         if product.baked_by_two:
             self.small_breads[product] += line_quantity
-        for ingredient, ing_qty in product.get_ingredients():
+        for ingredient, ing_qty in product.get_batch_ingredients():
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0

@@ -1,12 +1,20 @@
 [
 {
+  "model": "boulange.settings",
+  "pk": 1,
+  "fields": {
+    "name": "Nb steps levain",
+    "value": "3"
+  }
+},
+{
   "model": "boulange.ingredient",
   "pk": 1,
   "fields": {
     "name": "Beurre",
     "unit": "g",
-    "per_unit_price": "13.000",
-
+    "per_unit_price": "11.340",
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -17,7 +25,7 @@
     "name": "Eau",
     "unit": "g",
     "per_unit_price": "0.300",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -28,7 +36,7 @@
     "name": "Farine blé",
     "unit": "g",
     "per_unit_price": "1.430",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -39,7 +47,7 @@
     "name": "Farine sarrasin",
     "unit": "g",
     "per_unit_price": "2.200",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -50,7 +58,7 @@
     "name": "Farine seigle",
     "unit": "g",
     "per_unit_price": "1.600",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -83,7 +91,7 @@
     "name": "Herbes de provence",
     "unit": "g",
     "per_unit_price": "20.000",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -94,7 +102,7 @@
     "name": "Huile",
     "unit": "g",
     "per_unit_price": "4.350",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -105,7 +113,7 @@
     "name": "Huile olive",
     "unit": "g",
     "per_unit_price": "4.350",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -116,7 +124,7 @@
     "name": "Lait",
     "unit": "g",
     "per_unit_price": "1.100",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -127,7 +135,7 @@
     "name": "Levain froment",
     "unit": "g",
     "per_unit_price": "1.430",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -138,7 +146,7 @@
     "name": "Levain sarrasin",
     "unit": "g",
     "per_unit_price": "2.200",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -149,8 +157,8 @@
     "name": "Noisettes",
     "unit": "g",
     "per_unit_price": "12.500",
-
-    "soaking_coef": 1.0
+    "soaking_ingredient": 2,
+    "soaking_coef": 0.5
   }
 },
 {
@@ -160,8 +168,8 @@
     "name": "Noix",
     "unit": "g",
     "per_unit_price": "18.000",
-
-    "soaking_coef": 1.0
+    "soaking_ingredient": 2,
+    "soaking_coef": 0.5
   }
 },
 {
@@ -171,7 +179,7 @@
     "name": "Oeufs",
     "unit": "oeufs",
     "per_unit_price": "0.400",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -182,7 +190,7 @@
     "name": "Pruneaux",
     "unit": "g",
     "per_unit_price": "13.000",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -193,7 +201,7 @@
     "name": "Pépites de chocolat",
     "unit": "g",
     "per_unit_price": "9.400",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -215,7 +223,7 @@
     "name": "Sel",
     "unit": "g",
     "per_unit_price": "1.140",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -226,7 +234,7 @@
     "name": "Sucre",
     "unit": "g",
     "per_unit_price": "1.920",
-
+    "soaking_ingredient": null,
     "soaking_coef": 1.0
   }
 },
@@ -242,6 +250,50 @@
   }
 },
 {
+  "model": "boulange.ingredient",
+  "pk": 24,
+  "fields": {
+    "name": "Farine de Petit Epeautre",
+    "unit": "g",
+    "per_unit_price": "2.200",
+    "soaking_ingredient": null,
+    "soaking_coef": 1.0
+  }
+},
+{
+  "model": "boulange.ingredient",
+  "pk": 25,
+  "fields": {
+    "name": "Levain de petit epeautre",
+    "unit": "g",
+    "per_unit_price": "3.000",
+    "soaking_ingredient": null,
+    "soaking_coef": 1.0
+  }
+},
+{
+  "model": "boulange.ingredient",
+  "pk": 26,
+  "fields": {
+    "name": "Tomates séchées",
+    "unit": "g",
+    "per_unit_price": "13.250",
+    "soaking_ingredient": 10,
+    "soaking_coef": 1.5
+  }
+},
+{
+  "model": "boulange.ingredient",
+  "pk": 27,
+  "fields": {
+    "name": "Noisettes caramélisées",
+    "unit": "g",
+    "per_unit_price": "15.000",
+    "soaking_ingredient": null,
+    "soaking_coef": 1.0
+  }
+},
+{
   "model": "boulange.product",
   "pk": 1,
   "fields": {
@@ -251,7 +303,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 60,
+    "is_bread": true
   }
 },
 {
@@ -264,7 +320,11 @@
     "active": true,
     "orig_product": 1,
     "coef": 2.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -277,20 +337,28 @@
     "active": true,
     "orig_product": 1,
     "coef": 0.5,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
   "model": "boulange.product",
   "pk": 4,
   "fields": {
-    "name": "Semi-complet Lin (1 kg)",
+    "name": "Semi-complet lin (1 kg)",
     "ref": "GL",
     "price": "6.50",
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 80,
+    "is_bread": true
   }
 },
 {
@@ -303,7 +371,11 @@
     "active": true,
     "orig_product": 4,
     "coef": 2.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -316,20 +388,28 @@
     "active": true,
     "orig_product": 4,
     "coef": 0.5,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
   "model": "boulange.product",
   "pk": 7,
   "fields": {
-    "name": "Semi-complet Kasha (1 kg)",
+    "name": "Semi-complet kasha (1 kg)",
     "ref": "GK",
     "price": "6.50",
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 70,
+    "is_bread": true
   }
 },
 {
@@ -342,7 +422,11 @@
     "active": true,
     "orig_product": 7,
     "coef": 2.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -355,7 +439,11 @@
     "active": true,
     "orig_product": 7,
     "coef": 0.5,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": true,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -368,7 +456,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 100,
+    "is_bread": true
   }
 },
 {
@@ -382,7 +474,10 @@
     "orig_product": 10,
     "coef": 0.5,
     "nb_units": 1,
-    "baked_by_two": true
+    "notes": "",
+    "baked_by_two": true,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -395,7 +490,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 90,
+    "is_bread": true
   }
 },
 {
@@ -409,7 +508,10 @@
     "orig_product": 12,
     "coef": 0.5,
     "nb_units": 1,
-    "baked_by_two": true
+    "notes": "",
+    "baked_by_two": true,
+    "display_priority": 0,
+    "is_bread": true
   }
 },
 {
@@ -422,7 +524,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 30,
+    "is_bread": false
   }
 },
 {
@@ -435,7 +541,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 20,
+    "is_bread": false
   }
 },
 {
@@ -444,11 +554,15 @@
   "fields": {
     "name": "Cookie",
     "ref": "COOKIE",
-    "price": "2.00",
+    "price": "2.20",
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 12
+    "nb_units": 12,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -460,8 +574,12 @@
     "price": "12.00",
     "active": true,
     "orig_product": null,
-    "coef": 1.0,
-    "nb_units": 1
+    "coef": 0.5,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -474,7 +592,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 15
+    "nb_units": 15,
+    "notes": null,
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -487,7 +609,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": null,
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -500,7 +626,11 @@
     "active": true,
     "orig_product": null,
     "coef": 1.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": null,
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -513,7 +643,385 @@
     "active": true,
     "orig_product": 20,
     "coef": 5.0,
-    "nb_units": 1
+    "nb_units": 1,
+    "notes": null,
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 22,
+  "fields": {
+    "name": "Semi-complet noix (1kg)",
+    "ref": "GNX",
+    "price": "9.50",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 70,
+    "is_bread": true
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 23,
+  "fields": {
+    "name": "Semi-complet noix (500g)",
+    "ref": "PNX",
+    "price": "5.00",
+    "active": true,
+    "orig_product": 22,
+    "coef": 0.5,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 24,
+  "fields": {
+    "name": "Semi-complet lin (1,5kg moulé)",
+    "ref": "GL1,5",
+    "price": "10.00",
+    "active": true,
+    "orig_product": 4,
+    "coef": 1.5,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 25,
+  "fields": {
+    "name": "PAIN DE MIE 600G",
+    "ref": "PAINDEMIE600G",
+    "price": "5.30",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 40,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 26,
+  "fields": {
+    "name": "LENTILLESVERTES10KG",
+    "ref": "LV10KG",
+    "price": "54.00",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 27,
+  "fields": {
+    "name": "LENTILLESVERTES20KG",
+    "ref": "LV20KG",
+    "price": "108.00",
+    "active": true,
+    "orig_product": 26,
+    "coef": 2.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 28,
+  "fields": {
+    "name": "Pain Petit Epeautre 800g",
+    "ref": "GPE",
+    "price": "8.00",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 40,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 29,
+  "fields": {
+    "name": "FF1KG",
+    "ref": "FARINE FROMENT 1KG",
+    "price": "2.70",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 30,
+  "fields": {
+    "name": "FF5KG",
+    "ref": "FARINE FROMENT 5KG",
+    "price": "12.50",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 31,
+  "fields": {
+    "name": "Pain Petit Epeautre 400g",
+    "ref": "PPE",
+    "price": "4.00",
+    "active": true,
+    "orig_product": 28,
+    "coef": 0.5,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": true,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 32,
+  "fields": {
+    "name": "Semi-complet noix (2kg)",
+    "ref": "TGNX",
+    "price": "19.00",
+    "active": true,
+    "orig_product": 22,
+    "coef": 2.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 33,
+  "fields": {
+    "name": "FF10KG",
+    "ref": "FARINE FROMENT 10kg",
+    "price": "25.00",
+    "active": true,
+    "orig_product": 29,
+    "coef": 10.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 34,
+  "fields": {
+    "name": "FBN1KG",
+    "ref": "FARINE BLE NOIR 1KG",
+    "price": "5.00",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 35,
+  "fields": {
+    "name": "FBN5KG",
+    "ref": "FARINE BLE NOIR 5KG",
+    "price": "23.00",
+    "active": true,
+    "orig_product": 34,
+    "coef": 5.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 36,
+  "fields": {
+    "name": "FBN10KG",
+    "ref": "FARINE BLE NOIR 10KG",
+    "price": "46.00",
+    "active": true,
+    "orig_product": 34,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 37,
+  "fields": {
+    "name": "GRAND PAIN DE MIE",
+    "ref": "GPDM",
+    "price": "13.25",
+    "active": true,
+    "orig_product": 25,
+    "coef": 2.5,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 8,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 38,
+  "fields": {
+    "name": "Brioche au beurre",
+    "ref": "BB400g",
+    "price": "5.60",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 2,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 39,
+  "fields": {
+    "name": "KouignAmanPetit",
+    "ref": "KA petit",
+    "price": "3.50",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 10,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 40,
+  "fields": {
+    "name": "SARRASINDECORTIQUE",
+    "ref": "SARDEC",
+    "price": "7.50",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 41,
+  "fields": {
+    "name": "Lentilles Vertes 1KG",
+    "ref": "LV1KG",
+    "price": "5.83",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 42,
+  "fields": {
+    "name": "Brioché choco/noisettes caramélisées",
+    "ref": "BCN",
+    "price": "5.00",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": true
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 43,
+  "fields": {
+    "name": "Focaccia (part)",
+    "ref": "FOC",
+    "price": "2.20",
+    "active": true,
+    "orig_product": 1,
+    "coef": 2.5,
+    "nb_units": 24,
+    "notes": "",
+    "baked_by_two": false,
+    "display_priority": 0,
+    "is_bread": false
   }
 },
 {
@@ -531,7 +1039,7 @@
   "fields": {
     "product": 1,
     "ingredient": 2,
-    "quantity": 414.0
+    "quantity": 446.0
   }
 },
 {
@@ -549,7 +1057,7 @@
   "fields": {
     "product": 1,
     "ingredient": 21,
-    "quantity": 11.0
+    "quantity": 12.75
   }
 },
 {
@@ -567,7 +1075,7 @@
   "fields": {
     "product": 4,
     "ingredient": 2,
-    "quantity": 409.0
+    "quantity": 453.0
   }
 },
 {
@@ -585,7 +1093,7 @@
   "fields": {
     "product": 4,
     "ingredient": 21,
-    "quantity": 11.0
+    "quantity": 11.7
   }
 },
 {
@@ -612,7 +1120,7 @@
   "fields": {
     "product": 7,
     "ingredient": 2,
-    "quantity": 389.0
+    "quantity": 449.0
   }
 },
 {
@@ -630,7 +1138,7 @@
   "fields": {
     "product": 7,
     "ingredient": 21,
-    "quantity": 11.0
+    "quantity": 11.98
   }
 },
 {
@@ -648,7 +1156,7 @@
   "fields": {
     "product": 10,
     "ingredient": 4,
-    "quantity": 439.2
+    "quantity": 455.0
   }
 },
 {
@@ -657,7 +1165,7 @@
   "fields": {
     "product": 10,
     "ingredient": 2,
-    "quantity": 439.2
+    "quantity": 423.0
   }
 },
 {
@@ -666,7 +1174,7 @@
   "fields": {
     "product": 10,
     "ingredient": 14,
-    "quantity": 132.0
+    "quantity": 136.0
   }
 },
 {
@@ -675,7 +1183,7 @@
   "fields": {
     "product": 10,
     "ingredient": 21,
-    "quantity": 8.8
+    "quantity": 9.1
   }
 },
 {
@@ -702,7 +1210,7 @@
   "fields": {
     "product": 12,
     "ingredient": 2,
-    "quantity": 342.4
+    "quantity": 368.0
   }
 },
 {
@@ -1107,7 +1615,7 @@
   "fields": {
     "product": 14,
     "ingredient": 23,
-    "quantity": 13.455
+    "quantity": 10.0
   }
 },
 {
@@ -1116,7 +1624,7 @@
   "fields": {
     "product": 14,
     "ingredient": 2,
-    "quantity": 181.55
+    "quantity": 160.0
   }
 },
 {
@@ -1138,41 +1646,375 @@
   }
 },
 {
-  "model": "boulange.customer",
-  "pk": 1,
+  "model": "boulange.productline",
+  "pk": 72,
   "fields": {
-    "password": "pbkdf2_sha256$870000$ROR54vQ85JgRbTrwcY1a7p$F572CBv9GaM6KBh9o5fF6OSLhglCq455S77qWUXZecY=",
-    "last_login": null,
-    "is_superuser": true,
-    "username": "dom",
-    "display_name": "dom",
-    "email": "dom.eav@franceimpro.net",
-    "is_staff": true,
-    "is_active": true,
-    "date_joined": "2025-01-12T07:40:02.753Z",
-    "is_professional": false,
-    "pro_discount_percentage": 5.0,
-    "address": null,
-    "groups": [],
-    "user_permissions": []
+    "product": 22,
+    "ingredient": 3,
+    "quantity": 599.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 73,
+  "fields": {
+    "product": 22,
+    "ingredient": 2,
+    "quantity": 409.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 74,
+  "fields": {
+    "product": 22,
+    "ingredient": 13,
+    "quantity": 168.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 75,
+  "fields": {
+    "product": 22,
+    "ingredient": 21,
+    "quantity": 11.9
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 76,
+  "fields": {
+    "product": 22,
+    "ingredient": 16,
+    "quantity": 78.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 77,
+  "fields": {
+    "product": 25,
+    "ingredient": 3,
+    "quantity": 345.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 78,
+  "fields": {
+    "product": 25,
+    "ingredient": 12,
+    "quantity": 241.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 79,
+  "fields": {
+    "product": 25,
+    "ingredient": 9,
+    "quantity": 23.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 80,
+  "fields": {
+    "product": 25,
+    "ingredient": 13,
+    "quantity": 115.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 81,
+  "fields": {
+    "product": 25,
+    "ingredient": 21,
+    "quantity": 7.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 82,
+  "fields": {
+    "product": 25,
+    "ingredient": 22,
+    "quantity": 16.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 83,
+  "fields": {
+    "product": 28,
+    "ingredient": 24,
+    "quantity": 500.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 84,
+  "fields": {
+    "product": 28,
+    "ingredient": 2,
+    "quantity": 394.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 85,
+  "fields": {
+    "product": 28,
+    "ingredient": 21,
+    "quantity": 9.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 86,
+  "fields": {
+    "product": 28,
+    "ingredient": 25,
+    "quantity": 110.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 87,
+  "fields": {
+    "product": 38,
+    "ingredient": 13,
+    "quantity": 100.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 88,
+  "fields": {
+    "product": 38,
+    "ingredient": 3,
+    "quantity": 500.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 89,
+  "fields": {
+    "product": 38,
+    "ingredient": 22,
+    "quantity": 100.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 90,
+  "fields": {
+    "product": 38,
+    "ingredient": 17,
+    "quantity": 3.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 91,
+  "fields": {
+    "product": 38,
+    "ingredient": 12,
+    "quantity": 95.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 92,
+  "fields": {
+    "product": 38,
+    "ingredient": 21,
+    "quantity": 5.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 93,
+  "fields": {
+    "product": 38,
+    "ingredient": 1,
+    "quantity": 125.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 94,
+  "fields": {
+    "product": 39,
+    "ingredient": 1,
+    "quantity": 500.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 95,
+  "fields": {
+    "product": 39,
+    "ingredient": 22,
+    "quantity": 500.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 96,
+  "fields": {
+    "product": 39,
+    "ingredient": 3,
+    "quantity": 637.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 97,
+  "fields": {
+    "product": 39,
+    "ingredient": 2,
+    "quantity": 414.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 98,
+  "fields": {
+    "product": 39,
+    "ingredient": 13,
+    "quantity": 159.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 99,
+  "fields": {
+    "product": 39,
+    "ingredient": 21,
+    "quantity": 12.75
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 100,
+  "fields": {
+    "product": 42,
+    "ingredient": 2,
+    "quantity": 134.55
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 101,
+  "fields": {
+    "product": 42,
+    "ingredient": 3,
+    "quantity": 246.5
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 102,
+  "fields": {
+    "product": 42,
+    "ingredient": 23,
+    "quantity": 13.455
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 103,
+  "fields": {
+    "product": 42,
+    "ingredient": 9,
+    "quantity": 24.5
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 104,
+  "fields": {
+    "product": 42,
+    "ingredient": 13,
+    "quantity": 128.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 105,
+  "fields": {
+    "product": 42,
+    "ingredient": 19,
+    "quantity": 25.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 106,
+  "fields": {
+    "product": 42,
+    "ingredient": 21,
+    "quantity": 3.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 107,
+  "fields": {
+    "product": 42,
+    "ingredient": 22,
+    "quantity": 34.5
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 108,
+  "fields": {
+    "product": 42,
+    "ingredient": 27,
+    "quantity": 50.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 109,
+  "fields": {
+    "product": 43,
+    "ingredient": 26,
+    "quantity": 100.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 110,
+  "fields": {
+    "product": 43,
+    "ingredient": 10,
+    "quantity": 150.0
   }
 },
 {
   "model": "boulange.customer",
-  "pk": 2,
+  "pk": 1,
   "fields": {
-    "password": "pbkdf2_sha256$870000$skbTJvSJZw0LFs38XU31mH$KDXsZUwTzw+rdALh1pCuUCRiNeFzQskUUH8UZt6wWVE=",
-    "last_login": null,
-    "is_superuser": false,
-    "username": "admin",
-    "display_name": "cécile & sarah",
-    "email": "lafermebioduresto@gmail.com",
-    "is_staff": false,
+    "password": "pbkdf2_sha256$870000$ROR54vQ85JgRbTrwcY1a7p$F572CBv9GaM6KBh9o5fF6OSLhglCq455S77qWUXZecY=",
+    "last_login": "2025-02-12T21:56:12.727Z",
+    "is_superuser": true,
+    "username": "dom",
+    "first_name": "",
+    "last_name": "",
+    "email": "dom.eav@franceimpro.net",
+    "is_staff": true,
     "is_active": true,
-    "date_joined": "2025-01-12T07:43:46.208Z",
+    "date_joined": "2025-01-12T07:40:02.753Z",
+    "display_name": "dom",
     "is_professional": false,
     "pro_discount_percentage": 5.0,
     "address": null,
+    "notes": null,
     "groups": [],
     "user_permissions": []
   }
