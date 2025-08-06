@@ -158,9 +158,9 @@ def check_delivery_dates_consistency(request):
             if dd.order_set.count() == 0:
                 dd.delete()
             else:
-                if 'wrong_dow' not in annoying:
-                    annoying['wrong_dow'] = []
-                annoying['wrong_dow'].append(dd)
+                if "wrong_dow" not in annoying:
+                    annoying["wrong_dow"] = []
+                annoying["wrong_dow"].append(dd)
     for key, dds in dds_by_weeklydelivery_and_date.items():
         if len(dds) > 1:
             annoying[key] = dds

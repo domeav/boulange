@@ -2,10 +2,20 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.test import TestCase, Client
+from django.test import Client, TestCase
 from rest_framework.test import APIClient
 
 from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDelivery
+
+
+class ExtendedTestCase(TestCase):
+    def assertAlmostEqual(self, o1, o2, msg=None, places=3):
+        if isinstance(o1, dict) and isinstance(o2, dict):
+            self.assertEqual(o1.keys(), o2.keys())
+            for key, value in o1.items():
+                self.assertAlmostEqual(o1[key], o2[key], msg=msg, places=places)
+        else:
+            super().assertAlmostEqual(o1, o2, msg=msg, places=places)
 
 
 def populate():
@@ -47,7 +57,7 @@ def populate():
     }
 
 
-class ActionsTests(TestCase):
+class ActionsTests(ExtendedTestCase):
     fixtures = ["data/base.json"]
     next_monday = date.today() + timedelta(days=7 - date.today().weekday())
 
@@ -61,7 +71,8 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
+        gk = Product.objects.get(ref="GK")
+        line = OrderLine(order=order, product=(gk), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
         actions.finalize()
@@ -76,26 +87,26 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 170},
-                "trempage": {"Graines kasha": {"dry": 80, "soaking_qty": 80, "soaking_ingredient": "Eau"}},
+                "levain": {"Levain froment": 168.0},
+                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": "Eau"}},
             },
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
-        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet kasha (1 kg)/GK": 1}})
+        self.assertEqual(actions["delivery"], {delivery_date: {gk: 1}})
         self.assertEqual(
             actions["bakery"],
             {
-                "Semi-complet kasha/GK": {
+                gk: {
                     "ingredients": {
-                        "Eau": 370,
-                        "Farine blé": 600,
-                        "Graines kasha (trempé)": 160,
-                        "Levain froment": 170,
-                        "Sel": 12,
+                        "Eau": 371.0,
+                        "Farine blé": 599.0,
+                        "Graines kasha (trempé)": 156.0,
+                        "Levain froment": 168.0,
+                        "Sel": 11.98,
                     },
-                    "division": {"Semi-complet kasha (1 kg)/GK": 1},
-                    "weight": 1312,
+                    "division": {gk: 1},
+                    "weight": 1305.98,
                 }
             },
         )
@@ -109,7 +120,8 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=1)
+        gk = Product.objects.get(ref="GK")
+        line = OrderLine(order=order, product=(gk), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday)
         actions.finalize()
@@ -118,8 +130,8 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 170},
-                "trempage": {"Graines kasha": {"dry": 80, "soaking_qty": 80, "soaking_ingredient": "Eau"}},
+                "levain": {"Levain froment": 168.0},
+                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": "Eau"}},
             },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
@@ -128,18 +140,18 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["bakery"],
             {
-                "Semi-complet kasha/GK": {
+                gk: {
                     "ingredients": {
-                        "Eau": 370,
-                        "Farine blé": 600,
-                        "Graines kasha (trempé)": 160,
-                        "Levain froment": 170,
-                        "Sel": 12,
+                        "Eau": 371.0,
+                        "Farine blé": 599.0,
+                        "Graines kasha (trempé)": 156.0,
+                        "Levain froment": 168.0,
+                        "Sel": 11.98,
                     },
                     "division": {
-                        "Semi-complet kasha (1 kg)/GK": 1,
+                        gk: 1,
                     },
-                    "weight": 1312,
+                    "weight": 1305.98,
                 }
             },
         )
@@ -147,7 +159,7 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         actions = order.get_actions(self.next_monday + timedelta(2))
         actions.finalize()
-        self.assertEqual(actions["delivery"], {delivery_date: {"Semi-complet kasha (1 kg)/GK": 1}})
+        self.assertEqual(actions["delivery"], {delivery_date: {gk: 1}})
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -159,8 +171,12 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        OrderLine(order=order, product=(Product.objects.get(ref="PSa")), quantity=5).save()
-        OrderLine(order=order, product=(Product.objects.get(ref="PSe")), quantity=3).save()
+        gsa = Product.objects.get(ref="GSa")
+        gse = Product.objects.get(ref="GSe")
+        psa = Product.objects.get(ref="PSa")
+        pse = Product.objects.get(ref="PSe")
+        OrderLine(order=order, product=(psa), quantity=5).save()
+        OrderLine(order=order, product=(pse), quantity=3).save()
 
         actions = order.get_actions(self.next_monday - timedelta(2))
         actions.finalize()
@@ -174,19 +190,19 @@ class ActionsTests(TestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"levain": {"Levain sarrasin": 410, "Levain froment": 290}, "trempage": {}},
+            {"levain": {"Levain sarrasin": 408.0, "Levain froment": 294.4}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
         self.assertEqual(
             actions["delivery"],
-            {delivery_date: {"Sarrasin 100% (400 g)/PSa": 5, "Seigle 70% (400 g)/PSe": 3}},
+            {delivery_date: {psa: 5, pse: 3}},
         )
-        self.assertEqual(
+        self.assertAlmostEqual(
             actions["bakery"],
             {
-                "Sarrasin 100%/GSa": {"ingredients": {"Eau": 1270, "Farine sarrasin": 1360, "Levain sarrasin": 410, "Sel": 27}, "division": {"Sarrasin 100% (400 g)/PSa": 6}, "weight": 3067},
-                "Seigle 70%/GSe": {"ingredients": {"Eau": 740, "Farine blé": 320, "Farine seigle": 740, "Levain froment": 290, "Sel": 19}, "division": {"Seigle 70% (400 g)/PSe": 4}, "weight": 2109},
+                gsa: {"ingredients": {"Eau": 1269.0, "Farine sarrasin": 1365.0, "Levain sarrasin": 408.0, "Sel": 27.30}, "division": {psa: 6}, "weight": 3069.3},
+                gse: {"ingredients": {"Eau": 736.0, "Farine blé": 315.2, "Farine seigle": 737.6, "Levain froment": 294.4, "Sel": 19.2}, "division": {pse: 4}, "weight": 2102.4},
             },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -199,9 +215,12 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        OrderLine(order=order, product=(Product.objects.get(ref="GK")), quantity=4).save()
-        OrderLine(order=order, product=(Product.objects.get(ref="TGK")), quantity=2).save()
-        OrderLine(order=order, product=(Product.objects.get(ref="PK")), quantity=4).save()
+        gk = Product.objects.get(ref="GK")
+        tgk = Product.objects.get(ref="TGK")
+        pk = Product.objects.get(ref="PK")
+        OrderLine(order=order, product=(gk), quantity=4).save()
+        OrderLine(order=order, product=(tgk), quantity=2).save()
+        OrderLine(order=order, product=(pk), quantity=4).save()
 
         actions = order.get_actions(self.next_monday - timedelta(2))
         actions.finalize()
@@ -226,25 +245,25 @@ class ActionsTests(TestCase):
             actions["delivery"],
             {
                 delivery_date: {
-                    "Semi-complet kasha (1 kg)/GK": 4,
-                    "Semi-complet kasha (2 kg)/TGK": 2,
-                    "Semi-complet kasha (500 g)/PK": 4,
+                    gk: 4,
+                    tgk: 2,
+                    pk: 4,
                 }
             },
         )
-        self.assertEqual(
+        self.assertAlmostEqual(
             actions["bakery"],
             {
-                "Semi-complet kasha/GK": {
+                gk: {
                     "ingredients": {
-                        "Eau": 3710,
-                        "Farine blé": 5990,
-                        "Graines kasha (trempé)": 1560,
-                        "Levain froment": 1680,
-                        "Sel": 120,
+                        "Eau": 3710.0,
+                        "Farine blé": 5990.0,
+                        "Graines kasha (trempé)": 1560.0,
+                        "Levain froment": 1680.0,
+                        "Sel": 119.80,
                     },
-                    "division": {"Semi-complet kasha (1 kg)/GK": 4, "Semi-complet kasha (2 kg)/TGK": 2, "Semi-complet kasha (500 g)/PK": 4},
-                    "weight": 13060,
+                    "division": {gk: 4, tgk: 2, pk: 4},
+                    "weight": 13059.8,
                 }
             },
         )
@@ -258,7 +277,8 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(order=order, product=(Product.objects.get(ref="BR")), quantity=1)
+        br = Product.objects.get(ref="BR")
+        line = OrderLine(order=order, product=(br), quantity=1)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
         actions.finalize()
@@ -273,37 +293,37 @@ class ActionsTests(TestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 130},
+                "levain": {"Levain froment": 128.0},
                 "trempage": {
                     "Flocons de riz": {
-                        "dry": 10,
-                        "soaking_qty": 100,
+                        "dry": 10.0,
+                        "soaking_qty": 100.0,
                         "soaking_ingredient": "Eau",
                         "warning": "⚠ prévoir 10% de marge",
                     },
-                    "Raisins secs": {"dry": 50, "soaking_qty": 50, "soaking_ingredient": "Eau"},
+                    "Raisins secs": {"dry": 47.0, "soaking_qty": 47.0, "soaking_ingredient": "Eau"},
                 },
             },
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
-        self.assertEqual(actions["delivery"], {delivery_date: {"Brioche raisin (500g)/BR": 1}})
+        self.assertEqual(actions["delivery"], {delivery_date: {br: 1}})
         self.assertEqual(
             actions["bakery"],
             {
-                "Brioche raisin/BR": {
+                br: {
                     "ingredients": {
-                        "Eau": 10,
-                        "Farine blé": 250,
-                        "Flocons de riz (trempé)": 110,
-                        "Huile": 20,
-                        "Levain froment": 130,
-                        "Raisins secs (trempé)": 90,
-                        "Sel": 3,
-                        "Sucre": 30,
+                        "Eau": 13.0,
+                        "Farine blé": 246.5,
+                        "Flocons de riz (trempé)": 110.0,
+                        "Huile": 24.5,
+                        "Levain froment": 128.0,
+                        "Raisins secs (trempé)": 94.0,
+                        "Sel": 3.0,
+                        "Sucre": 34.5,
                     },
-                    "division": {"Brioche raisin (500g)/BR": 1},
-                    "weight": 643,
+                    "division": {br: 1},
+                    "weight": 653.5,
                 }
             },
         )
@@ -317,7 +337,8 @@ class ActionsTests(TestCase):
             delivery_date=delivery_date,
         )
         order.save()
-        line = OrderLine(order=order, product=(Product.objects.get(ref="GSe")), quantity=6)
+        gse = Product.objects.get(ref="GSe")
+        line = OrderLine(order=order, product=(gse), quantity=6)
         line.save()
         actions = order.get_actions(self.next_monday - timedelta(2))
         actions.finalize()
@@ -329,21 +350,22 @@ class ActionsTests(TestCase):
         actions.finalize()
         self.assertEqual(len(actions["delivery"]), 0)
         self.assertEqual(len(actions["bakery"]), 0)
-        self.assertEqual(
+        self.assertAlmostEqual(
             actions["preparation"],
-            {"levain": {"Levain froment": 880}, "trempage": {}},
+            {"levain": {"Levain froment": 883.2}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
-        self.assertEqual(actions["delivery"], {delivery_date: {"Seigle 70% (800 g)/GSe": 6}})
-        self.assertEqual(
+        self.assertEqual(actions["delivery"], {delivery_date: {gse: 6}})
+        self.assertAlmostEqual(
             actions["bakery"],
-            {"Seigle 70%/GSe": {"ingredients": {"Eau": 2210, "Farine blé": 950, "Farine seigle": 2210, "Levain froment": 880, "Sel": 58}, "division": {"Seigle 70% (800 g)/GSe": 6}, "weight": 6308}},
+            {gse: {"ingredients": {"Eau": 2208.0, "Farine blé": 945.60, "Farine seigle": 2212.8, "Levain froment": 883.20, "Sel": 57.60}, "division": {gse: 6}, "weight": 6307.2}},
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
-        
-class RestTests(TestCase):
+
+
+class RestTests(ExtendedTestCase):
     fixtures = ["data/base.json"]
     next_monday = date.today() + timedelta(days=7 - date.today().weekday())
 
@@ -409,20 +431,20 @@ class RestTests(TestCase):
                 GK = product
                 self.assertEqual(product["ref"], "GK")
                 self.assertEqual(product["price"], 6.5)
-                self.assertAlmostEqual(product["cost_price"], Decimal(1.64))
-                self.assertAlmostEqual(product["weight"], 1310)
+                self.assertAlmostEqual(product["cost_price"], Decimal(1.6351))
+                self.assertAlmostEqual(product["weight"], 1305.98)
                 self.assertEqual(len(product["raw_ingredients"]), 5)
             if product["name"] == "Semi-complet kasha (2 kg)":
                 self.assertEqual(product["ref"], "TGK")
                 self.assertEqual(product["price"], 13)
                 self.assertAlmostEqual(product["cost_price"], Decimal(3.27))
-                self.assertAlmostEqual(product["weight"], 2610)
+                self.assertAlmostEqual(product["weight"], 2611.96)
                 self.assertEqual(product["orig_product"], GK["id"])
                 self.assertEqual(product["coef"], 2)
                 self.assertTrue(len(product["raw_ingredients"]) == 0)
             if product["name"] == "Cookie":
-                self.assertAlmostEqual(product["cost_price"], Decimal(0.66))
-                self.assertAlmostEqual(product["weight"], 120)
+                self.assertAlmostEqual(product["cost_price"], Decimal(0.6552))
+                self.assertAlmostEqual(product["weight"], 122.5)
 
     def test_orders(self):
         response = self.client.get(
@@ -442,8 +464,8 @@ class RestTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(ddates), 2)
         self.assertEqual(self.next_monday, DeliveryDate.objects.filter(id=ddates[0][0]).first().date)
-        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[0][1]]), Decimal(192.88))
-        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.69))
+        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[0][1]]), Decimal(192.88702))
+        self.assertAlmostEqual(sum([o["total_price"] for o in ddates[1][1]]), Decimal(218.692))
         self.assertEqual(
             self.next_monday + timedelta(days=2),
             DeliveryDate.objects.filter(id=ddates[1][0]).first().date,
@@ -472,32 +494,33 @@ class RestTests(TestCase):
         self.assertAlmostEqual(response.data["total_price"], Decimal(23.10))
 
 
-class ViewTests(TestCase):
+class ViewTests(ExtendedTestCase):
     fixtures = ["data/base.json"]
 
     def setUp(self):
         self.client = Client()
         self.context = populate()
         self.client.force_login(self.context["admin"])
-        
+
     def test_focaccia_recipe(self):
         response = self.client.get("/products/")
         self.assertEqual(response.status_code, 200)
-        self.assertInHTML('''
+        self.assertInHTML(
+            """
         <h2 class="card-title">FOC</h2>
         <b class="card-subtitle mb-2 text-muted">Focaccia (part)</b>
         <ul class="list-group list-group-flush">
           <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 24 unités</li>
-          <li class="list-group-item">Huile olive : 150,0 g</li>
-          <li class="list-group-item">Tomates séchées : 100,0 g</li>
+          <li class="list-group-item">Huile olive : 150,00 g</li>
+          <li class="list-group-item">Tomates séchées : 100,00 g</li>
         </ul>
         <p class="card-text">
           Prix de vente : 2,20€
           <br>
           Prix de revient : 0,22€
           <br>
-          Poids pâte : 140,00g
+          Poids pâte : 141,12g
         </p>
-        ''',
-                          response.content.decode('utf-8'))
-
+        """,
+            response.content.decode("utf-8"),
+        )

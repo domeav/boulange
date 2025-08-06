@@ -73,7 +73,7 @@ class Product(models.Model):
                     unit_divisor = 1000
                 price += Decimal(line.quantity) * Decimal(self.coef) * line.ingredient.per_unit_price / unit_divisor
 
-        return round(price / Decimal(self.nb_units), 2)
+        return price / Decimal(self.nb_units)
 
     @property
     def weight(self):
@@ -93,8 +93,7 @@ class Product(models.Model):
                     weight += line.quantity * 60 * self.coef
                 else:
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
-        return round(weight / self.nb_units / 10) * 10
-
+        return weight / self.nb_units
 
     def get_batch_ingredients(self, direct=False, preparation=False, soaked=False):
         "Eventually fetch batch ingredient list from base product"
@@ -103,11 +102,27 @@ class Product(models.Model):
             product = self
         else:
             product = self.orig_product or self
-        lines = []
+        lines = {}
         for line in product.raw_ingredients.all():
-            lines.append((line.ingredient, line.quantity * self.coef / self.nb_units))
-        return lines
-            
+            if not preparation or line.ingredient.name.startswith("Levain") or line.ingredient.soaking_ingredient:
+                lines[line.ingredient] = line.quantity * self.coef / self.nb_units
+            if preparation and line.ingredient.soaking_ingredient:
+                lines[line.ingredient.soaking_ingredient] = line.quantity * self.coef / self.nb_units * line.ingredient.soaking_coef
+        return [(ing, qty) for ing, qty in lines.items()]
+
+    def get_batch_weight(self):
+        "weight of orig product pâton, only for products that need a sub-batch"
+        if not self.orig_product:
+            return 0
+        weight = 0
+        # TODO poids des oeufs !
+        for ing, ing_weight in self.get_batch_ingredients():
+            if ing in ("Sel", "Oeufs"):
+                weight += ing_weight
+            else:
+                weight += ing_weight
+        return weight
+
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
@@ -212,7 +227,7 @@ class DeliveryDate(models.Model):
         total = 0
         for order in self.order_set.all():
             total += order.total_price
-        return round(total, 2)
+        return total
 
     def duplicate_commands_from(self, original_delivery_date):
         for order in original_delivery_date.order_set.all():
@@ -230,7 +245,7 @@ class DeliveryBatch(dict):
 
     def finalize(self):
         for dd in self:
-            new_dict = {str(key): value for key, value in sorted(self[dd].items(), key=lambda items: items[0].display_priority, reverse=True)}
+            new_dict = {key: value for key, value in sorted(self[dd].items(), key=lambda items: items[0].display_priority, reverse=True)}
             self[dd].clear()
             self[dd].update(new_dict)
 
@@ -238,11 +253,11 @@ class DeliveryBatch(dict):
 class BakeryBatch(dict):
     def __init__(self):
         self.temp_products = defaultdict(int)
+        self.sub_batches = defaultdict(dict)
+        self.nb_breads = 0
 
     def add_line(self, order_line):
         self.temp_products[order_line.product] += order_line.quantity
-        self.sub_batches = defaultdict(dict)
-        self.nb_breads = 0
 
     def finalize_product(self, product, line_quantity):
         base_product = product.orig_product or product
@@ -252,6 +267,7 @@ class BakeryBatch(dict):
         direct_ingredients = [(i, q * line_quantity) for i, q in product.get_batch_ingredients(direct=True)]
         if direct_ingredients and product.orig_product:
             # need sub-batch
+            direct_ingredients.append(("pâton", product.get_batch_weight() * line_quantity))
             self.sub_batches[base_product][product] = direct_ingredients
         if product.is_bread:
             self.nb_breads += line_quantity
@@ -286,15 +302,17 @@ class BakeryBatch(dict):
             self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
                 if ingredient in ("Sel", "Oeufs"):
-                    self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient])
+                    self[product]["ingredients"][ingredient] = self[product]["ingredients"][ingredient]
                 else:
-                    self[product]["ingredients"][ingredient] = round(self[product]["ingredients"][ingredient] / 10) * 10
+                    self[product]["ingredients"][ingredient] = self[product]["ingredients"][ingredient]
+                # TODO poids des oeufs !
                 self[product]["weight"] += self[product]["ingredients"][ingredient]
-        new_dict = {key.get_short_recipe_name(): value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
+        new_dict = {key: value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
-            new_dict[base_product]["division"] = {str(product): qty for product, qty in new_dict[base_product]["division"].items()}
+            new_dict[base_product]["division"] = {product: qty for product, qty in new_dict[base_product]["division"].items()}
         self.clear()
         self.update(new_dict)
+        self.sub_batches.default_factory = None
 
 
 class PreparationBatch(dict):
@@ -310,7 +328,7 @@ class PreparationBatch(dict):
         if product.baked_by_batch and line_quantity % product.nb_units != 0:
             # adjust quantities for products that need to be batch-baked
             line_quantity += product.nb_units - (line_quantity % product.nb_units)
-        for ingredient, ing_qty in product.get_batch_ingredients():
+        for ingredient, ing_qty in product.get_batch_ingredients(preparation=True):
             if ingredient.name.startswith("Levain"):
                 if ingredient.name not in self["levain"]:
                     self["levain"][ingredient.name] = 0
@@ -327,8 +345,8 @@ class PreparationBatch(dict):
 
     def _refresh_levain(self, initial_qty, target_qty, water_percentage):
         missing = target_qty - initial_qty
-        water = round(missing * water_percentage / 100)
-        flour = round(missing - water)
+        water = missing * water_percentage
+        flour = missing - water
         return flour, water
 
     def levain_froment_recipe(self):
@@ -475,10 +493,10 @@ class PreparationBatch(dict):
         for product, qty in self.temp_products.items():
             self.finalize_product(product, qty)
         for ingredient in self["trempage"]:
-            self["trempage"][ingredient]["dry"] = round(self["trempage"][ingredient]["dry"] / 10) * 10
-            self["trempage"][ingredient]["soaking_qty"] = round(self["trempage"][ingredient]["soaking_qty"] / 10) * 10
+            self["trempage"][ingredient]["dry"] = self["trempage"][ingredient]["dry"]
+            self["trempage"][ingredient]["soaking_qty"] = self["trempage"][ingredient]["soaking_qty"]
         for levain in self["levain"]:
-            self["levain"][levain] = round(self["levain"][levain] / 10) * 10
+            self["levain"][levain] = self["levain"][levain]
 
 
 class Actions(dict):
@@ -518,7 +536,7 @@ class Order(models.Model):
         total = 0
         for line in self.lines.all():
             total += line.get_price()
-        return round(total, 2)
+        return total
 
     def get_actions(self, target_day, actions=None):
         if not actions:
@@ -561,7 +579,7 @@ class OrderLine(models.Model):
         total = self.product.price * self.quantity
         if self.order.customer.is_professional:
             total = (total - total * Decimal(TVA / 100)) * Decimal(1 - self.order.customer.pro_discount_percentage / 100)
-        return round(total, 2)
+        return total
 
     class Meta:
         ordering = ["product__name"]

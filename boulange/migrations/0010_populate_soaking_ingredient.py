@@ -2,8 +2,9 @@
 
 from django.db import migrations
 
+
 def set_soaking_ingredient_value(apps, schema_editor):
-    Ingredient = apps.get_model('boulange', 'Ingredient')
+    Ingredient = apps.get_model("boulange", "Ingredient")
     try:
         water = Ingredient.objects.get(name="Eau")
     except Ingredient.DoesNotExist:
@@ -14,10 +15,11 @@ def set_soaking_ingredient_value(apps, schema_editor):
             ing.soaking_ingredient = water
             ing.save()
 
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ("boulange", "0009_ingredient_soaking_ingredient"),
     ]
-    
+
     operations = [migrations.RunPython(set_soaking_ingredient_value)]

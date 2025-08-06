@@ -21,7 +21,7 @@
 	</li>
         {% endif %}
         {% for line in product.raw_ingredients.all %}
-          <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity }} {{ line.ingredient.unit }}</li>
+          <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity|floatformat:2 }} {{ line.ingredient.unit }}</li>
         {% endfor %}
       </ul>
         <p class="card-text">

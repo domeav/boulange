@@ -24,7 +24,6 @@
     <a target="_blank" href="{% url 'boulange:actions_print' 'boulange' target_date.year target_date.month target_date.day %}">🖶</a>
   </h2>
   Nb de pains cuits : {{ actions.bakery.nb_breads }}
-  {{ actions.bakery.sub_batches }}
   <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
     {% for recipe, data in actions.bakery.items %}
     <div class="col mt-2">
@@ -39,6 +38,18 @@
             {% endfor %}
           </ul>
           <p>Poids total : {{ data.weight }} g</p>
+	  {% with subbatch=actions.bakery.sub_batches|dict_key:recipe %}
+	  {% for subproduct, subingredients in subbatch.items %}
+	  <b>dont {{ subproduct }}</b>
+	  <ul>
+	    {% for subing, subqty in subingredients %}
+	    <li>
+	      {{ subing }}: {{ subqty }}
+	    </li>
+	    {% endfor %}
+	  </ul>
+	  {% endfor %}
+	  {% endwith %}
           <b>Division</b>
           <ul class="list-group list-group-flush">
             {% for product, qty in data.division.items|dictsort:0 %}
