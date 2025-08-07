@@ -32,23 +32,25 @@
           <h3 class="card-title">{{ recipe }}</h3>
           <ul class="list-group list-group-flush">
             {% for ing, qty in data.ingredients.items|dictsort:0 %}
-            {% if qty %}
-            <li class="list-group-item">{{ ing }} : {{ qty }}</li>
+            {% if qty|bround:ing %}
+            <li class="list-group-item">{{ ing }} : {{ qty|bround:ing }}</li>
             {% endif %}
             {% endfor %}
           </ul>
-          <p>Poids total : {{ data.weight }} g</p>
+          <p>Poids total : {{ data.weight|bround:'total' }} g</p>
 	  {% with subbatch=actions.bakery.sub_batches|dict_key:recipe %}
+	  <div class="border-start ps-2">
 	  {% for subproduct, subingredients in subbatch.items %}
 	  <b>dont {{ subproduct }}</b>
 	  <ul>
 	    {% for subing, subqty in subingredients %}
 	    <li>
-	      {{ subing }}: {{ subqty }}
+	      {{ subing }}: {{ subqty|bround:subing }}
 	    </li>
 	    {% endfor %}
 	  </ul>
 	  {% endfor %}
+	  </div>
 	  {% endwith %}
           <b>Division</b>
           <ul class="list-group list-group-flush">

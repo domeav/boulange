@@ -5,7 +5,15 @@ from decimal import Decimal
 from django.test import Client, TestCase
 from rest_framework.test import APIClient
 
-from .models import Customer, DeliveryDate, Order, OrderLine, Product, WeeklyDelivery
+from .models import (
+    Customer,
+    DeliveryDate,
+    Ingredient,
+    Order,
+    OrderLine,
+    Product,
+    WeeklyDelivery,
+)
 
 
 class ExtendedTestCase(TestCase):
@@ -329,6 +337,43 @@ class ActionsTests(ExtendedTestCase):
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+
+    def test_FOC(self):
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=delivery_date,
+        )
+        order.save()
+        foc = Product.objects.get(ref="FOC")
+        line = OrderLine(order=order, product=(foc), quantity=1)
+        line.save()
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"],
+            {"levain": {"Levain froment": 397.5}, "trempage": {}},
+        )
+        actions = order.get_actions(self.next_monday)
+        actions.finalize()
+        self.assertEqual(actions["delivery"], {delivery_date: {foc: 1}})
+        self.assertEqual(
+            actions["bakery"], {foc.orig_product: {"ingredients": {"Eau": 1115.0, "Farine blé": 1592.5, "Levain froment": 397.5, "Sel": 31.875}, "division": {foc: 24}, "weight": 3136.875}}
+        )
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        self.assertEqual(
+            actions["bakery"].sub_batches,
+            {foc.orig_product: {foc: [(Ingredient.objects.get(name="Huile olive"), 375.0), (Ingredient.objects.get(name="Tomates séchées"), 250.0), ("pâton", 3136.875)]}},
+        )
 
     def test_rounding(self):
         delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)

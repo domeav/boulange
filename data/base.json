@@ -1018,7 +1018,7 @@
     "orig_product": 1,
     "coef": 2.5,
     "nb_units": 24,
-    "baked_by_batch": false,
+    "baked_by_batch": true,
     "notes": "",
     "display_priority": 0,
     "is_bread": false
