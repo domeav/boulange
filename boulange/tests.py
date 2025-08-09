@@ -96,7 +96,7 @@ class ActionsTests(ExtendedTestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 168.0},
-                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": "Eau"}},
+                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -107,11 +107,11 @@ class ActionsTests(ExtendedTestCase):
             {
                 gk: {
                     "ingredients": {
-                        "Eau": 371.0,
-                        "Farine blé": 599.0,
-                        "Graines kasha (trempé)": 156.0,
-                        "Levain froment": 168.0,
-                        "Sel": 11.98,
+                        Ingredient.objects.get(name="Eau"): 371.0,
+                        Ingredient.objects.get(name="Farine blé"): 599.0,
+                        Ingredient.objects.get(name="Graines kasha"): 156.0,
+                        Ingredient.objects.get(name="Levain froment"): 168.0,
+                        Ingredient.objects.get(name="Sel"): 11.98,
                     },
                     "division": {gk: 1},
                     "weight": 1305.98,
@@ -139,7 +139,7 @@ class ActionsTests(ExtendedTestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 168.0},
-                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": "Eau"}},
+                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
@@ -150,11 +150,11 @@ class ActionsTests(ExtendedTestCase):
             {
                 gk: {
                     "ingredients": {
-                        "Eau": 371.0,
-                        "Farine blé": 599.0,
-                        "Graines kasha (trempé)": 156.0,
-                        "Levain froment": 168.0,
-                        "Sel": 11.98,
+                        Ingredient.objects.get(name="Eau"): 371.0,
+                        Ingredient.objects.get(name="Farine blé"): 599.0,
+                        Ingredient.objects.get(name="Graines kasha"): 156.0,
+                        Ingredient.objects.get(name="Levain froment"): 168.0,
+                        Ingredient.objects.get(name="Sel"): 11.98,
                     },
                     "division": {
                         gk: 1,
@@ -209,8 +209,8 @@ class ActionsTests(ExtendedTestCase):
         self.assertAlmostEqual(
             actions["bakery"],
             {
-                gsa: {"ingredients": {"Eau": 1269.0, "Farine sarrasin": 1365.0, "Levain sarrasin": 408.0, "Sel": 27.30}, "division": {psa: 6}, "weight": 3069.3},
-                gse: {"ingredients": {"Eau": 736.0, "Farine blé": 315.2, "Farine seigle": 737.6, "Levain froment": 294.4, "Sel": 19.2}, "division": {pse: 4}, "weight": 2102.4},
+                gsa: {"ingredients": {Ingredient.objects.get(name="Eau"): 1269.0, Ingredient.objects.get(name="Farine sarrasin"): 1365.0, Ingredient.objects.get(name="Levain sarrasin"): 408.0, Ingredient.objects.get(name="Sel"): 27.30}, "division": {psa: 6}, "weight": 3069.3},
+                gse: {"ingredients": {Ingredient.objects.get(name="Eau"): 736.0, Ingredient.objects.get(name="Farine blé"): 315.2, Ingredient.objects.get(name="Farine seigle"): 737.6, Ingredient.objects.get(name="Levain froment"): 294.4, Ingredient.objects.get(name="Sel"): 19.2}, "division": {pse: 4}, "weight": 2102.4},
             },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -244,7 +244,7 @@ class ActionsTests(ExtendedTestCase):
             actions["preparation"],
             {
                 "levain": {"Levain froment": 1680.0},
-                "trempage": {"Graines kasha": {"dry": 780.0, "soaking_qty": 780.0, "soaking_ingredient": "Eau"}},
+                "trempage": {"Graines kasha": {"dry": 780.0, "soaking_qty": 780.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -264,11 +264,11 @@ class ActionsTests(ExtendedTestCase):
             {
                 gk: {
                     "ingredients": {
-                        "Eau": 3710.0,
-                        "Farine blé": 5990.0,
-                        "Graines kasha (trempé)": 1560.0,
-                        "Levain froment": 1680.0,
-                        "Sel": 119.80,
+                        Ingredient.objects.get(name="Eau"): 3710.0,
+                        Ingredient.objects.get(name="Farine blé"): 5990.0,
+                        Ingredient.objects.get(name="Graines kasha"): 1560.0,
+                        Ingredient.objects.get(name="Levain froment"): 1680.0,
+                        Ingredient.objects.get(name="Sel"): 119.80,
                     },
                     "division": {gk: 4, tgk: 2, pk: 4},
                     "weight": 13059.8,
@@ -306,10 +306,10 @@ class ActionsTests(ExtendedTestCase):
                     "Flocons de riz": {
                         "dry": 10.0,
                         "soaking_qty": 100.0,
-                        "soaking_ingredient": "Eau",
+                        "soaking_ingredient": Ingredient.objects.get(name="Eau"),
                         "warning": "⚠ prévoir 10% de marge",
                     },
-                    "Raisins secs": {"dry": 47.0, "soaking_qty": 47.0, "soaking_ingredient": "Eau"},
+                    "Raisins secs": {"dry": 47.0, "soaking_qty": 47.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")},
                 },
             },
         )
@@ -321,14 +321,14 @@ class ActionsTests(ExtendedTestCase):
             {
                 br: {
                     "ingredients": {
-                        "Eau": 13.0,
-                        "Farine blé": 246.5,
-                        "Flocons de riz (trempé)": 110.0,
-                        "Huile": 24.5,
-                        "Levain froment": 128.0,
-                        "Raisins secs (trempé)": 94.0,
-                        "Sel": 3.0,
-                        "Sucre": 34.5,
+                        Ingredient.objects.get(name="Eau"): 13.0,
+                        Ingredient.objects.get(name="Farine blé"): 246.5,
+                        Ingredient.objects.get(name="Flocons de riz"): 110.0,
+                        Ingredient.objects.get(name="Huile"): 24.5,
+                        Ingredient.objects.get(name="Levain froment"): 128.0,
+                        Ingredient.objects.get(name="Raisins secs"): 94.0,
+                        Ingredient.objects.get(name="Sel"): 3.0,
+                        Ingredient.objects.get(name="Sucre"): 34.5,
                     },
                     "division": {br: 1},
                     "weight": 653.5,
@@ -366,7 +366,7 @@ class ActionsTests(ExtendedTestCase):
         actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {foc: 1}})
         self.assertEqual(
-            actions["bakery"], {foc.orig_product: {"ingredients": {"Eau": 1115.0, "Farine blé": 1592.5, "Levain froment": 397.5, "Sel": 31.875}, "division": {foc: 24}, "weight": 3136.875}}
+            actions["bakery"], {foc.orig_product: {"ingredients": {Ingredient.objects.get(name="Eau"): 1115.0, Ingredient.objects.get(name="Farine blé"): 1592.5, Ingredient.objects.get(name="Levain froment"): 397.5, Ingredient.objects.get(name="Sel"): 31.875}, "division": {foc: 24}, "weight": 3136.875}}
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -404,7 +404,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {bb: 1}})
         self.assertEqual(
             actions["bakery"],
-            {bb: {"ingredients": {"Beurre": 62.5, "Farine blé": 250.0, "Lait": 47.5, "Levain froment": 50.0, "Oeufs": 1.5, "Sel": 2.5, "Sucre": 50.0}, "division": {bb: 1}, "weight": 552.5}},
+            {bb: {"ingredients": {Ingredient.objects.get(name="Beurre"): 62.5, Ingredient.objects.get(name="Farine blé"): 250.0, Ingredient.objects.get(name="Lait"): 47.5, Ingredient.objects.get(name="Levain froment"): 50.0, Ingredient.objects.get(name="Oeufs"): 1.5, Ingredient.objects.get(name="Sel"): 2.5, Ingredient.objects.get(name="Sucre"): 50.0}, "division": {bb: 1}, "weight": 552.5}},
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -439,7 +439,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {gse: 6}})
         self.assertAlmostEqual(
             actions["bakery"],
-            {gse: {"ingredients": {"Eau": 2208.0, "Farine blé": 945.60, "Farine seigle": 2212.8, "Levain froment": 883.20, "Sel": 57.60}, "division": {gse: 6}, "weight": 6307.2}},
+            {gse: {"ingredients": {Ingredient.objects.get(name="Eau"): 2208.0, Ingredient.objects.get(name="Farine blé"): 945.60, Ingredient.objects.get(name="Farine seigle"): 2212.8, Ingredient.objects.get(name="Levain froment"): 883.20, Ingredient.objects.get(name="Sel"): 57.60}, "division": {gse: 6}, "weight": 6307.2}},
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)

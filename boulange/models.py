@@ -120,7 +120,7 @@ class Product(models.Model):
             return 0
         weight = 0
         for ing, ing_weight in self.get_batch_ingredients():
-            if ing == EGGS:
+            if ing.name == EGGS:
                 ing_weight *= EGG_WEIGHT
             weight += ing_weight
         return weight
@@ -282,20 +282,17 @@ class BakeryBatch(dict):
             self[base_product]["division"][product] = 0
         self[base_product]["division"][product] += line_quantity
         for ingredient, ing_qty in product.get_batch_ingredients():
-            ingredient_key = str(ingredient)
-            if ingredient.soaking_ingredient:
-                ingredient_key += " (trempé)"
             quantity = line_quantity * ing_qty
-            if ingredient_key not in self[base_product]["ingredients"]:
-                self[base_product]["ingredients"][ingredient_key] = 0
+            if ingredient not in self[base_product]["ingredients"]:
+                self[base_product]["ingredients"][ingredient] = 0
             if not ingredient.soaking_ingredient:
-                self[base_product]["ingredients"][ingredient_key] += quantity
+                self[base_product]["ingredients"][ingredient] += quantity
             else:
                 soaking_qty = quantity * ingredient.soaking_coef
-                self[base_product]["ingredients"][ingredient_key] += quantity + soaking_qty
-                if str(ingredient.soaking_ingredient) not in self[base_product]["ingredients"]:
-                    self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] = 0
-                self[base_product]["ingredients"][str(ingredient.soaking_ingredient)] -= soaking_qty
+                self[base_product]["ingredients"][ingredient] += quantity + soaking_qty
+                if ingredient.soaking_ingredient not in self[base_product]["ingredients"]:
+                    self[base_product]["ingredients"][ingredient.soaking_ingredient] = 0
+                self[base_product]["ingredients"][ingredient.soaking_ingredient] -= soaking_qty
 
     def finalize(self):
         for product, qty in self.temp_products.items():
@@ -304,7 +301,7 @@ class BakeryBatch(dict):
             self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
                 ing_weight = self[product]["ingredients"][ingredient]
-                if ingredient == EGGS:
+                if ingredient.name == EGGS:
                     ing_weight *= EGG_WEIGHT
                 self[product]["weight"] += ing_weight
         new_dict = {key: value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
@@ -339,7 +336,7 @@ class PreparationBatch(dict):
                 quantity = ing_qty * line_quantity
                 self["trempage"][ingredient.name]["dry"] += quantity
                 self["trempage"][ingredient.name]["soaking_qty"] += quantity * ingredient.soaking_coef
-                self["trempage"][ingredient.name]["soaking_ingredient"] = str(ingredient.soaking_ingredient)
+                self["trempage"][ingredient.name]["soaking_ingredient"] = ingredient.soaking_ingredient
                 if ingredient.name == "Flocons de riz":
                     self["trempage"][ingredient.name]["warning"] = "⚠ prévoir 10% de marge"
 
@@ -365,7 +362,7 @@ class PreparationBatch(dict):
                 {
                     "title": "1er rafraîchi (cible 1000 g)",
                     "lines": [
-                        "100g de levain chef",
+                        "100 g de levain chef",
                         f"{bround(water1, 'eau')} g d'eau chaude (60%)",
                         f"{bround(flour1, 'farine')} g de farine de froment (40%)",
                     ],
@@ -373,15 +370,15 @@ class PreparationBatch(dict):
                 {
                     "title": "2nd rafraîchi (cible 3000 g)",
                     "lines": [
-                        "1000g de levain",
+                        "1000 g de levain",
                         f"{bround(water2, 'eau')} g d'eau tiède (50%)",
                         f"{bround(flour2, 'farine')} g de farine de froment (50%)",
                     ],
                 },
                 {
-                    "title": f"3ème rafraîchi (cible {qty} g)",
+                    "title": f"3ème rafraîchi (cible {bround(qty, 'total')} g)",
                     "lines": [
-                        "3000g de levain",
+                        "3000 g de levain",
                         f"{bround(water3, 'eau')} g d'eau tiède (40%)",
                         f"{bround(flour3, 'farine')} g de farine de froment (60%)",
                     ],
@@ -394,15 +391,15 @@ class PreparationBatch(dict):
                 {
                     "title": "1er rafraîchi (cible 300 g)",
                     "lines": [
-                        "100g de levain chef",
+                        "100 g de levain chef",
                         f"{bround(water1, 'eau')} g d'eau chaude (60%)",
                         f"{bround(flour1, 'farine')} g de farine de froment (40%)",
                     ],
                 },
                 {
-                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "title": f"2nd rafraîchi (cible {bround(qty, 'total')} g)",
                     "lines": [
-                        "300g de levain",
+                        "300 g de levain",
                         f"{bround(water2, 'eau')} g d'eau tiède (50%)",
                         f"{bround(flour2, 'farine')} g de farine de froment (50%)",
                     ],
@@ -415,10 +412,10 @@ class PreparationBatch(dict):
         qty = self["levain"]["Levain de petit epeautre"]
         return [
             {
-                "title": f"1er rafraîchi (cible {qty} g)",
+                "title": f"1er rafraîchi (cible {bround(qty, 'total')} g)",
                 "lines": [
-                    f"{qty*7/110:.0f}g de levain de froment",
-                    f"{qty*58/110:.0f}g de farine de petit épeautre",
+                    f"{qty*7/110:.0f} g de levain de froment",
+                    f"{qty*58/110:.0f} g de farine de petit épeautre",
                     f"{qty*44/110:.0f} g d'eau",
                     f"{qty*1/110:.0f} g de sel",
                 ],
@@ -443,7 +440,7 @@ class PreparationBatch(dict):
                 {
                     "title": "1er rafraîchi (cible 100 g)",
                     "lines": [
-                        "20g de levain chef",
+                        "20 g de levain chef",
                         f"{bround(water1, 'eau')} g d'eau chaude (50%)",
                         f"{bround(flour1, 'farine')} g de farine de sarrasin (50%)",
                     ],
@@ -451,15 +448,15 @@ class PreparationBatch(dict):
                 {
                     "title": "2nd rafraîchi (cible 300 g)",
                     "lines": [
-                        "100g de levain chef",
+                        "100 g de levain chef",
                         f"{bround(water2, 'eau')} g d'eau chaude (50%)",
                         f"{bround(flour2, 'farine')} g de farine de sarrasin (50%)",
                     ],
                 },
                 {
-                    "title": f"3ème rafraîchi (cible {qty} g)",
+                    "title": f"3ème rafraîchi (cible {bround(qty, 'total')} g)",
                     "lines": [
-                        "300g de levain",
+                        "300 g de levain",
                         f"{bround(water3, 'eau')} g d'eau tiède (43%)",
                         f"{bround(flour3, 'farine')} g de farine de sarrasin (67%)",
                     ],
@@ -474,15 +471,15 @@ class PreparationBatch(dict):
                 {
                     "title": "1er rafraîchi (cible 100 g)",
                     "lines": [
-                        "20g de levain chef",
+                        "20 g de levain chef",
                         f"{bround(water1, 'eau')} g d'eau chaude (50%)",
                         f"{bround(flour1, 'farine')} g de farine de sarrasin (50%)",
                     ],
                 },
                 {
-                    "title": f"2nd rafraîchi (cible {qty} g)",
+                    "title": f"2nd rafraîchi (cible {bround(qty, 'total')} g)",
                     "lines": [
-                        "100g de levain",
+                        "100 g de levain",
                         f"{bround(water2, 'eau')} g d'eau tiède (50%)",
                         f"{bround(flour2, 'farine')} g de farine de sarrasin (50%)",
                     ],

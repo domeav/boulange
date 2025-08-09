@@ -31,9 +31,9 @@
         <div class="card-body">
           <h3 class="card-title">{{ recipe }}</h3>
           <ul class="list-group list-group-flush">
-            {% for ing, qty in data.ingredients.items|dictsort:0 %}
+            {% for ing, qty in data.ingredients.items %}
             {% if qty|bround:ing %}
-            <li class="list-group-item">{{ ing }} : {{ qty|bround:ing }}</li>
+            <li class="list-group-item">{{ ing }}{% if ing.soaking_ingredient %} (trempé){% endif %} : {{ qty|bround:ing }} {{ ing.unit }}</li>
             {% endif %}
             {% endfor %}
           </ul>
@@ -54,7 +54,7 @@
 	  {% endwith %}
           <b>Division</b>
           <ul class="list-group list-group-flush">
-            {% for product, qty in data.division.items|dictsort:0 %}
+            {% for product, qty in data.division.items %}
             <li class="list-group-item">{{ product }} : {{ qty }}</li>
             {% endfor %}
           </ul>
@@ -80,7 +80,7 @@
         <div class="card-body">
           <h3 class="card-title"><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
           <ul class="list-group list-group-flush">
-            {% for product, nb in lines.items|dictsort:0 %}
+            {% for product, nb in lines.items %}
             <li class="list-group-item">{{ product }} : {{ nb }}</li>
             {% endfor %}
           </ul>
@@ -166,7 +166,7 @@
         <div class="card-body">
           <h3 class="card-title">Trempage</h3>
           <ul class="list-group list-group-flush">
-            {% for name, qties in actions.preparation.trempage.items|dictsort:0 %}
+            {% for name, qties in actions.preparation.trempage.items %}
             <li class="list-group-item">{{ name }} : {{ qties.dry }} g + {{qties.soaking_ingredient}}: {{ qties.soaking_qty }} g<br>{{ qties.warning }}</li>
             {% endfor %}
           </ul>
