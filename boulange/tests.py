@@ -375,6 +375,41 @@ class ActionsTests(ExtendedTestCase):
             {foc.orig_product: {foc: [(Ingredient.objects.get(name="Huile olive"), 375.0), (Ingredient.objects.get(name="Tomates séchées"), 250.0), ("pâton", 3136.875)]}},
         )
 
+    def test_BB400g(self):
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+        order = Order(
+            customer=self.context["guy"],
+            delivery_date=delivery_date,
+        )
+        order.save()
+        bb = Product.objects.get(ref="BB400g")
+        line = OrderLine(order=order, product=(bb), quantity=1)
+        line.save()
+        actions = order.get_actions(self.next_monday - timedelta(2))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        actions = order.get_actions(self.next_monday - timedelta(1))
+        actions.finalize()
+        self.assertEqual(len(actions["delivery"]), 0)
+        self.assertEqual(len(actions["bakery"]), 0)
+        self.assertEqual(
+            actions["preparation"],
+            {"levain": {"Levain froment": 50.0}, "trempage": {}},
+        )
+        actions = order.get_actions(self.next_monday)
+        actions.finalize()
+        self.assertEqual(actions["delivery"], {delivery_date: {bb: 1}})
+        self.assertEqual(
+            actions["bakery"],
+            {bb: {"ingredients": {"Beurre": 62.5, "Farine blé": 250.0, "Lait": 47.5, "Levain froment": 50.0, "Oeufs": 1.5, "Sel": 2.5, "Sucre": 50.0}, "division": {bb: 1}, "weight": 552.5}},
+        )
+        self.assertEqual(len(actions["preparation"]["levain"]), 0)
+        self.assertEqual(len(actions["preparation"]["trempage"]), 0)
+        self.assertEqual(len(actions["bakery"].sub_batches), 0)
+
     def test_rounding(self):
         delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
         order = Order(

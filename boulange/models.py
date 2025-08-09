@@ -8,6 +8,8 @@ from django.db import models
 from boulange.templatetags.boulange_tags import bround
 
 TVA = 5.5
+EGG_WEIGHT = 60
+EGGS = "Oeufs"
 
 
 class Settings(models.Model):
@@ -83,16 +85,16 @@ class Product(models.Model):
         for line in self.raw_ingredients.all():
             if line.ingredient.unit == "g":
                 weight += line.quantity
-            elif line.ingredient.name == "Oeufs":
-                weight += line.quantity * 60
+            elif line.ingredient.name == EGGS:
+                weight += line.quantity * EGG_WEIGHT
             else:
                 raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         if self.orig_product:
             for line in self.orig_product.raw_ingredients.all():
                 if line.ingredient.unit == "g":
                     weight += line.quantity * self.coef
-                elif line.ingredient.name == "Oeufs":
-                    weight += line.quantity * 60 * self.coef
+                elif line.ingredient.name == EGGS:
+                    weight += line.quantity * EGG_WEIGHT * self.coef
                 else:
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         return weight / self.nb_units
@@ -117,12 +119,10 @@ class Product(models.Model):
         if not self.orig_product:
             return 0
         weight = 0
-        # TODO poids des oeufs !
         for ing, ing_weight in self.get_batch_ingredients():
-            if ing in ("Sel", "Oeufs"):
-                weight += ing_weight
-            else:
-                weight += ing_weight
+            if ing == EGGS:
+                ing_weight *= EGG_WEIGHT
+            weight += ing_weight
         return weight
 
     class Meta:
@@ -303,8 +303,10 @@ class BakeryBatch(dict):
         for product in self:
             self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
-                # TODO poids des oeufs !
-                self[product]["weight"] += self[product]["ingredients"][ingredient]
+                ing_weight = self[product]["ingredients"][ingredient]
+                if ingredient == EGGS:
+                    ing_weight *= EGG_WEIGHT
+                self[product]["weight"] += ing_weight
         new_dict = {key: value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
             new_dict[base_product]["division"] = {product: qty for product, qty in new_dict[base_product]["division"].items()}
