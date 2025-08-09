@@ -29,7 +29,7 @@
     <div class="col mt-2">
       <div class="card">
         <div class="card-body">
-          <h3 class="card-title">{{ recipe }}</h3>
+          <h3 class="card-title">{{ recipe.get_short_recipe_name }}</h3>
           <ul class="list-group list-group-flush">
             {% for ing, qty in data.ingredients.items %}
             {% if qty|bround:ing %}
@@ -167,7 +167,7 @@
           <h3 class="card-title">Trempage</h3>
           <ul class="list-group list-group-flush">
             {% for name, qties in actions.preparation.trempage.items %}
-            <li class="list-group-item">{{ name }} : {{ qties.dry }} g + {{qties.soaking_ingredient}}: {{ qties.soaking_qty }} g<br>{{ qties.warning }}</li>
+            <li class="list-group-item">{{ name }} : {{ qties.dry|bround:name }} g + {{qties.soaking_ingredient}}: {{ qties.soaking_qty|bround:name }} g<br>{{ qties.warning }}</li>
             {% endfor %}
           </ul>
   </div>
