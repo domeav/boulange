@@ -372,7 +372,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         self.assertAlmostEqual(
             actions["bakery"].sub_batches[foc.orig_product],
-            {foc: {Ingredient.objects.get(name="Huile olive"): 0.0, Ingredient.objects.get(name="Tomates séchées"): 250.0, "pâton": 3136.875}},
+            {foc: {Ingredient.objects.get(name="Huile olive"): 0.0, Ingredient.objects.get(name="Tomates séchées"): 250.0, Ingredient.objects.get(name="Herbes de provence"): 10.0, Ingredient.objects.get(name="Olives"): 200.0, "pâton": 3136.875}},
         )
 
     def test_BB400g(self):
@@ -505,7 +505,7 @@ class RestTests(ExtendedTestCase):
         response = self.client.get("/api/products/")
         self.assertEqual(response.status_code, 200)
         products = response.data
-        self.assertEqual(len(products), 43)
+        self.assertEqual(len(products), 44)
         for product in products:
             if product["name"] == "Semi-complet kasha (1 kg)":
                 GK = product
@@ -591,15 +591,17 @@ class ViewTests(ExtendedTestCase):
         <b class="card-subtitle mb-2 text-muted">Focaccia (part)</b>
         <ul class="list-group list-group-flush">
           <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 48 unités</li>
+          <li class="list-group-item">Herbes de provence : 10,00 g</li>
           <li class="list-group-item">Huile olive : 150,00 g</li>
+          <li class="list-group-item">Olives : 200,00 g</li>
           <li class="list-group-item">Tomates séchées : 100,00 g</li>
         </ul>
         <p class="card-text">
           Prix de vente : 2,20€
           <br>
-          Prix de revient : 0,11€
+          Prix de revient : 0,16€
           <br>
-          Poids pâte : 70,56g
+          Poids pâte : 74,93g
         </p>
         """,
             response.content.decode("utf-8"),

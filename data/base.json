@@ -294,6 +294,17 @@
   }
 },
 {
+  "model": "boulange.ingredient",
+  "pk": 28,
+  "fields": {
+    "name": "Olives",
+    "unit": "g",
+    "per_unit_price": "11.250",
+    "soaking_ingredient": null,
+    "soaking_coef": 1.0
+  }
+},
+{
   "model": "boulange.product",
   "pk": 1,
   "fields": {
@@ -1011,6 +1022,23 @@
   "model": "boulange.product",
   "pk": 43,
   "fields": {
+    "name": "Financier part",
+    "ref": "Fin",
+    "price": "2.20",
+    "active": true,
+    "orig_product": null,
+    "coef": 1.0,
+    "nb_units": 1,
+    "baked_by_batch": false,
+    "notes": "",
+    "display_priority": 0,
+    "is_bread": false
+  }
+},
+{
+  "model": "boulange.product",
+  "pk": 44,
+  "fields": {
     "name": "Focaccia (part)",
     "ref": "FOC",
     "price": "2.20",
@@ -1696,7 +1724,7 @@
   "fields": {
     "product": 25,
     "ingredient": 3,
-    "quantity": 345.0
+    "quantity": 373.0
   }
 },
 {
@@ -1982,7 +2010,7 @@
   "model": "boulange.productline",
   "pk": 109,
   "fields": {
-    "product": 43,
+    "product": 44,
     "ingredient": 26,
     "quantity": 100.0
   }
@@ -1991,9 +2019,27 @@
   "model": "boulange.productline",
   "pk": 110,
   "fields": {
-    "product": 43,
+    "product": 44,
     "ingredient": 10,
     "quantity": 150.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 111,
+  "fields": {
+    "product": 44,
+    "ingredient": 8,
+    "quantity": 10.0
+  }
+},
+{
+  "model": "boulange.productline",
+  "pk": 112,
+  "fields": {
+    "product": 44,
+    "ingredient": 28,
+    "quantity": 200.0
   }
 }
 ]
