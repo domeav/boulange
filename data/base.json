@@ -1017,7 +1017,7 @@
     "active": true,
     "orig_product": 1,
     "coef": 2.5,
-    "nb_units": 24,
+    "nb_units": 48,
     "baked_by_batch": true,
     "notes": "",
     "display_priority": 0,

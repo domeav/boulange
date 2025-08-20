@@ -99,27 +99,37 @@ class Product(models.Model):
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         return weight / self.nb_units
 
-    def get_batch_ingredients(self, direct=False, preparation=False, soaked=False):
-        "Eventually fetch batch ingredient list from base product"
-        # TODO handle preparation/soaked calls
-        if direct:
-            product = self
-        else:
-            product = self.orig_product or self
-        lines = {}
-        for line in product.raw_ingredients.all():
-            if not preparation or line.ingredient.name.startswith("Levain") or line.ingredient.soaking_ingredient:
-                lines[line.ingredient] = line.quantity * self.coef / self.nb_units
-            if preparation and line.ingredient.soaking_ingredient:
-                lines[line.ingredient.soaking_ingredient] = line.quantity * self.coef / self.nb_units * line.ingredient.soaking_coef
-        return [(ing, qty) for ing, qty in lines.items()]
+
+    def get_processed_ingredients(self):
+        ingredients = {
+            'direct': defaultdict(int),
+            'base_product': defaultdict(int),
+            'preparations': defaultdict(int)
+        }
+        base_ingredients = []
+        if self.orig_product:
+            base_ingredients = self.orig_product.raw_ingredients.all()
+        for ingref, coef, inglist in [('direct', 1, self.raw_ingredients.all()),
+                                      ('base_product', self.coef, base_ingredients)]:
+            for line in inglist:
+                qty = line.quantity * coef / self.nb_units
+                ingredients[ingref][line.ingredient] += qty
+                if line.ingredient.soaking_ingredient:
+                    soaking_coef = line.ingredient.soaking_coef
+                    ingredients[ingref][line.ingredient] += qty * soaking_coef
+                    ingredients[ingref][line.ingredient.soaking_ingredient] -= qty * soaking_coef
+                    ingredients['preparations'][line.ingredient] += qty
+                    ingredients['preparations'][line.ingredient.soaking_ingredient] += qty * soaking_coef
+                if line.ingredient.name.startswith('Levain'):
+                    ingredients['preparations'][line.ingredient] += qty
+        return ingredients
 
     def get_batch_weight(self):
         "weight of orig product pâton, only for products that need a sub-batch"
         if not self.orig_product:
             return 0
         weight = 0
-        for ing, ing_weight in self.get_batch_ingredients():
+        for ing, ing_weight in self.get_processed_ingredients()['base_product'].items():
             if ing.name == EGGS:
                 ing_weight *= EGG_WEIGHT
             weight += ing_weight
@@ -262,17 +272,24 @@ class BakeryBatch(dict):
         self.temp_products[order_line.product] += order_line.quantity
 
     def finalize_product(self, product, line_quantity):
-        base_product = product.orig_product or product
+        all_ingredients = product.get_processed_ingredients()
         if product.baked_by_batch and line_quantity % product.nb_units != 0:
             # adjust quantities for products that need to be batch-baked
             line_quantity += product.nb_units - (line_quantity % product.nb_units)
-        direct_ingredients = [(i, q * line_quantity) for i, q in product.get_batch_ingredients(direct=True)]
-        if direct_ingredients and product.orig_product:
+        if all_ingredients['direct'] and product.orig_product:
             # need sub-batch
-            direct_ingredients.append(("pâton", product.get_batch_weight() * line_quantity))
-            self.sub_batches[base_product][product] = direct_ingredients
+            self.sub_batches[product.orig_product][product] = dict()
+            for ing, qty in all_ingredients['direct'].items():
+                self.sub_batches[product.orig_product][product][ing] = qty * product.nb_units
+            self.sub_batches[product.orig_product][product]["pâton"] = product.get_batch_weight() * line_quantity
         if product.is_bread:
             self.nb_breads += line_quantity
+        if product.orig_product:
+            base_product = product.orig_product
+            ing_ref = "base_product"
+        else:
+            base_product = product
+            ing_ref = "direct"
         if base_product not in self:
             self[base_product] = {}
         if "ingredients" not in self[base_product]:
@@ -281,18 +298,11 @@ class BakeryBatch(dict):
         if product not in self[base_product]["division"]:
             self[base_product]["division"][product] = 0
         self[base_product]["division"][product] += line_quantity
-        for ingredient, ing_qty in product.get_batch_ingredients():
+        for ingredient, ing_qty in all_ingredients[ing_ref].items():
             quantity = line_quantity * ing_qty
             if ingredient not in self[base_product]["ingredients"]:
                 self[base_product]["ingredients"][ingredient] = 0
-            if not ingredient.soaking_ingredient:
-                self[base_product]["ingredients"][ingredient] += quantity
-            else:
-                soaking_qty = quantity * ingredient.soaking_coef
-                self[base_product]["ingredients"][ingredient] += quantity + soaking_qty
-                if ingredient.soaking_ingredient not in self[base_product]["ingredients"]:
-                    self[base_product]["ingredients"][ingredient.soaking_ingredient] = 0
-                self[base_product]["ingredients"][ingredient.soaking_ingredient] -= soaking_qty
+            self[base_product]["ingredients"][ingredient] += quantity
 
     def finalize(self):
         for product, qty in self.temp_products.items():
@@ -325,20 +335,20 @@ class PreparationBatch(dict):
         if product.baked_by_batch and line_quantity % product.nb_units != 0:
             # adjust quantities for products that need to be batch-baked
             line_quantity += product.nb_units - (line_quantity % product.nb_units)
-        for ingredient, ing_qty in product.get_batch_ingredients(preparation=True):
+        for ingredient, ing_qty in product.get_processed_ingredients()['preparations'].items():
             if ingredient.name.startswith("Levain"):
-                if ingredient.name not in self["levain"]:
-                    self["levain"][ingredient.name] = 0
-                self["levain"][ingredient.name] += ing_qty * line_quantity
+                if ingredient not in self["levain"]:
+                    self["levain"][ingredient] = 0
+                self["levain"][ingredient] += ing_qty * line_quantity
             elif ingredient.soaking_ingredient:
-                if ingredient.name not in self["trempage"]:
-                    self["trempage"][ingredient.name] = {"dry": 0, "soaking_qty": 0}
+                if ingredient not in self["trempage"]:
+                    self["trempage"][ingredient] = {"dry": 0, "soaking_qty": 0}
                 quantity = ing_qty * line_quantity
-                self["trempage"][ingredient.name]["dry"] += quantity
-                self["trempage"][ingredient.name]["soaking_qty"] += quantity * ingredient.soaking_coef
-                self["trempage"][ingredient.name]["soaking_ingredient"] = ingredient.soaking_ingredient
+                self["trempage"][ingredient]["dry"] += quantity
+                self["trempage"][ingredient]["soaking_qty"] += quantity * ingredient.soaking_coef
+                self["trempage"][ingredient]["soaking_ingredient"] = ingredient.soaking_ingredient
                 if ingredient.name == "Flocons de riz":
-                    self["trempage"][ingredient.name]["warning"] = "⚠ prévoir 10% de marge"
+                    self["trempage"][ingredient]["warning"] = "⚠ prévoir 10% de marge"
 
     def _refresh_levain(self, initial_qty, target_qty, water_percentage):
         missing = target_qty - initial_qty
@@ -347,9 +357,10 @@ class PreparationBatch(dict):
         return flour, water
 
     def levain_froment_recipe(self):
-        if "Levain froment" not in self["levain"]:
+        levfrom = Ingredient.objects.get(name="Levain froment")
+        if levfrom not in self["levain"]:
             return {}
-        qty = self["levain"]["Levain froment"]
+        qty = self["levain"][levfrom]
         try:
             nb_steps = int(Settings.objects.get(name="Nb steps levain").value)
         except Settings.DoesNotExist:
@@ -407,9 +418,10 @@ class PreparationBatch(dict):
             ]
 
     def levain_petit_epeautre_recipe(self):
-        if "Levain de petit epeautre" not in self["levain"]:
+        levep = Ingredient.objects.get(name="Levain de petit epeautre")
+        if levep not in self["levain"]:
             return {}
-        qty = self["levain"]["Levain de petit epeautre"]
+        qty = self["levain"][levep]
         return [
             {
                 "title": f"1er rafraîchi (cible {bround(qty, 'total')} g)",
@@ -423,9 +435,10 @@ class PreparationBatch(dict):
         ]
 
     def levain_sarrasin_recipe(self):
-        if "Levain sarrasin" not in self["levain"]:
+        levsar = Ingredient.objects.get(name="Levain sarrasin")
+        if levsar not in self["levain"]:
             return {}
-        qty = self["levain"]["Levain sarrasin"]
+        qty = self["levain"][levsar]
         try:
             nb_steps = int(Settings.objects.get(name="Nb steps levain").value)
         except Settings.DoesNotExist:

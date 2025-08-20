@@ -43,10 +43,12 @@
 	  {% for subproduct, subingredients in subbatch.items %}
 	  <b>dont {{ subproduct }}</b>
 	  <ul>
-	    {% for subing, subqty in subingredients %}
+	    {% for subing, subqty in subingredients.items %}
+	    {% if subqty|bround:subing != 0%}
 	    <li>
-	      {{ subing }}: {{ subqty|bround:subing }}
+	      {{ subing }}{% if subing.soaking_ingredient %} (trempé){% endif %} : {{ subqty|bround:subing }} {{ subing.unit }}
 	    </li>
+	    {% endif %}
 	    {% endfor %}
 	  </ul>
 	  {% endfor %}

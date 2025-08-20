@@ -95,8 +95,8 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 168.0},
-                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
+                "levain": {Ingredient.objects.get(name="Levain froment"): 168.0},
+                "trempage": {Ingredient.objects.get(name="Graines kasha"): {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -138,8 +138,8 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 168.0},
-                "trempage": {"Graines kasha": {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
+                "levain": {Ingredient.objects.get(name="Levain froment"): 168.0},
+                "trempage": {Ingredient.objects.get(name="Graines kasha"): {"dry": 78.0, "soaking_qty": 78.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday + timedelta(1))
@@ -198,7 +198,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"levain": {"Levain sarrasin": 408.0, "Levain froment": 294.4}, "trempage": {}},
+            {"levain": {Ingredient.objects.get(name="Levain sarrasin"): 408.0, Ingredient.objects.get(name="Levain froment"): 294.4}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
@@ -243,8 +243,8 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 1680.0},
-                "trempage": {"Graines kasha": {"dry": 780.0, "soaking_qty": 780.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
+                "levain": {Ingredient.objects.get(name="Levain froment"): 1680.0},
+                "trempage": {Ingredient.objects.get(name="Graines kasha"): {"dry": 780.0, "soaking_qty": 780.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")}},
             },
         )
         actions = order.get_actions(self.next_monday)
@@ -301,15 +301,15 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(
             actions["preparation"],
             {
-                "levain": {"Levain froment": 128.0},
+                "levain": {Ingredient.objects.get(name="Levain froment"): 128.0},
                 "trempage": {
-                    "Flocons de riz": {
+                    Ingredient.objects.get(name="Flocons de riz"): {
                         "dry": 10.0,
                         "soaking_qty": 100.0,
                         "soaking_ingredient": Ingredient.objects.get(name="Eau"),
                         "warning": "⚠ prévoir 10% de marge",
                     },
-                    "Raisins secs": {"dry": 47.0, "soaking_qty": 47.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")},
+                    Ingredient.objects.get(name="Raisins secs"): {"dry": 47.0, "soaking_qty": 47.0, "soaking_ingredient": Ingredient.objects.get(name="Eau")},
                 },
             },
         )
@@ -360,19 +360,19 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"levain": {"Levain froment": 397.5}, "trempage": {}},
+            {"levain": {Ingredient.objects.get(name="Levain froment"): 397.5}, "trempage": {Ingredient.objects.get(name="Tomates séchées"): {'dry': 100.0, 'soaking_qty': 150.0, 'soaking_ingredient': Ingredient.objects.get(name="Huile olive")}}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {foc: 1}})
         self.assertEqual(
-            actions["bakery"], {foc.orig_product: {"ingredients": {Ingredient.objects.get(name="Eau"): 1115.0, Ingredient.objects.get(name="Farine blé"): 1592.5, Ingredient.objects.get(name="Levain froment"): 397.5, Ingredient.objects.get(name="Sel"): 31.875}, "division": {foc: 24}, "weight": 3136.875}}
+            actions["bakery"], {foc.orig_product: {"ingredients": {Ingredient.objects.get(name="Eau"): 1115.0, Ingredient.objects.get(name="Farine blé"): 1592.5, Ingredient.objects.get(name="Levain froment"): 397.5, Ingredient.objects.get(name="Sel"): 31.875}, "division": {foc: 48}, "weight": 3136.875}}
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
-        self.assertEqual(
-            actions["bakery"].sub_batches,
-            {foc.orig_product: {foc: [(Ingredient.objects.get(name="Huile olive"), 375.0), (Ingredient.objects.get(name="Tomates séchées"), 250.0), ("pâton", 3136.875)]}},
+        self.assertAlmostEqual(
+            actions["bakery"].sub_batches[foc.orig_product],
+            {foc: {Ingredient.objects.get(name="Huile olive"): 0.0, Ingredient.objects.get(name="Tomates séchées"): 250.0, "pâton": 3136.875}},
         )
 
     def test_BB400g(self):
@@ -397,7 +397,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"levain": {"Levain froment": 50.0}, "trempage": {}},
+            {"levain": {Ingredient.objects.get(name="Levain froment"): 50.0}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
@@ -432,7 +432,7 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertAlmostEqual(
             actions["preparation"],
-            {"levain": {"Levain froment": 883.2}, "trempage": {}},
+            {"levain": {Ingredient.objects.get(name="Levain froment"): 883.2}, "trempage": {}},
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
@@ -590,16 +590,16 @@ class ViewTests(ExtendedTestCase):
         <h2 class="card-title">FOC</h2>
         <b class="card-subtitle mb-2 text-muted">Focaccia (part)</b>
         <ul class="list-group list-group-flush">
-          <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 24 unités</li>
+          <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 48 unités</li>
           <li class="list-group-item">Huile olive : 150,00 g</li>
           <li class="list-group-item">Tomates séchées : 100,00 g</li>
         </ul>
         <p class="card-text">
           Prix de vente : 2,20€
           <br>
-          Prix de revient : 0,22€
+          Prix de revient : 0,11€
           <br>
-          Poids pâte : 141,12g
+          Poids pâte : 70,56g
         </p>
         """,
             response.content.decode("utf-8"),
