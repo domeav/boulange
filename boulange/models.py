@@ -5,11 +5,10 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from boulange import SPECIAL_UNITS_WEIGHTS
 from boulange.templatetags.boulange_tags import bround
 
 TVA = 5.5
-EGG_WEIGHT = 60
-EGGS = "Oeufs"
 
 
 class Settings(models.Model):
@@ -85,32 +84,26 @@ class Product(models.Model):
         for line in self.raw_ingredients.all():
             if line.ingredient.unit == "g":
                 weight += line.quantity
-            elif line.ingredient.name == EGGS:
-                weight += line.quantity * EGG_WEIGHT
+            elif line.ingredient.name in SPECIAL_UNITS_WEIGHTS:
+                weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.name]
             else:
                 raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         if self.orig_product:
             for line in self.orig_product.raw_ingredients.all():
                 if line.ingredient.unit == "g":
                     weight += line.quantity * self.coef
-                elif line.ingredient.name == EGGS:
-                    weight += line.quantity * EGG_WEIGHT * self.coef
+                elif line.ingredient.name in SPECIAL_UNITS_WEIGHTS:
+                    weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.name] * self.coef
                 else:
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         return weight / self.nb_units
 
-
     def get_processed_ingredients(self):
-        ingredients = {
-            'direct': defaultdict(int),
-            'base_product': defaultdict(int),
-            'preparations': defaultdict(int)
-        }
+        ingredients = {"direct": defaultdict(int), "base_product": defaultdict(int), "preparations": defaultdict(int)}
         base_ingredients = []
         if self.orig_product:
             base_ingredients = self.orig_product.raw_ingredients.all()
-        for ingref, coef, inglist in [('direct', 1, self.raw_ingredients.all()),
-                                      ('base_product', self.coef, base_ingredients)]:
+        for ingref, coef, inglist in [("direct", 1, self.raw_ingredients.all()), ("base_product", self.coef, base_ingredients)]:
             for line in inglist:
                 qty = line.quantity * coef / self.nb_units
                 ingredients[ingref][line.ingredient] += qty
@@ -118,10 +111,10 @@ class Product(models.Model):
                     soaking_coef = line.ingredient.soaking_coef
                     ingredients[ingref][line.ingredient] += qty * soaking_coef
                     ingredients[ingref][line.ingredient.soaking_ingredient] -= qty * soaking_coef
-                    ingredients['preparations'][line.ingredient] += qty
-                    ingredients['preparations'][line.ingredient.soaking_ingredient] += qty * soaking_coef
-                if line.ingredient.name.startswith('Levain'):
-                    ingredients['preparations'][line.ingredient] += qty
+                    ingredients["preparations"][line.ingredient] += qty
+                    ingredients["preparations"][line.ingredient.soaking_ingredient] += qty * soaking_coef
+                if line.ingredient.name.startswith("Levain"):
+                    ingredients["preparations"][line.ingredient] += qty
         return ingredients
 
     def get_batch_weight(self):
@@ -129,9 +122,9 @@ class Product(models.Model):
         if not self.orig_product:
             return 0
         weight = 0
-        for ing, ing_weight in self.get_processed_ingredients()['base_product'].items():
-            if ing.name == EGGS:
-                ing_weight *= EGG_WEIGHT
+        for ing, ing_weight in self.get_processed_ingredients()["base_product"].items():
+            if ing.name in SPECIAL_UNITS_WEIGHTS:
+                ing_weight *= SPECIAL_UNITS_WEIGHTS[ing.name]
             weight += ing_weight
         return weight
 
@@ -276,10 +269,10 @@ class BakeryBatch(dict):
         if product.baked_by_batch and line_quantity % product.nb_units != 0:
             # adjust quantities for products that need to be batch-baked
             line_quantity += product.nb_units - (line_quantity % product.nb_units)
-        if all_ingredients['direct'] and product.orig_product:
+        if all_ingredients["direct"] and product.orig_product:
             # need sub-batch
             self.sub_batches[product.orig_product][product] = dict()
-            for ing, qty in all_ingredients['direct'].items():
+            for ing, qty in all_ingredients["direct"].items():
                 self.sub_batches[product.orig_product][product][ing] = qty * product.nb_units
             self.sub_batches[product.orig_product][product]["pâton"] = product.get_batch_weight() * line_quantity
         if product.is_bread:
@@ -311,8 +304,8 @@ class BakeryBatch(dict):
             self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
                 ing_weight = self[product]["ingredients"][ingredient]
-                if ingredient.name == EGGS:
-                    ing_weight *= EGG_WEIGHT
+                if ingredient.name in SPECIAL_UNITS_WEIGHTS:
+                    ing_weight *= SPECIAL_UNITS_WEIGHTS[ingredient.name]
                 self[product]["weight"] += ing_weight
         new_dict = {key: value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
@@ -335,7 +328,7 @@ class PreparationBatch(dict):
         if product.baked_by_batch and line_quantity % product.nb_units != 0:
             # adjust quantities for products that need to be batch-baked
             line_quantity += product.nb_units - (line_quantity % product.nb_units)
-        for ingredient, ing_qty in product.get_processed_ingredients()['preparations'].items():
+        for ingredient, ing_qty in product.get_processed_ingredients()["preparations"].items():
             if ingredient.name.startswith("Levain"):
                 if ingredient not in self["levain"]:
                     self["levain"][ingredient] = 0

@@ -209,8 +209,27 @@ class ActionsTests(ExtendedTestCase):
         self.assertAlmostEqual(
             actions["bakery"],
             {
-                gsa: {"ingredients": {Ingredient.objects.get(name="Eau"): 1269.0, Ingredient.objects.get(name="Farine sarrasin"): 1365.0, Ingredient.objects.get(name="Levain sarrasin"): 408.0, Ingredient.objects.get(name="Sel"): 27.30}, "division": {psa: 6}, "weight": 3069.3},
-                gse: {"ingredients": {Ingredient.objects.get(name="Eau"): 736.0, Ingredient.objects.get(name="Farine blé"): 315.2, Ingredient.objects.get(name="Farine seigle"): 737.6, Ingredient.objects.get(name="Levain froment"): 294.4, Ingredient.objects.get(name="Sel"): 19.2}, "division": {pse: 4}, "weight": 2102.4},
+                gsa: {
+                    "ingredients": {
+                        Ingredient.objects.get(name="Eau"): 1269.0,
+                        Ingredient.objects.get(name="Farine sarrasin"): 1365.0,
+                        Ingredient.objects.get(name="Levain sarrasin"): 408.0,
+                        Ingredient.objects.get(name="Sel"): 27.30,
+                    },
+                    "division": {psa: 6},
+                    "weight": 3069.3,
+                },
+                gse: {
+                    "ingredients": {
+                        Ingredient.objects.get(name="Eau"): 736.0,
+                        Ingredient.objects.get(name="Farine blé"): 315.2,
+                        Ingredient.objects.get(name="Farine seigle"): 737.6,
+                        Ingredient.objects.get(name="Levain froment"): 294.4,
+                        Ingredient.objects.get(name="Sel"): 19.2,
+                    },
+                    "division": {pse: 4},
+                    "weight": 2102.4,
+                },
             },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
@@ -360,19 +379,42 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["bakery"]), 0)
         self.assertEqual(
             actions["preparation"],
-            {"levain": {Ingredient.objects.get(name="Levain froment"): 397.5}, "trempage": {Ingredient.objects.get(name="Tomates séchées"): {'dry': 100.0, 'soaking_qty': 150.0, 'soaking_ingredient': Ingredient.objects.get(name="Huile olive")}}},
+            {
+                "levain": {Ingredient.objects.get(name="Levain froment"): 397.5},
+                "trempage": {Ingredient.objects.get(name="Tomates séchées"): {"dry": 100.0, "soaking_qty": 150.0, "soaking_ingredient": Ingredient.objects.get(name="Huile olive")}},
+            },
         )
         actions = order.get_actions(self.next_monday)
         actions.finalize()
         self.assertEqual(actions["delivery"], {delivery_date: {foc: 1}})
         self.assertEqual(
-            actions["bakery"], {foc.orig_product: {"ingredients": {Ingredient.objects.get(name="Eau"): 1115.0, Ingredient.objects.get(name="Farine blé"): 1592.5, Ingredient.objects.get(name="Levain froment"): 397.5, Ingredient.objects.get(name="Sel"): 31.875}, "division": {foc: 48}, "weight": 3136.875}}
+            actions["bakery"],
+            {
+                foc.orig_product: {
+                    "ingredients": {
+                        Ingredient.objects.get(name="Eau"): 1115.0,
+                        Ingredient.objects.get(name="Farine blé"): 1592.5,
+                        Ingredient.objects.get(name="Levain froment"): 397.5,
+                        Ingredient.objects.get(name="Sel"): 31.875,
+                    },
+                    "division": {foc: 48},
+                    "weight": 3136.875,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
         self.assertAlmostEqual(
             actions["bakery"].sub_batches[foc.orig_product],
-            {foc: {Ingredient.objects.get(name="Huile olive"): 0.0, Ingredient.objects.get(name="Tomates séchées"): 250.0, Ingredient.objects.get(name="Herbes de provence"): 10.0, Ingredient.objects.get(name="Olives"): 200.0, "pâton": 3136.875}},
+            {
+                foc: {
+                    Ingredient.objects.get(name="Huile olive"): 0.0,
+                    Ingredient.objects.get(name="Tomates séchées"): 250.0,
+                    Ingredient.objects.get(name="Herbes de provence"): 10.0,
+                    Ingredient.objects.get(name="Olives"): 200.0,
+                    "pâton": 3136.875,
+                }
+            },
         )
 
     def test_BB400g(self):
@@ -404,7 +446,21 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {bb: 1}})
         self.assertEqual(
             actions["bakery"],
-            {bb: {"ingredients": {Ingredient.objects.get(name="Beurre"): 62.5, Ingredient.objects.get(name="Farine blé"): 250.0, Ingredient.objects.get(name="Lait"): 47.5, Ingredient.objects.get(name="Levain froment"): 50.0, Ingredient.objects.get(name="Oeufs"): 1.5, Ingredient.objects.get(name="Sel"): 2.5, Ingredient.objects.get(name="Sucre"): 50.0}, "division": {bb: 1}, "weight": 552.5}},
+            {
+                bb: {
+                    "ingredients": {
+                        Ingredient.objects.get(name="Beurre"): 62.5,
+                        Ingredient.objects.get(name="Farine blé"): 250.0,
+                        Ingredient.objects.get(name="Lait"): 47.5,
+                        Ingredient.objects.get(name="Levain froment"): 50.0,
+                        Ingredient.objects.get(name="Oeufs"): 1.5,
+                        Ingredient.objects.get(name="Sel"): 2.5,
+                        Ingredient.objects.get(name="Sucre"): 50.0,
+                    },
+                    "division": {bb: 1},
+                    "weight": 552.5,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
@@ -439,7 +495,19 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(actions["delivery"], {delivery_date: {gse: 6}})
         self.assertAlmostEqual(
             actions["bakery"],
-            {gse: {"ingredients": {Ingredient.objects.get(name="Eau"): 2208.0, Ingredient.objects.get(name="Farine blé"): 945.60, Ingredient.objects.get(name="Farine seigle"): 2212.8, Ingredient.objects.get(name="Levain froment"): 883.20, Ingredient.objects.get(name="Sel"): 57.60}, "division": {gse: 6}, "weight": 6307.2}},
+            {
+                gse: {
+                    "ingredients": {
+                        Ingredient.objects.get(name="Eau"): 2208.0,
+                        Ingredient.objects.get(name="Farine blé"): 945.60,
+                        Ingredient.objects.get(name="Farine seigle"): 2212.8,
+                        Ingredient.objects.get(name="Levain froment"): 883.20,
+                        Ingredient.objects.get(name="Sel"): 57.60,
+                    },
+                    "division": {gse: 6},
+                    "weight": 6307.2,
+                }
+            },
         )
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)

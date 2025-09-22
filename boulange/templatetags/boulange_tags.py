@@ -1,7 +1,9 @@
 from django.template.defaultfilters import register
 
+from boulange import SPECIAL_UNITS_WEIGHTS
+
 SALT = "Sel"
-EGGS = "Oeufs"
+
 
 @register.filter(name="dict_key")
 def dict_key(d, k):
@@ -16,7 +18,7 @@ def bround(value, ing=None):
         ing = ing.name
     if ing == SALT:
         return round(value)
-    elif ing is None or ing == EGGS:
+    elif ing is None or ing in SPECIAL_UNITS_WEIGHTS:
         return value
     else:
         return round(value / 10) * 10
