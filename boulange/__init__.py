@@ -1,1 +1,1 @@
-SPECIAL_UNITS_WEIGHTS = {"Oeufs": 60, "blancs": 40, "jaunes": 20}
+SPECIAL_UNITS_WEIGHTS = {"oeufs": 60, "blancs": 40, "jaunes": 20}

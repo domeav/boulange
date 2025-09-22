@@ -84,16 +84,16 @@ class Product(models.Model):
         for line in self.raw_ingredients.all():
             if line.ingredient.unit == "g":
                 weight += line.quantity
-            elif line.ingredient.name in SPECIAL_UNITS_WEIGHTS:
-                weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.name]
+            elif line.ingredient.unit in SPECIAL_UNITS_WEIGHTS:
+                weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.unit]
             else:
                 raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         if self.orig_product:
             for line in self.orig_product.raw_ingredients.all():
                 if line.ingredient.unit == "g":
                     weight += line.quantity * self.coef
-                elif line.ingredient.name in SPECIAL_UNITS_WEIGHTS:
-                    weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.name] * self.coef
+                elif line.ingredient.unit in SPECIAL_UNITS_WEIGHTS:
+                    weight += line.quantity * SPECIAL_UNITS_WEIGHTS[line.ingredient.unit] * self.coef
                 else:
                     raise ValueError(f"Can't add weight for {line.ingredient.name}!")
         return weight / self.nb_units
@@ -123,8 +123,8 @@ class Product(models.Model):
             return 0
         weight = 0
         for ing, ing_weight in self.get_processed_ingredients()["base_product"].items():
-            if ing.name in SPECIAL_UNITS_WEIGHTS:
-                ing_weight *= SPECIAL_UNITS_WEIGHTS[ing.name]
+            if ing.unit in SPECIAL_UNITS_WEIGHTS:
+                ing_weight *= SPECIAL_UNITS_WEIGHTS[ing.unit]
             weight += ing_weight
         return weight
 
@@ -304,8 +304,8 @@ class BakeryBatch(dict):
             self[product]["weight"] = 0
             for ingredient in self[product]["ingredients"]:
                 ing_weight = self[product]["ingredients"][ingredient]
-                if ingredient.name in SPECIAL_UNITS_WEIGHTS:
-                    ing_weight *= SPECIAL_UNITS_WEIGHTS[ingredient.name]
+                if ingredient.unit in SPECIAL_UNITS_WEIGHTS:
+                    ing_weight *= SPECIAL_UNITS_WEIGHTS[ingredient.unit]
                 self[product]["weight"] += ing_weight
         new_dict = {key: value for key, value in sorted(self.items(), key=lambda items: items[0].display_priority, reverse=True)}
         for base_product in new_dict:
