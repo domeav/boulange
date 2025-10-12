@@ -525,6 +525,7 @@ class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
     notes = models.TextField(blank=True, null=True)
+    validated = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.customer}/{self.delivery_date}"

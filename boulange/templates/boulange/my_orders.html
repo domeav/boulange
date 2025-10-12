@@ -3,6 +3,19 @@
 {% block title %}Mes commandes{% endblock %}
 
 {% block content %}
+<section class="container mt-5">
+  <a name="order"></a>
+  <h2 class="mb-4">Commande</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {{ form.management_form }}
+    {{ formset.as_p }}
+    {{ formset.management_form }}
+    <button type="submit" class="btn btn-primary m-3">Enregistrer</button>
+    <a href="{% url 'boulange:my_orders' %}" class="btn btn-primary m-3">Annuler</a>
+  </form>
+</section>
 <section class="container">
   {% for order in orders %}
   <div class="mt-5 card">
@@ -15,6 +28,14 @@
       <li class="list-group-item">{{ line }}</li>
       {% endfor %}
     </ul>
+    {% endif %}
+    {% if not order.validated %}
+<div class="d-flex justify-content-start">
+    <a href="{% url 'boulange:my_orders' action='edit' order_id=order.id %}" class="btn btn-primary m-3">Modifier</a>
+    <a href="{% url 'boulange:my_orders' action='delete' order_id=order.id %}" class="btn btn-danger m-3" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
+    <a href="{% url 'boulange:my_orders' action='duplicate' order_id=order.id %}" class="btn btn-danger m-3">Dupliquer</a>
+    <a href="{% url 'boulange:my_orders' action='validate' order_id=order.id %}" class="btn btn-danger m-3" onclick="return confirm('Êtes-vous sûr de vouloir valider cette commande ?');">Valider</a>
+</div>
     {% endif %}
   </div>
   {% endfor %}

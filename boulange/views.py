@@ -2,12 +2,13 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from .forms import OrderForm, OrderLineFormSet
 from .models import (
     Customer,
     DeliveryDate,
@@ -101,7 +102,7 @@ def _get_actions(target_date):
     delivery_dates = DeliveryDate.objects.filter(date__gte=target_date).filter(active=True).filter(date__lte=target_date + timedelta(days=2)).all()
     actions = None
     for delivery_date in delivery_dates:
-        for order in delivery_date.order_set.all():
+        for order in delivery_date.order_set.filter(validated=True).all():
             actions = order.get_actions(target_date, actions)
     if actions:
         actions.finalize()
@@ -122,8 +123,57 @@ def index(request):
 
 
 @login_required
-def my_orders(request):
-    context = {"orders": Order.objects.filter(customer=request.user).order_by("-id")}
+def my_orders(request, action="None", order_id=None):
+    if action in ["edit", "delete", "duplicate", "validate"] and order_id is not None:
+        order = Order.objects.get(id=order_id, customer=request.user)
+        if action in ["edit", "delete", "validate"]:
+            # only unvalidated orders can be edited or deleted
+            if order.validated:
+                return redirect("boulange:my_orders")
+    if action == "delete":
+        order.delete()
+        return redirect("boulange:my_orders")
+    elif action == "validate":
+        order.validated = True
+        order.save()
+        return redirect("boulange:my_orders")
+    if request.POST:
+        if action in ("edit", "duplicate") and order_id is not None:
+            formset = OrderLineFormSet(request.POST, instance=order)
+            form = OrderForm(request.POST, instance=order)
+        else:
+            # new
+            form = OrderForm(request.POST)
+            formset = OrderLineFormSet(request.POST, instance=form.instance)
+        form.instance.customer = request.user
+        form.instance.validated = False
+        if form.is_valid() and formset.is_valid():
+            if action == "duplicate":
+                order = Order(delivery_date=form.cleaned_data["delivery_date"], customer=request.user, notes=form.cleaned_data["notes"], validated=False)
+                order.save()
+                for ol in formset.forms:
+                    if ol.cleaned_data.get("product", None) is None:
+                        continue
+                    line = OrderLine(order=order, product=ol.cleaned_data["product"], quantity=ol.cleaned_data["quantity"])
+                    line.save()
+            else:
+                form.save()
+                formset.save()
+            return redirect("boulange:my_orders")
+    else:
+        # edit or duplicate
+        if order_id is not None:
+            order = Order.objects.get(id=order_id, customer=request.user)
+            if action == "duplicate":
+                order.delivery_date = None
+            formset = OrderLineFormSet(instance=order)
+            form = OrderForm(instance=order)
+        # new
+        else:
+            order = Order(customer=request.user)
+            formset = OrderLineFormSet(instance=order)
+            form = OrderForm(instance=order)
+    context = {"orders": Order.objects.filter(customer=request.user).order_by("-id"), "form": form, "formset": formset}
     return render(request, "boulange/my_orders.html", context)
 
 

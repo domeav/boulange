@@ -17,7 +17,8 @@ router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("my_orders/", views.my_orders, name="my_orders"),
+    path("my_orders/<str:action>/<int:order_id>/", views.my_orders, name="my_orders"),
+    path("my_orders/", views.my_orders, name="my_orders", kwargs={"action": "new", "order_id": None}),
     path("products/", views.products, name="products"),
     path("actions/<int:year>/<int:month>/<int:day>/", views.actions, name="actions", kwargs={"to_print": False}),
     path("actions_print/<section>/<int:year>/<int:month>/<int:day>/", views.actions, name="actions_print", kwargs={"to_print": True}),
