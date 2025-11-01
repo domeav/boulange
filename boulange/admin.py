@@ -62,6 +62,7 @@ def generate_delivery_dates(modeladmin, request, queryset):
 class WeeklyDeliveryAdmin(admin.ModelAdmin):
     list_display = ("customer", "day_of_week", "active")
     list_filter = ("active", "day_of_week")
+    filter_horizontal = ("allowed_customers",)
     model = WeeklyDelivery
     actions = [generate_delivery_dates]
     search_fields = ["customer__display_name", "customer__username", "day_of_week"]

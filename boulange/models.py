@@ -169,6 +169,10 @@ class Customer(AbstractUser):
 
 
 class WeeklyDelivery(models.Model):
+    # 3 types
+    # - allowed_customers set : accessible seulement aux clients listés
+    # - can_order_from_website True : accessible à tous sauf les pros
+    # - can_order_from_website False + attaché un un customer pro (accessible seulement par lui)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     active = models.BooleanField(default=True)
     BATCH_TARGET = {
@@ -188,6 +192,7 @@ class WeeklyDelivery(models.Model):
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
     notes = models.TextField(blank=True, null=True)
+    allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries")
 
     def generate_delivery_dates(self):
         if not self.active:
