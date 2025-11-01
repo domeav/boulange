@@ -54,6 +54,13 @@ class Product(models.Model):
     notes = models.TextField(blank=True, null=True)
     display_priority = models.IntegerField(default=0)
     is_bread = models.BooleanField(default=False)
+    available_mondays = models.BooleanField(default=True)
+    available_tuesdays = models.BooleanField(default=True)
+    available_wednesdays = models.BooleanField(default=True)
+    available_thursdays = models.BooleanField(default=True)
+    available_fridays = models.BooleanField(default=True)
+    available_saturdays = models.BooleanField(default=True)
+    available_sundays = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name}/{self.ref}"
