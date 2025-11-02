@@ -171,8 +171,8 @@ class Customer(AbstractUser):
 class WeeklyDelivery(models.Model):
     # 3 types
     # - allowed_customers set : accessible seulement aux clients listés
-    # - can_order_from_website True : accessible à tous sauf les pros
-    # - can_order_from_website False + attaché un un customer pro (accessible seulement par lui)
+    # - public_delivery_point True : accessible à tous sauf les pros
+    # - public_delivery_point False + attaché un un customer pro (accessible seulement par lui)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     active = models.BooleanField(default=True)
     BATCH_TARGET = {
@@ -180,7 +180,7 @@ class WeeklyDelivery(models.Model):
         "PREVIOUS_DAY": "previous day",
     }
     batch_target = models.CharField(max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
-    can_order_here_from_website = models.BooleanField(default=True)
+    public_delivery_point = models.BooleanField(default=True)
     DAY_OF_WEEK = {
         0: "lundi",
         1: "mardi",
