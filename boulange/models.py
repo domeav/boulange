@@ -192,7 +192,7 @@ class WeeklyDelivery(models.Model):
     }
     day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
     notes = models.TextField(blank=True, null=True)
-    allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries")
+    allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries", blank=True)
 
     def generate_delivery_dates(self):
         if not self.active:
