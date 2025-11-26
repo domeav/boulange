@@ -2,6 +2,10 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
@@ -121,60 +125,111 @@ def get_actions(request, year, month, day):
 def index(request):
     return render(request, "boulange/index.html")
 
+def _get_start_end_command_period():
+    available_timespan_start = date.today() + timedelta(days=2)
+    available_timespan_end = date.today() + timedelta(days=56)
+    return available_timespan_start, available_timespan_end
+
+def hx_get_dates_for_weekly_delivery(request):
+    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST['weekly_delivery_id'])
+    available_timespan_start, available_timespan_end = _get_start_end_command_period()
+    selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
+    context = {
+        "selectable_delivery_dates": selectable_delivery_dates,
+        'strip_lines': request.POST['event_type'] == 'change'
+    }
+    return render(request, "boulange/hx/available_dates.html", context=context)
+
+def hx_order_line(request):
+    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST['weekly_delivery_id'])
+    context = {
+        'products': weekly_delivery.get_available_products()
+    }
+    return render(request, "boulange/hx/order_line.html", context=context)
+
+def hx_order_line_sum(request):
+    index = int(request.POST['index'])
+    product = Product.objects.get(id=int(request.POST.getlist('product_id')[index]))
+    try:
+        product_qty = int(request.POST.getlist('product_qty')[index])
+    except ValueError:
+        product_qty = 0
+    return HttpResponse(product.price * product_qty)
+
 
 @login_required
-def my_orders(request, action="None", order_id=None):
-    if action in ["edit", "delete", "duplicate", "validate"] and order_id is not None:
-        order = Order.objects.get(id=order_id, customer=request.user)
-        if action in ["edit", "delete", "validate"]:
-            # only unvalidated orders can be edited or deleted
-            if order.validated:
-                return redirect("boulange:my_orders")
-    if action == "delete":
-        order.delete()
-        return redirect("boulange:my_orders")
-    elif action == "validate":
-        order.validated = True
-        order.save()
-        return redirect("boulange:my_orders")
+def delete_order(request, order_id):
+    order = Order.objects.get(id=order_id)
+    if order.customer != request.user or order.validated:
+        raise PermissionDenied
+    order.delete()
+    return redirect("boulange:orders")
+
+
+@login_required
+@transaction.atomic
+def orders(request, order_id=None, edit=False, duplicate=False):
     if request.POST:
-        if action in ("edit", "duplicate") and order_id is not None:
-            formset = OrderLineFormSet(request.POST, instance=order)
-            form = OrderForm(request.POST, instance=order)
+        if request.POST['order_id']:
+            # editing existing order
+            order = Order.objects.get(id=int(request.POST['order_id']))
+            if order.validated or order.customer != request.user:
+                raise PermissionDenied
+            order.delivery_date_id = int(request.POST['delivery_date'])
+            order.notes = request.POST['notes']
+            for line in order.lines.all():
+                line.delete()
         else:
-            # new
-            form = OrderForm(request.POST)
-            formset = OrderLineFormSet(request.POST, instance=form.instance)
-        form.instance.customer = request.user
-        form.instance.validated = False
-        if form.is_valid() and formset.is_valid():
-            if action == "duplicate":
-                order = Order(delivery_date=form.cleaned_data["delivery_date"], customer=request.user, notes=form.cleaned_data["notes"], validated=False)
-                order.save()
-                for ol in formset.forms:
-                    if ol.cleaned_data.get("product", None) is None:
-                        continue
-                    line = OrderLine(order=order, product=ol.cleaned_data["product"], quantity=ol.cleaned_data["quantity"])
-                    line.save()
-            else:
-                form.save()
-                formset.save()
-            return redirect("boulange:my_orders")
+            order = Order(customer=request.user,
+                          delivery_date_id=int(request.POST['delivery_date']),
+                          notes=request.POST['notes'],
+                          validated=False)
+        lines = []
+        for product_id, qty in zip(request.POST.getlist('product_id'),
+                                   request.POST.getlist('product_qty')):
+            if qty:
+                lines.append(OrderLine(order=order,
+                                       product_id=product_id,
+                                       quantity=int(qty)))
+        if lines:
+            order.save()
+            for line in lines:
+                line.save()
+        return redirect("boulange:orders")
+    order = None
+    weekly_delivery = None
+    if order_id:
+        order = Order.objects.get(id=order_id)
+        if order.customer != request.user:
+            raise PermissionDenied
+        weekly_delivery = order.delivery_date.weekly_delivery
+        if edit:
+            if order.validated:
+                raise PermissionDenied
+            order_id = order.id
+        if duplicate:
+            order_id = False
+    selectable_delivery_dates = []
+    if request.user.is_professional:
+        available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
     else:
-        # edit or duplicate
-        if order_id is not None:
-            order = Order.objects.get(id=order_id, customer=request.user)
-            if action == "duplicate":
-                order.delivery_date = None
-            formset = OrderLineFormSet(instance=order)
-            form = OrderForm(instance=order)
-        # new
-        else:
-            order = Order(customer=request.user)
-            formset = OrderLineFormSet(instance=order)
-            form = OrderForm(instance=order)
-    context = {"orders": Order.objects.filter(customer=request.user).order_by("-id"), "form": form, "formset": formset}
-    return render(request, "boulange/my_orders.html", context)
+        available_weekly_deliveries = WeeklyDelivery.objects.filter(
+            Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all())
+        )
+    if weekly_delivery == None and request.user.order_set.exists():
+        weekly_delivery = request.user.order_set.order_by("-id").first().delivery_date.weekly_delivery
+    products = None
+    if order:
+        products = weekly_delivery.get_available_products()
+    context = {
+        "my_orders": Order.objects.filter(customer=request.user).order_by("-id"),
+        "order": order,
+        "order_id": order_id,
+        "weekly_delivery": weekly_delivery,
+        "available_weekly_deliveries": available_weekly_deliveries,
+        "products": products
+    }
+    return render(request, "boulange/orders.html", context=context)
 
 
 @login_required

@@ -1,0 +1,24 @@
+<div>
+  <select name="product_id"
+	  hx-post="/hx/order_line_sum/"
+	  hx-target="next .line-sum"
+	  hx-swap="innerHTML"
+	  hx-vals="js:{index: Array.from(document.getElementsByName('product_id')).indexOf(this)}">
+    {% for product in products %}
+    <option value="{{ product.id }}" {% if line.product.id == product.id %}selected{% endif %}>{{ product }} ({{ product.price }}€)</option>
+    {% endfor %}
+    <option>
+  </select>
+  Quantité :
+  <input name="product_qty"
+	 type="number"
+	 min="0"
+	 hx-post="/hx/order_line_sum/"
+	 hx-target="next .line-sum"
+	 hx-swap="innerHTML"
+	 hx-vals="js:{index: Array.from(document.getElementsByName('product_qty')).indexOf(this)}"
+	 value="{{ line.quantity }}"
+	 ></input>
+  Prix : <span class="line-sum">{% if line %}{{ line.get_price }}{% else %}0{% endif %}</span>€
+  <button onclick="javascript:this.parentNode.remove()">Supprimer la ligne</button>
+</div>

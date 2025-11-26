@@ -65,6 +65,23 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name}/{self.ref}"
 
+    def is_available_on_day(self, day_int):
+        match day_int:
+            case 0:
+                return self.available_mondays
+            case 1:
+                return self.available_tuesdays
+            case 2:
+                return self.available_wednesdays
+            case 3:
+                return self.available_thursdays
+            case 4:
+                return self.available_fridays
+            case 5:
+                return self.available_saturdays
+            case 6:
+                return self.available_sundays
+    
     def get_short_recipe_name(self):
         return f"{self.name.split(' (')[0]}/{self.ref}"
 
@@ -194,6 +211,10 @@ class WeeklyDelivery(models.Model):
     notes = models.TextField(blank=True, null=True)
     allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries", blank=True)
 
+    def get_available_products(self):
+        products = Product.objects.filter(active=True).order_by('name')
+        return [p for p in products if p.is_available_on_day(self.day_of_week)]
+    
     def generate_delivery_dates(self):
         if not self.active:
             return

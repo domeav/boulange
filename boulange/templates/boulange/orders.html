@@ -1,0 +1,63 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Mes commandes{% endblock %}
+
+{% block content %}
+<section class="container">
+  <form method="POST">
+    <input type="hidden" name="order_id" value="{% if order_id %}{{ order_id }}{% endif %}"></input>
+    <select name="weekly_delivery_id"
+	    hx-trigger="change, load"
+	    hx-post="/hx/get_dates_for_weekly_delivery/"
+	    hx-target="#available-dates"
+	    hx-swap="outerHTML"
+	    hx-vals="js:{event_type: event.type}">
+      {% for wdp in available_weekly_deliveries %}
+      <option value="{{ wdp.id }}"
+	      {% if wdp == weekly_delivery %}selected{% endif %}>{{ wdp }}</option>
+      {% endfor %}
+    </select>
+    <div id="available-dates"></div>
+    <div id="order-lines">
+      {% for line in order.lines.all %}
+      {% include 'boulange/hx/order_line.html' with line=line %}
+      {% endfor %}
+    </div>
+    <button hx-trigger="click"
+	    hx-post="/hx/order_line/"
+	    hx-target="#order-lines"
+	    hx-swap="beforeend">Ajouter une ligne de commande</button>
+    <p>
+      Notes de commande :<br/>
+      <textarea name="notes">{% if order.notes %}{{ order.notes }}{% endif %}</textarea><br/>
+    </p>
+    <p>
+      <button>Enregistrer la commande</button>
+    </p>
+  </form>
+
+</section>
+<section class="container">
+  {% for order in my_orders %}
+  <div class="mt-5 card">
+    <div class="card-header">
+    <h3>{{ order.delivery_date }} : {{ order.total_price }}€</h3>
+    </div>
+    {% if order.lines.all %}
+    <ul class="list-group list-group-flush">
+      {% for line in order.lines.all %}
+      <li class="list-group-item">{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if not order.validated %}
+<div class="d-flex justify-content-start">
+    <a href="{% url 'boulange:orders' order_id=order.id edit=True %}" class="btn btn-primary m-3">Modifier</a>
+    <a href="{% url 'boulange:delete_order' order_id=order.id %}" class="btn btn-danger m-3" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
+    <a href="{% url 'boulange:orders' order_id=order.id duplicate=True %}" class="btn btn-danger m-3">Dupliquer</a>
+</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

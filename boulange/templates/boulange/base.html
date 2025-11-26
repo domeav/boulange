@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {% load static %}
 {% load django_bootstrap5 %}
+{% load django_htmx %}
 <html lang="fr">
   <head>
     <title>La boulange de la ferme du Resto</title>
@@ -22,9 +23,10 @@
       }
     </style>
     {% endif %}
+    {% htmx_script %}
   </head>
 
-  <body>
+  <body hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>
     {% if not to_print %}
     <header class="container d-print-none">
       <nav class="row align-items-center">
@@ -37,7 +39,7 @@
         <div class="col">
           <a href="{% url 'boulange:products' %}">Produits</a>
           <br>
-          <a href="{% url 'boulange:my_orders' %}">Mes commandes</a>
+          <a href="{% url 'boulange:orders' %}">Mes commandes</a>
           <br>
           <a href="{% url 'boulange:actions' %}">Actions</a>
         </div>

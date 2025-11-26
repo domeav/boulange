@@ -17,8 +17,13 @@ router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("my_orders/<str:action>/<int:order_id>/", views.my_orders, name="my_orders"),
-    path("my_orders/", views.my_orders, name="my_orders", kwargs={"action": "new", "order_id": None}),
+    path("hx/get_dates_for_weekly_delivery/", views.hx_get_dates_for_weekly_delivery, name="hx_get_dates_for_weekly_delivery"),
+    path("hx/order_line/", views.hx_order_line, name="hx_order_line"),
+    path("hx/order_line_sum/", views.hx_order_line_sum, name="hx_order_line_sum"),
+    path("delete_order/<int:order_id>", views.delete_order, name="delete_order"),
+    path("orders/<int:order_id>/duplicate", views.orders, name="orders", kwargs={"duplicate": True}),
+    path("orders/<int:order_id>/edit", views.orders, name="orders", kwargs={"edit": True}),
+    path("orders/", views.orders, name="orders"),
     path("products/", views.products, name="products"),
     path("actions/<int:year>/<int:month>/<int:day>/", views.actions, name="actions", kwargs={"to_print": False}),
     path("actions_print/<section>/<int:year>/<int:month>/<int:day>/", views.actions, name="actions_print", kwargs={"to_print": True}),

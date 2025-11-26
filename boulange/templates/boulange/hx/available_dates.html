@@ -1,0 +1,9 @@
+<select id="available-dates" name="delivery_date">
+  {% for ddate in selectable_delivery_dates %}
+  <option value="{{ ddate.id }}">{{ ddate.date }}</option>
+  {% endfor %}
+</select>
+{% if strip_lines %}
+<div id="order-lines" hx-swap-oob="outerHTML"></div>
+{% endif %}
+
