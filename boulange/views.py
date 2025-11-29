@@ -167,6 +167,15 @@ def delete_order(request, order_id):
 
 
 @login_required
+def validate_cart(request):
+    orders = Order.objects.filter(customer=request.user).filter(validated=False)
+    for order in orders:
+        order.validated = True
+        order.save()
+    return redirect("boulange:orders")
+
+
+@login_required
 @transaction.atomic
 def orders(request, order_id=None, edit=False, duplicate=False):
     if request.POST:
@@ -221,8 +230,16 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     products = None
     if order:
         products = weekly_delivery.get_available_products()
+    validated_orders, cart = [], []
+    for o in Order.objects.filter(customer=request.user).order_by("-id"):
+        if o.validated:
+            validated_orders.append(o)
+        else:
+            cart.append(o)
+    
     context = {
-        "my_orders": Order.objects.filter(customer=request.user).order_by("-id"),
+        "validated_orders": validated_orders,
+        "cart": cart,
         "order": order,
         "order_id": order_id,
         "weekly_delivery": weekly_delivery,

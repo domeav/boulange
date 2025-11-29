@@ -21,6 +21,7 @@ urlpatterns = [
     path("hx/order_line/", views.hx_order_line, name="hx_order_line"),
     path("hx/order_line_sum/", views.hx_order_line_sum, name="hx_order_line_sum"),
     path("delete_order/<int:order_id>", views.delete_order, name="delete_order"),
+    path("validate_cart/", views.validate_cart, name="validate_cart"),
     path("orders/<int:order_id>/duplicate", views.orders, name="orders", kwargs={"duplicate": True}),
     path("orders/<int:order_id>/edit", views.orders, name="orders", kwargs={"edit": True}),
     path("orders/", views.orders, name="orders"),
