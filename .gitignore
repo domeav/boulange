@@ -3,3 +3,4 @@ __pycache__
 db.sqlite3
 boulange/scripts
 db.sqlite3.bak
+resto/local_settings.py

@@ -1,12 +1,14 @@
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
@@ -21,6 +23,7 @@ from .models import (
     OrderLine,
     Product,
     ProductLine,
+    ResetAccountToken,
     WeeklyDelivery,
 )
 from .serializers import (
@@ -33,6 +36,8 @@ from .serializers import (
     ProductSerializer,
     WeeklyDeliverySerializer,
 )
+
+TZ = ZoneInfo("Europe/Paris")
 
 # REST FRAMEWORK
 
@@ -122,36 +127,71 @@ def get_actions(request, year, month, day):
 # REGULAR VIEWS
 
 
+@login_required
 def index(request):
-    return render(request, "boulange/index.html")
+    if request.user.is_staff:
+        return redirect("boulange:actions")
+    return redirect("boulange:orders")
+
+
+def account_init(request):
+    if not request.POST["email"]:
+        return redirect("boulange:index")
+    customer = get_object_or_404(Customer, email=request.POST["email"])
+    token = ResetAccountToken(customer=customer)
+    send_mail(
+        "Boulangerie de la Ferme du Resto : initialisation de votre compte",
+        f"Bonjour,\n\nRendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n\n{request.build_absolute_uri('/reset_password/'+str(token.token))}\n\nCe lien est valable 24h\n\nAttention : votre identifiant pour l'accès au service est : {customer.username}",
+        "boulangerie@lafermebioduresto.bzh",
+        ["dom.eav@franceimpro.net"],
+        fail_silently=False,
+    )
+    token.save()
+    return render(request, "registration/account_init.html")
+
+
+def reset_password(request, token):
+    token = get_object_or_404(ResetAccountToken, token=token)
+    if request.POST:
+        if len(request.POST["newpw"]) < 8:
+            return redirect("boulange:reset_password", token=token.token)
+        else:
+            token.customer.set_password(request.POST["newpw"])
+            token.customer.save()
+            token.delete()
+            return redirect("boulange:index")
+
+    if (datetime.now(TZ) - token.created) > timedelta(days=1):
+        return HttpResponse("Ce lien n'est plus valide")
+    context = {"token": token}
+    return render(request, "registration/reset_password.html", context=context)
+
 
 def _get_start_end_command_period():
     available_timespan_start = date.today() + timedelta(days=2)
     available_timespan_end = date.today() + timedelta(days=56)
     return available_timespan_start, available_timespan_end
 
+
 def hx_get_dates_for_weekly_delivery(request):
-    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST['weekly_delivery_id'])
+    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST["weekly_delivery_id"])
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
     selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
-    context = {
-        "selectable_delivery_dates": selectable_delivery_dates,
-        'strip_lines': request.POST['event_type'] == 'change'
-    }
+    context = {"selectable_delivery_dates": selectable_delivery_dates, "strip_lines": request.POST["event_type"] == "change"}
     return render(request, "boulange/hx/available_dates.html", context=context)
 
+
 def hx_order_line(request):
-    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST['weekly_delivery_id'])
-    context = {
-        'products': weekly_delivery.get_available_products()
-    }
+    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST["weekly_delivery_id"])
+    context = {"products": weekly_delivery.get_available_products()}
     return render(request, "boulange/hx/order_line.html", context=context)
 
+
 def hx_order_line_sum(request):
-    index = int(request.POST['index'])
-    product = Product.objects.get(id=int(request.POST.getlist('product_id')[index]))
+    index = int(request.POST["index"])
+    product = Product.objects.get(id=int(request.POST.getlist("product_id")[index]))
     try:
-        product_qty = int(request.POST.getlist('product_qty')[index])
+        product_qty = int(request.POST.getlist("product_qty")[index])
     except ValueError:
         product_qty = 0
     return HttpResponse(product.price * product_qty)
@@ -168,6 +208,7 @@ def delete_order(request, order_id):
 
 @login_required
 def validate_cart(request):
+    send_mail("Hello there", "Merci pour la commande !", "boulangerie@lafermebioduresto.bzh", ["dom.eav@franceimpro.net"], fail_silently=False)
     orders = Order.objects.filter(customer=request.user).filter(validated=False)
     for order in orders:
         order.validated = True
@@ -179,27 +220,21 @@ def validate_cart(request):
 @transaction.atomic
 def orders(request, order_id=None, edit=False, duplicate=False):
     if request.POST:
-        if request.POST['order_id']:
+        if request.POST["order_id"]:
             # editing existing order
-            order = Order.objects.get(id=int(request.POST['order_id']))
+            order = Order.objects.get(id=int(request.POST["order_id"]))
             if order.validated or order.customer != request.user:
                 raise PermissionDenied
-            order.delivery_date_id = int(request.POST['delivery_date'])
-            order.notes = request.POST['notes']
+            order.delivery_date_id = int(request.POST["delivery_date"])
+            order.notes = request.POST["notes"]
             for line in order.lines.all():
                 line.delete()
         else:
-            order = Order(customer=request.user,
-                          delivery_date_id=int(request.POST['delivery_date']),
-                          notes=request.POST['notes'],
-                          validated=False)
+            order = Order(customer=request.user, delivery_date_id=int(request.POST["delivery_date"]), notes=request.POST["notes"], validated=False)
         lines = []
-        for product_id, qty in zip(request.POST.getlist('product_id'),
-                                   request.POST.getlist('product_qty')):
+        for product_id, qty in zip(request.POST.getlist("product_id"), request.POST.getlist("product_qty")):
             if qty:
-                lines.append(OrderLine(order=order,
-                                       product_id=product_id,
-                                       quantity=int(qty)))
+                lines.append(OrderLine(order=order, product_id=product_id, quantity=int(qty)))
         if lines:
             order.save()
             for line in lines:
@@ -222,9 +257,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     if request.user.is_professional:
         available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
     else:
-        available_weekly_deliveries = WeeklyDelivery.objects.filter(
-            Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all())
-        )
+        available_weekly_deliveries = WeeklyDelivery.objects.filter(Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all()))
     if weekly_delivery == None and request.user.order_set.exists():
         weekly_delivery = request.user.order_set.order_by("-id").first().delivery_date.weekly_delivery
     products = None
@@ -236,7 +269,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
             validated_orders.append(o)
         else:
             cart.append(o)
-    
+
     context = {
         "validated_orders": validated_orders,
         "cart": cart,
@@ -244,7 +277,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
         "order_id": order_id,
         "weekly_delivery": weekly_delivery,
         "available_weekly_deliveries": available_weekly_deliveries,
-        "products": products
+        "products": products,
     }
     return render(request, "boulange/orders.html", context=context)
 

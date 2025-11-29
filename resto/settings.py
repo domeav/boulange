@@ -135,3 +135,8 @@ REST_FRAMEWORK = {
 }
 
 LOGIN_REDIRECT_URL = "/orders"
+
+try:
+    from resto.local_settings import *
+except ModuleNotFoundError:
+    pass

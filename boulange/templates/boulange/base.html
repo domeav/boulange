@@ -34,8 +34,11 @@
           <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
         </div>
         <div class="col">
+	  {% if not request.user.is_anonymous %}
           Hello, {{ request.user.username }}
+	  {% endif %}
         </div>
+	{% if request.user.is_staff %}
         <div class="col">
           <a href="{% url 'boulange:products' %}">Produits</a>
           <br>
@@ -43,6 +46,7 @@
           <br>
           <a href="{% url 'boulange:actions' %}">Actions</a>
         </div>
+	{% endif %}
       </nav>
       <h1>{% block title %}{% endblock %}</h1>
       {% block page_actions %}{% endblock %}

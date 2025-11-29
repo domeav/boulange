@@ -11,4 +11,13 @@
     <button type="submit">Log In</button>
   </form>
 </section>
+
+<section>
+  <h2>Initialisation du compte/reset du mot de passe</h2>
+  <form action="{% url 'boulange:account_init' %}" method="POST">
+    Email :
+    <input name="email"></input>
+    <input type="submit"></input>
+  </form>
+</section>
 {% endblock %}

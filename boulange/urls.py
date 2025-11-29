@@ -17,6 +17,8 @@ router.register(r"order_lines", views.OrderLineViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("account_init", views.account_init, name="account_init"),
+    path("reset_password/<token>", views.reset_password, name="reset_password"),
     path("hx/get_dates_for_weekly_delivery/", views.hx_get_dates_for_weekly_delivery, name="hx_get_dates_for_weekly_delivery"),
     path("hx/order_line/", views.hx_order_line, name="hx_order_line"),
     path("hx/order_line_sum/", views.hx_order_line_sum, name="hx_order_line_sum"),

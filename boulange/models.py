@@ -1,5 +1,6 @@
+import uuid
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractUser
@@ -81,7 +82,7 @@ class Product(models.Model):
                 return self.available_saturdays
             case 6:
                 return self.available_sundays
-    
+
     def get_short_recipe_name(self):
         return f"{self.name.split(' (')[0]}/{self.ref}"
 
@@ -185,6 +186,12 @@ class Customer(AbstractUser):
         ordering = ["display_name"]
 
 
+class ResetAccountToken(models.Model):
+    token = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created = models.DateTimeField(default=datetime.now)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+
 class WeeklyDelivery(models.Model):
     # 3 types
     # - allowed_customers set : accessible seulement aux clients listés
@@ -212,9 +219,9 @@ class WeeklyDelivery(models.Model):
     allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries", blank=True)
 
     def get_available_products(self):
-        products = Product.objects.filter(active=True).order_by('name')
+        products = Product.objects.filter(active=True).order_by("name")
         return [p for p in products if p.is_available_on_day(self.day_of_week)]
-    
+
     def generate_delivery_dates(self):
         if not self.active:
             return
