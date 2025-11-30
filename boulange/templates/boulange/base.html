@@ -31,7 +31,9 @@
     <header class="container d-print-none">
       <nav class="row align-items-center">
         <div class="col">
-          <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	  <a href="{% url 'boulange:index' %}">
+            <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	  </a>
         </div>
         <div class="col">
 	  {% if not request.user.is_anonymous %}

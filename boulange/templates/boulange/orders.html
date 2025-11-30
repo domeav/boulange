@@ -79,9 +79,10 @@
       {% endfor %}
     </ul>
     {% endif %}
-<div class="d-flex justify-content-start">
-    <a href="{% url 'boulange:orders' order_id=order.id duplicate=True %}" class="btn btn-danger m-3">Dupliquer</a>
-</div>
+    <div class="d-flex justify-content-start">
+      <a href="{% url 'boulange:orders' order_id=order.id duplicate=True %}" class="btn btn-danger m-3">Dupliquer</a>
+      <a href="{% url 'boulange:user_delivery_receipt' delivery_date_id=order.delivery_date.id %}" class="btn btn-danger m-3">Bon de commande</a>
+    </div>
   </div>
   {% endfor %}
 </section>

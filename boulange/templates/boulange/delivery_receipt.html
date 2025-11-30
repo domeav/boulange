@@ -5,7 +5,7 @@
 {% block content %}
 <section class="container">
   Total pdl : {{ delivery_date.get_total|floatformat:2 }}€
-  {% for order in delivery_date.order_set.all %}
+  {% for order in orders %}
   <div class="card">
     <div class="card-body">
       <h3 class="card-title">{{ order.customer }} {{ order.total_price|floatformat:2 }}€</h3>

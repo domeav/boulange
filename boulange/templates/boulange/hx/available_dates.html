@@ -1,6 +1,6 @@
 <select id="available-dates" name="delivery_date">
   {% for ddate in selectable_delivery_dates %}
-  <option value="{{ ddate.id }}">{{ ddate.date }}</option>
+  <option value="{{ ddate.id }}" {% if order.delivery_date == ddate %}selected{% endif %}>{{ ddate.date }}</option>
   {% endfor %}
 </select>
 {% if strip_lines %}

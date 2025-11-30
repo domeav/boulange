@@ -143,7 +143,7 @@ def account_init(request):
         "Boulangerie de la Ferme du Resto : initialisation de votre compte",
         f"Bonjour,\n\nRendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n\n{request.build_absolute_uri('/reset_password/'+str(token.token))}\n\nCe lien est valable 24h\n\nAttention : votre identifiant pour l'accès au service est : {customer.username}",
         "boulangerie@lafermebioduresto.bzh",
-        ["dom.eav@franceimpro.net"],
+        [customer.email],
         fail_silently=False,
     )
     token.save()
@@ -177,7 +177,12 @@ def hx_get_dates_for_weekly_delivery(request):
     weekly_delivery = WeeklyDelivery.objects.get(id=request.POST["weekly_delivery_id"])
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
     selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
-    context = {"selectable_delivery_dates": selectable_delivery_dates, "strip_lines": request.POST["event_type"] == "change"}
+    order = None
+    if request.POST["order_id"]:
+        order = Order.objects.get(id=request.POST["order_id"])
+    context = {"selectable_delivery_dates": selectable_delivery_dates,
+               "strip_lines": request.POST["event_type"] == "change",
+               "order": order}
     return render(request, "boulange/hx/available_dates.html", context=context)
 
 
@@ -208,11 +213,18 @@ def delete_order(request, order_id):
 
 @login_required
 def validate_cart(request):
-    send_mail("Hello there", "Merci pour la commande !", "boulangerie@lafermebioduresto.bzh", ["dom.eav@franceimpro.net"], fail_silently=False)
-    orders = Order.objects.filter(customer=request.user).filter(validated=False)
+    available_timespan_start, available_timespan_end = _get_start_end_command_period()
+    orders = Order.objects.filter(customer=request.user).filter(validated=False).filter(delivery_date__date__gte=available_timespan_start).filter(delivery_date__date__lte=available_timespan_end)
     for order in orders:
         order.validated = True
         order.save()
+    send_mail(
+        "La ferme Bio du Resto : commande validée",
+        f"Merci pour votre commande ! Vous pouvez retrouver vos bons de commande en vous connectant sur {request.build_absolute_uri('/')}",
+        "boulangerie@lafermebioduresto.bzh",
+        [request.user.email],
+        fail_silently=False
+    )
     return redirect("boulange:orders")
 
 
@@ -324,6 +336,12 @@ def check_delivery_dates_consistency(request):
 
 
 @login_required
-def delivery_receipt(request, delivery_date_id):
-    context = {"delivery_date": DeliveryDate.objects.get(id=delivery_date_id)}
+def delivery_receipt(request, delivery_date_id=None, filter_on_user=False):
+    delivery_date = DeliveryDate.objects.get(id=delivery_date_id)
+    if filter_on_user or not request.user.is_staff:
+        orders = delivery_date.order_set.filter(customer=request.user)
+    else:
+        orders = delivery_date.order_set.all()
+    context = {"delivery_date": delivery_date,
+               "orders": orders}
     return render(request, "boulange/delivery_receipt.html", context)
