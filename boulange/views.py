@@ -14,7 +14,6 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from .forms import OrderForm, OrderLineFormSet
 from .models import (
     Customer,
     DeliveryDate,
@@ -141,7 +140,11 @@ def account_init(request):
     token = ResetAccountToken(customer=customer)
     send_mail(
         "Boulangerie de la Ferme du Resto : initialisation de votre compte",
-        f"Bonjour,\n\nRendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n\n{request.build_absolute_uri('/reset_password/'+str(token.token))}\n\nCe lien est valable 24h\n\nAttention : votre identifiant pour l'accès au service est : {customer.username}",
+        f"""Bonjour,\n
+Rendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n
+{request.build_absolute_uri('/reset_password/'+str(token.token))}\n
+Ce lien est valable 24h.\n
+Attention : votre identifiant pour l'accès au service est : {customer.username}""",
         "boulangerie@lafermebioduresto.bzh",
         [customer.email],
         fail_silently=False,
@@ -180,9 +183,7 @@ def hx_get_dates_for_weekly_delivery(request):
     order = None
     if request.POST["order_id"]:
         order = Order.objects.get(id=request.POST["order_id"])
-    context = {"selectable_delivery_dates": selectable_delivery_dates,
-               "strip_lines": request.POST["event_type"] == "change",
-               "order": order}
+    context = {"selectable_delivery_dates": selectable_delivery_dates, "strip_lines": request.POST["event_type"] == "change", "order": order}
     return render(request, "boulange/hx/available_dates.html", context=context)
 
 
@@ -223,7 +224,7 @@ def validate_cart(request):
         f"Merci pour votre commande ! Vous pouvez retrouver vos bons de commande en vous connectant sur {request.build_absolute_uri('/')}",
         "boulangerie@lafermebioduresto.bzh",
         [request.user.email],
-        fail_silently=False
+        fail_silently=False,
     )
     return redirect("boulange:orders")
 
@@ -265,12 +266,11 @@ def orders(request, order_id=None, edit=False, duplicate=False):
             order_id = order.id
         if duplicate:
             order_id = False
-    selectable_delivery_dates = []
     if request.user.is_professional:
         available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
     else:
         available_weekly_deliveries = WeeklyDelivery.objects.filter(Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all()))
-    if weekly_delivery == None and request.user.order_set.exists():
+    if weekly_delivery is None and request.user.order_set.exists():
         weekly_delivery = request.user.order_set.order_by("-id").first().delivery_date.weekly_delivery
     products = None
     if order:
@@ -342,6 +342,5 @@ def delivery_receipt(request, delivery_date_id=None, filter_on_user=False):
         orders = delivery_date.order_set.filter(customer=request.user)
     else:
         orders = delivery_date.order_set.all()
-    context = {"delivery_date": delivery_date,
-               "orders": orders}
+    context = {"delivery_date": delivery_date, "orders": orders}
     return render(request, "boulange/delivery_receipt.html", context)

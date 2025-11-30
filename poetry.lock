@@ -104,23 +104,6 @@ argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
-name = "django-bootstrap5"
-version = "24.3"
-description = "Bootstrap 5 for Django"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "django_bootstrap5-24.3-py3-none-any.whl", hash = "sha256:98f7916f9f7f9c34dfe157f7c062a28ebf6d17ff95307bef260ba794ba34e2a0"},
-    {file = "django_bootstrap5-24.3.tar.gz", hash = "sha256:ca5ec5568fc2a3fc239f0cb8ce41a7df3802b8c4af930d7f64451784ec7ddc16"},
-]
-
-[package.dependencies]
-Django = ">=4.2"
-
-[package.extras]
-jinja = ["Jinja2 (>=3.0,<4)"]
-
-[[package]]
 name = "django-filter"
 version = "24.3"
 description = "Django-filter is a reusable Django application for allowing users to filter querysets dynamically."
@@ -304,4 +287,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "2e5b8892ba8bfe57c43d049b482cfa3ea297ca71879ee4c421215a710a797af2"
+content-hash = "3ea8261eaf7a4fe9ef3795b5e5bd5a8aca50d33c444242b2b810bb18feccdc7a"

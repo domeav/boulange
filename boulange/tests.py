@@ -655,22 +655,27 @@ class ViewTests(ExtendedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertInHTML(
             """
-        <h2 class="card-title">FOC</h2>
-        <b class="card-subtitle mb-2 text-muted">Focaccia (part)</b>
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item">Identique à <b>GN</b> avec un coef 2,5 pour 24 unités</li>
-          <li class="list-group-item">Herbes de provence : 10,00 g</li>
-          <li class="list-group-item">Huile olive : 150,00 g</li>
-          <li class="list-group-item">Olives : 200,00 g</li>
-          <li class="list-group-item">Tomates séchées : 100,00 g</li>
-        </ul>
-        <p class="card-text">
-          Prix de vente : 2,20€
-          <br>
-          Prix de revient : 0,31€
-          <br>
-          Poids pâte : 150,52g
-        </p>
-        """,
+            <article class="card">
+            <header>
+            <h3>FOC</h3>
+            <br>
+            <b>Focaccia (part)</b>
+            </header>
+            <ul>
+            <li>Identique à <b>GN</b> avec un coef 2,5 pour 24 unités</li>
+            <li>Herbes de provence : 10,00 g</li>
+            <li>Huile olive : 150,00 g</li>
+            <li>Olives : 200,00 g</li>
+            <li>Tomates séchées : 100,00 g</li>
+            </ul>
+            <p>
+            Prix de vente : 2,20€
+            <br>
+            Prix de revient : 0,31€
+            <br>
+            Poids pâte : 150,52g
+            </p>
+            </article>
+            """,
             response.content.decode("utf-8"),
         )

@@ -32,7 +32,6 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     "django_htmx",
-    "django_bootstrap5",
     "rest_framework",
     "django.contrib.auth",
     "boulange",

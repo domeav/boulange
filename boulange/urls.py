@@ -37,12 +37,7 @@ urlpatterns = [
         views.delivery_receipt,
         name="delivery_receipt",
     ),
-    path(
-        "user_delivery_receipt/<int:delivery_date_id>/",
-        views.delivery_receipt,
-        name="user_delivery_receipt",
-        kwargs={'filter_on_user': True}
-    ),
+    path("user_delivery_receipt/<int:delivery_date_id>/", views.delivery_receipt, name="user_delivery_receipt", kwargs={"filter_on_user": True}),
     path("api/", include(router.urls)),
     path(
         "api/generate_delivery_dates/",
