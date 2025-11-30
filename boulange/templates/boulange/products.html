@@ -3,41 +3,39 @@
 {% block title %}Produits{% endblock %}
 
 {% block content %}
-<section class="container">
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3">
-    {% for product in products %}
-    {% if product.active %}
-    <div class="col mt-5 card">
-      <div class="card-body">
-        <h2 class="card-title">{{ product.ref }}</h2>
-        <b class="card-subtitle mb-2 text-muted">{{ product.name }}</b>
-        <ul class="list-group list-group-flush">
-        {% if product.orig_product %}
-        <li class="list-group-item">
-	  Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
-	  {% if product.nb_units and product.nb_units != 1 %}
-	  pour {{ product.nb_units }} unités
-	  {% endif %}
-	</li>
-        {% endif %}
-        {% for line in product.raw_ingredients.all %}
-          <li class="list-group-item">{{ line.ingredient.name }} : {{ line.quantity|floatformat:2 }} {{ line.ingredient.unit }}</li>
-        {% endfor %}
-      </ul>
-        <p class="card-text">
+<section class="flex three">
+  {% for product in products %}
+  {% if product.active %}
+  <article class="card">
+    <header>
+      <h3>{{ product.ref }}</h3><br/>
+      <b>{{ product.name }}</b>
+    </header>
+    <ul>
+      {% if product.orig_product %}
+      <li>
+	Identique à <b>{{ product.orig_product.ref }}</b> avec un coef {{ product.coef }}
+	{% if product.nb_units and product.nb_units != 1 %}
+	pour {{ product.nb_units }} unités
+	{% endif %}
+      </li>
+      {% endif %}
+      {% for line in product.raw_ingredients.all %}
+      <li>{{ line.ingredient.name }} : {{ line.quantity|floatformat:2 }} {{ line.ingredient.unit }}</li>
+      {% endfor %}
+    </ul>
+    <p>
       Prix de vente : {{ product.price|floatformat:2 }}€
       <br>
       Prix de revient : {{ product.cost_price|floatformat:2 }}€
       <br>
       Poids pâte : {{ product.weight|floatformat:2 }}g
-        </p>
-      {% if product.notes %}
-        <pre class="card-text">{{ product.notes }}</pre>
-      {% endif %}
-    </div>
-  </div>
+    </p>
+    {% if product.notes %}
+    <pre>{{ product.notes }}</pre>
     {% endif %}
-    {% endfor %}
-  </div>
+  </article>
+  {% endif %}
+  {% endfor %}
 </section>
 {% endblock %}

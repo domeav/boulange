@@ -3,12 +3,12 @@
 {% block title %}Bon de livraison : {{ delivery_date }}{% endblock %}
 
 {% block content %}
-<section class="container">
+<section>
   Total pdl : {{ delivery_date.get_total|floatformat:2 }}€
   {% for order in orders %}
-  <div class="card">
-    <div class="card-body">
-      <h3 class="card-title">{{ order.customer }} {{ order.total_price|floatformat:2 }}€</h3>
+  <div>
+    <div>
+      <h3>{{ order.customer }} {{ order.total_price|floatformat:2 }}€</h3>
       {% if order.notes %}
       <p>Notes de la commande :
       <pre>{{ order.notes }}</pre>
@@ -20,9 +20,9 @@
       </p>
       {% endif %}
       {% if order.lines.all %}
-      <ul class="list-group">
+      <ul>
         {% for line in order.lines.all %}
-        <li class="list-group-item">{{ line.product.name }}/{{ line.product.ref }} : {{ line.quantity }}</li>
+        <li>{{ line.product.name }}/{{ line.product.ref }} : {{ line.quantity }}</li>
         {% endfor %}
       </ul>
       {% endif %}

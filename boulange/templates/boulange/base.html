@@ -9,17 +9,18 @@
     <meta charset="utf-8">
     <meta http-equiv="Cache-Control" content="no-cache">
     {% if not to_print %}
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
-    <link rel="stylesheet" href="{% static 'boulange/custom.css' %}">
+    <link rel="stylesheet" href="{% static 'boulange/picnic.min.css' %}">
+    <style>
+      .card { font-size: 90%; padding: 2px;}
+    </style>
     {% else %}
     <style>
       body {
-         column-count: 3;
-         -webkit-column-count: 3;
-         -moz-column-count: 3;
-         font-size: 14px;
-         line-height: 16px;
+          column-count: 3;
+          -webkit-column-count: 3;
+          -moz-column-count: 3;
+          font-size: 14px;
+          line-height: 16px;
       }
     </style>
     {% endif %}
@@ -28,34 +29,29 @@
 
   <body hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>
     {% if not to_print %}
-    <header class="container d-print-none">
-      <nav class="row align-items-center">
-        <div class="col">
-	  <a href="{% url 'boulange:index' %}">
-            <img class="col" alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
-	  </a>
-        </div>
-        <div class="col">
+    <main style="max-width: 960px; margin: 0 auto;">
+      <section class="flex">
+	<a href="{% url 'boulange:index' %}">
+          <img alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
+	</a>
+	<div style="margin-top: 110px;">
 	  {% if not request.user.is_anonymous %}
-          Hello, {{ request.user.username }}
+	  Hello, {{ request.user.username }}
 	  {% endif %}
-        </div>
+	</div>
 	{% if request.user.is_staff %}
-        <div class="col">
+	<div style="margin-top: 80px;">
           <a href="{% url 'boulange:products' %}">Produits</a>
           <br>
           <a href="{% url 'boulange:orders' %}">Mes commandes</a>
           <br>
           <a href="{% url 'boulange:actions' %}">Actions</a>
-        </div>
+	</div>
 	{% endif %}
-      </nav>
+      </section>
       <h1>{% block title %}{% endblock %}</h1>
       {% block page_actions %}{% endblock %}
-    </header>
-    {% endif %}
-
-    <main>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </body>

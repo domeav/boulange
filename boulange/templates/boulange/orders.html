@@ -3,26 +3,28 @@
 {% block title %}Mes commandes{% endblock %}
 
 {% block content %}
-<section class="container">
+<section>
   {% if order_id %}
-  <h3>Modification de commande</h3>
+  <h2>Modification de commande</h2>
   {% else %}
-  <h3>Ajouter une commande</h3>
+  <h2>Ajouter une commande</h2>
   {% endif %}
   <form method="POST">
     <input type="hidden" name="order_id" value="{% if order_id %}{{ order_id }}{% endif %}"></input>
-    <select name="weekly_delivery_id"
-	    hx-trigger="change, load"
-	    hx-post="/hx/get_dates_for_weekly_delivery/"
-	    hx-target="#available-dates"
-	    hx-swap="outerHTML"
-	    hx-vals="js:{event_type: event.type}">
-      {% for wdp in available_weekly_deliveries %}
-      <option value="{{ wdp.id }}"
-	      {% if wdp == weekly_delivery %}selected{% endif %}>{{ wdp }}</option>
-      {% endfor %}
-    </select>
-    <div id="available-dates"></div>
+    <div class="flex two">
+      <select name="weekly_delivery_id"
+	      hx-trigger="change, load"
+	      hx-post="/hx/get_dates_for_weekly_delivery/"
+	      hx-target="#available-dates"
+	      hx-swap="outerHTML"
+	      hx-vals="js:{event_type: event.type}">
+	{% for wdp in available_weekly_deliveries %}
+	<option value="{{ wdp.id }}"
+		{% if wdp == weekly_delivery %}selected{% endif %}>{{ wdp }}</option>
+	{% endfor %}
+      </select>
+      <div id="available-dates"></div>
+    </div>
     <div id="order-lines">
       {% for line in order.lines.all %}
       {% include 'boulange/hx/order_line.html' with line=line %}
@@ -37,53 +39,55 @@
       <textarea name="notes">{% if order.notes %}{{ order.notes }}{% endif %}</textarea><br/>
     </p>
     <p>
-      <button>Enregistrer la commande</button>
+      <button class="success">Enregistrer la commande</button>
     </p>
   </form>
 </section>
-<section class="container">
-  <h3>Commandes en cours</h3>
+{% if cart %}
+<section>
+  <h2>Commandes en cours</h2>
   <form method="POST" action="{% url 'boulange:validate_cart' %}">
-    <button onclick="return confirm('Voulez-vous valider les commandes en cours ? Elles ne seront plus modifiables.')">Valider les commandes en cours</button>
-  {% for order in cart %}
-  <div class="mt-5 card">
-    <div class="card-header">
-    <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
-    </div>
-    {% if order.lines.all %}
-    <ul class="list-group list-group-flush">
-      {% for line in order.lines.all %}
-      <li class="list-group-item">{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+    <button class="success" onclick="return confirm('Voulez-vous valider les commandes en cours ? Elles ne seront plus modifiables.')">Valider les commandes en cours</button>
+    <div class="flex three">
+      {% for order in cart %}
+      <article class="card">
+	<header>
+	  <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+	</header>
+	{% if order.lines.all %}
+	<ul>
+	  {% for line in order.lines.all %}
+	  <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	  {% endfor %}
+	</ul>
+	{% endif %}
+	<a class="button warning" href="{% url 'boulange:orders' order_id=order.id edit=True %}">Modifier</a>
+	<a class="button" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
+	<a class="button error" href="{% url 'boulange:delete_order' order_id=order.id %}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
+      </article>
       {% endfor %}
-    </ul>
-    {% endif %}
-<div class="d-flex justify-content-start">
-    <a href="{% url 'boulange:orders' order_id=order.id edit=True %}" class="btn btn-primary m-3">Modifier</a>
-    <a href="{% url 'boulange:delete_order' order_id=order.id %}" class="btn btn-danger m-3" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
-    <a href="{% url 'boulange:orders' order_id=order.id duplicate=True %}" class="btn btn-danger m-3">Dupliquer</a>
-</div>
-  </div>
-  {% endfor %}
+    </div>
 </section>
-<section class="container">
-  <h3>Commandes passées</h3>
-  {% for order in validated_orders %}
-  <div class="mt-5 card">
-    <div class="card-header">
-    <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
-    </div>
-    {% if order.lines.all %}
-    <ul class="list-group list-group-flush">
-      {% for line in order.lines.all %}
-      <li class="list-group-item">{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    <div class="d-flex justify-content-start">
-      <a href="{% url 'boulange:orders' order_id=order.id duplicate=True %}" class="btn btn-danger m-3">Dupliquer</a>
-      <a href="{% url 'boulange:user_delivery_receipt' delivery_date_id=order.delivery_date.id %}" class="btn btn-danger m-3">Bon de commande</a>
-    </div>
-  </div>
+{% endif %}
+<section>
+  <h2>Commandes passées</h2>
+  <div class="flex three">
+    {% for order in validated_orders %}
+    <article class="card">
+      <header>
+	<b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+      </header>
+      {% if order.lines.all %}
+      <ul>
+	{% for line in order.lines.all %}
+	<li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	{% endfor %}
+      </ul>
+      {% endif %}
+      <a class="button" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
+      <a class="button" href="{% url 'boulange:user_delivery_receipt' delivery_date_id=order.delivery_date.id %}">Bon de commande</a>
+    </article>
   {% endfor %}
+  </div>
 </section>
 {% endblock %}
