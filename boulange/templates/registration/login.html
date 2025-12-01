@@ -4,20 +4,29 @@
 
 {% block content %}
 <section>
-  <h2>Log In</h2>
+  <h2>S'identifier avec identifiant et mot de passe</h2>
   <form method="post">
     {% csrf_token %}
     {{ form }}
-    <button type="submit">Log In</button>
+    <button type="submit">Connexion</button>
   </form>
 </section>
 
 <section>
-  <h2>Initialisation du compte/reset du mot de passe</h2>
+  <h2>Initialisation du compte</h2>
+  <p>
+    Merci d'initialiser votre compte en renseignant votre adresse
+    email ci-dessous.
+  </p>
   <form action="{% url 'boulange:account_init' %}" method="POST">
     Email :
     <input name="email"></input>
-    <input type="submit"></input>
+    <input type="submit" value="Initialiser"></input>
   </form>
+  <p>
+    En cas d'oubli de mot de passe ou d'identifiant, vous pouvez
+    utiliser ce formulaire pour récupérer votre identifiant et
+    positionner un nouveau mot de passe.
+  </p>
 </section>
 {% endblock %}

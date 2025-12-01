@@ -43,9 +43,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware", # must be first
+    "whitenoise.middleware.WhiteNoiseMiddleware", # must be second
     "django_htmx.middleware.HtmxMiddleware",
-    "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     #    "django.middleware.csrf.CsrfViewMiddleware",
