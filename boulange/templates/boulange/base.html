@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="{% static 'boulange/picnic.min.css' %}">
     <style>
       .card { font-size: 90%; padding: 2px;}
+      .small { font-size: 80%; }
+      .big { font-size: 120%; }
+      .leftbordered { border-left: 1px solid; padding-left: 20px; margin-bottom: 20px;}
     </style>
     {% else %}
     <style>
@@ -33,20 +36,27 @@
 	<a href="{% url 'boulange:index' %}">
           <img alt="La ferme du Resto" src="{% static 'boulange/logo.jpg' %}">
 	</a>
-	<div style="margin-top: 110px;">
+	<div style="margin: 110px 110px 0 0; text-align: center;">
 	  {% if not request.user.is_anonymous %}
 	  Hello, {{ request.user.username }}
+	  <br/>
+	  <form action="{% url 'logout' %}" method="POST">
+	    {% csrf_token %}
+	    <button class="small pseudo">- se déconnecter -</button>
+	  </form>
 	  {% endif %}
 	</div>
-	{% if request.user.is_staff %}
 	<div style="margin-top: 80px;">
+	  {% if request.user.is_staff %}
           <a href="{% url 'boulange:products' %}">Produits</a>
           <br>
-          <a href="{% url 'boulange:orders' %}">Mes commandes</a>
-          <br>
           <a href="{% url 'boulange:actions' %}">Actions</a>
+          <br>
+	  {% endif %}
+          <a href="{% url 'boulange:orders' %}">Mes commandes</a>
+	  <br>
+	  <a href="{% url 'boulange:checkouts' %}">Mes paiements</a>
 	</div>
-	{% endif %}
       </section>
       <h1>{% block title %}{% endblock %}</h1>
       {% block page_actions %}{% endblock %}

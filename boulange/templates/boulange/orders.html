@@ -3,13 +3,14 @@
 {% block title %}Mes commandes{% endblock %}
 
 {% block content %}
-<section>
+<section class="leftbordered">
   {% if order_id %}
   <h2>Modification de commande</h2>
   {% else %}
-  <h2>Ajouter une commande</h2>
+  <h2>Ajouter une commande au panier</h2>
   {% endif %}
   <form method="POST">
+    {% csrf_token %}
     <input type="hidden" name="order_id" value="{% if order_id %}{{ order_id }}{% endif %}"></input>
     <div class="flex two">
       <select name="weekly_delivery_id"
@@ -33,21 +34,25 @@
     <button hx-trigger="click"
 	    hx-post="/hx/order_line/"
 	    hx-target="#order-lines"
-	    hx-swap="beforeend">Ajouter une ligne de commande</button>
+	    hx-swap="beforeend"
+	    class="pseudo small">+ ajouter une ligne de commande</button>
     <p>
-      Notes de commande :<br/>
+      Notes optionnelles de commande :<br/>
       <textarea name="notes">{% if order.notes %}{{ order.notes }}{% endif %}</textarea><br/>
     </p>
     <p>
-      <button class="success">Enregistrer la commande</button>
+      <button class="big">Enregistrer la commande dans les commandes en cours</button>
     </p>
   </form>
 </section>
 {% if cart %}
-<section>
-  <h2>Commandes en cours</h2>
+<section class="leftbordered">
+  <h2>Panier de commandes en cours</h2>
   <form method="POST" action="{% url 'boulange:validate_cart' %}">
-    <button class="success" onclick="return confirm('Voulez-vous valider les commandes en cours ? Elles ne seront plus modifiables.')">Valider les commandes en cours</button>
+    {% csrf_token %}
+    <p>
+      <button class="success big">Valider le panier (paiement)</button>
+    </p>
     <div class="flex three">
       {% for order in cart %}
       <article class="card">
@@ -61,15 +66,15 @@
 	  {% endfor %}
 	</ul>
 	{% endif %}
-	<a class="button warning" href="{% url 'boulange:orders' order_id=order.id edit=True %}">Modifier</a>
-	<a class="button" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
-	<a class="button error" href="{% url 'boulange:delete_order' order_id=order.id %}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
+	<a class="button warning small" href="{% url 'boulange:orders' order_id=order.id edit=True %}">Modifier</a>
+	<a class="button small" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
+	<a class="button error small" href="{% url 'boulange:delete_order' order_id=order.id %}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
       </article>
       {% endfor %}
     </div>
 </section>
 {% endif %}
-<section>
+<section class="leftbordered">
   <h2>Commandes validées</h2>
   <div class="flex three">
     {% for order in validated_orders %}
@@ -84,8 +89,8 @@
 	{% endfor %}
       </ul>
       {% endif %}
-      <a class="button" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
-      <a class="button" href="{% url 'boulange:user_delivery_receipt' delivery_date_id=order.delivery_date.id %}">Bon de commande</a>
+      <a class="button small" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
+      <a class="button small" href="{% url 'boulange:user_delivery_receipt' delivery_date_id=order.delivery_date.id %}">Bon de commande</a>
     </article>
   {% endfor %}
   </div>

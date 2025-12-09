@@ -1,0 +1,35 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Paiement{% endblock %}
+
+{% block content %}
+<div id="sumup-card"></div>
+<script
+  type="text/javascript"
+  src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"
+></script>
+<script type="text/javascript">
+  SumUpCard.mount({
+      id: "sumup-card",
+      checkoutId: "{{ checkout.remote_id }}",
+      email: "{{ email }}",
+      locale: "fr-FR",
+      country: "FR",
+      showFooter: false,
+      onResponse: function (type, body) {
+	  if (body["status"] == "PAID"){
+	      window.location.href = "{% url 'boulange:finalize' checkout_id=checkout.id %}";
+	  }
+	  else if (body["status"] == "FAILED"){
+	      alert("Échec lors du paiement, merci de réessayer !");
+	  }
+      },
+  });
+</script>
+
+<form action="{% url 'boulange:cancel_checkout' %}" method="POST">
+  {% csrf_token %}
+  <input type="hidden" name="checkout_id" value="{{ checkout.id }}"></input>
+  <button class="error">Annuler le paiement</button>
+</form>
+{% endblock %}

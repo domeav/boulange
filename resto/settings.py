@@ -48,7 +48,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    #    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -135,6 +135,7 @@ REST_FRAMEWORK = {
 }
 
 LOGIN_REDIRECT_URL = "/orders"
+LOGOUT_REDIRECT_URL = "/"
 
 try:
     from resto.local_settings import *

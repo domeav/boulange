@@ -9,12 +9,17 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from resto.settings import SUMUP_CHECKOUTS_URL, SUMUP_RECEIPTS_URL, SUMUP_API_KEY, SUMUP_PUBLIC_API_KEY, SUMUP_MERCHANT_CODE
+
+import requests
 
 from .models import (
+    Checkout,
     Customer,
     DeliveryDate,
     Ingredient,
@@ -206,7 +211,7 @@ def hx_order_line_sum(request):
 @login_required
 def delete_order(request, order_id):
     order = Order.objects.get(id=order_id)
-    if order.customer != request.user or order.validated:
+    if order.customer != request.user or order.validated or order.checkout:
         raise PermissionDenied
     order.delete()
     return redirect("boulange:orders")
@@ -216,17 +221,91 @@ def delete_order(request, order_id):
 def validate_cart(request):
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
     orders = Order.objects.filter(customer=request.user).filter(validated=False).filter(delivery_date__date__gte=available_timespan_start).filter(delivery_date__date__lte=available_timespan_end)
-    for order in orders:
-        order.validated = True
-        order.save()
-    send_mail(
-        "La ferme Bio du Resto : commande validée",
-        f"Merci pour votre commande ! Vous pouvez retrouver vos bons de commande en vous connectant sur {request.build_absolute_uri('/')}",
-        "boulangerie@lafermebioduresto.bzh",
-        [request.user.email],
-        fail_silently=False,
-    )
+    checkout_price = 0
+    for o in orders:
+        checkout_price += o.total_price
+    checkout = Checkout(remote_id="to be defined", customer=request.user)
+    checkout.save()
+    response = requests.post(SUMUP_CHECKOUTS_URL,
+                             headers={"Authorization": f"Bearer {SUMUP_API_KEY}"},
+                             json={'checkout_reference': checkout.id,
+                                   'amount': float(checkout_price),
+                                   'currency': 'EUR',
+                                   'merchant_code': SUMUP_MERCHANT_CODE,
+                                   'description': f"Paiement n°{checkout.id} sur boulange.lafermebioduresto.bzh"})
+    response.raise_for_status()
+    checkout.remote_id = response.json()["id"]
+    checkout.save()
+    for o in orders:
+        o.checkout = checkout
+        o.save()
+    context = {"checkout": checkout}
+    return redirect("boulange:payment", checkout_id=checkout.id)
+
+
+@login_required
+def payment(request, checkout_id):
+    checkout = Checkout.objects.get(id=checkout_id)
+    if checkout.customer != request.user:
+        raise PermissionDenied
+    response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}",
+                            headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
+    response.raise_for_status()
+    if response.json()["status"] == "PAID":
+        return finalize(request, checkout_id)
+    return render(request, "boulange/payment.html",
+                  context={
+                      "checkout": checkout,
+                      "email": request.user.email
+                  })
+
+@login_required
+def finalize(request, checkout_id):
+    checkout = Checkout.objects.get(id=checkout_id)
+    response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}",
+                            headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
+    response.raise_for_status()
+    checkout_data = response.json()
+    # response = requests.get(f"{SUMUP_RECEIPTS_URL}/{checkout_data['transaction_code']}",
+    #                         params={"mid": SUMUP_MERCHANT_CODE},
+    #                         headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
+    # response.raise_for_status()
+    # receipt_data = response.json()
+    # print(receipt_data)
+    if checkout_data["status"] == "PAID":
+        for order in checkout.order_set.all():
+            order.validated = True
+            order.save()
+        send_mail(
+            "Boulangerie de la Ferme du Resto : commande validée",
+            f"""Bonjour,\n
+Votre commande a été validée. Retrouvez le détail de vos paiements ici : {request.build_absolute_uri(reverse('boulange:checkouts'))}
+Merci et à bientôt !\n\n
+            """,
+            "boulangerie@lafermebioduresto.bzh",
+            [request.user.email],
+            fail_silently=False,
+        )
+
+        return render(request, "boulange/thanks.html")
     return redirect("boulange:orders")
+
+
+@login_required
+def cancel_checkout(request):
+    checkout = Checkout.objects.get(id=request.POST["checkout_id"])
+    remote_id = checkout.remote_id
+    checkout.delete()
+    response = requests.delete(f"{SUMUP_CHECKOUTS_URL}/{remote_id}",
+                             headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
+    response.raise_for_status()
+    return redirect("boulange:orders")
+
+
+@login_required
+def checkouts(request):
+    checkouts = Checkout.objects.filter(customer=request.user).order_by('-id')
+    return render(request, "boulange/checkouts.html", context={'checkouts': checkouts})
 
 
 @login_required
@@ -236,7 +315,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
         if request.POST["order_id"]:
             # editing existing order
             order = Order.objects.get(id=int(request.POST["order_id"]))
-            if order.validated or order.customer != request.user:
+            if order.validated or order.customer != request.user or order.checkout:
                 raise PermissionDenied
             order.delivery_date_id = int(request.POST["delivery_date"])
             order.notes = request.POST["notes"]
@@ -269,7 +348,9 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     if request.user.is_professional:
         available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
     else:
-        available_weekly_deliveries = WeeklyDelivery.objects.filter(Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all()))
+        available_weekly_deliveries = WeeklyDelivery.objects.filter(active=True).filter(
+            Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all())
+        )
     if weekly_delivery is None and request.user.order_set.exists():
         weekly_delivery = request.user.order_set.order_by("-id").first().delivery_date.weekly_delivery
     products = None
@@ -279,6 +360,8 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     for o in Order.objects.filter(customer=request.user).order_by("-id"):
         if o.validated:
             validated_orders.append(o)
+        elif o.checkout:
+            return redirect("boulange:payment", checkout_id=o.checkout.id)
         else:
             cart.append(o)
 

@@ -19,6 +19,7 @@
     email ci-dessous.
   </p>
   <form action="{% url 'boulange:account_init' %}" method="POST">
+    {% csrf_token %}
     Email :
     <input name="email"></input>
     <input type="submit" value="Initialiser"></input>

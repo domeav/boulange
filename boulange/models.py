@@ -560,12 +560,17 @@ class Actions(dict):
         for batch in self.values():
             batch.finalize()
 
+class Checkout(models.Model):
+    remote_id = models.CharField(max_length=64)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
     notes = models.TextField(blank=True, null=True)
     validated = models.BooleanField(default=True)
+    checkout = models.ForeignKey(Checkout, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
         return f"{self.customer}/{self.delivery_date}"
@@ -622,3 +627,4 @@ class OrderLine(models.Model):
 
     class Meta:
         ordering = ["product__name"]
+

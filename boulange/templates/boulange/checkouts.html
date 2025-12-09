@@ -1,0 +1,34 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Mes paiements{% endblock %}
+
+{% block content %}
+{% for checkout in checkouts %}
+{% if checkout.order_set.all %}
+<h3>Paiement n°{{checkout.id}}</h3>
+<div class="flex three">
+  {% for order in checkout.order_set.all %}
+  {% if forloop.counter0 == 0 and not order.validated %}
+  <p class="full">
+    Attention : ce paiement n'a pas encore été validé.
+  </p>
+  {% endif %}
+  <article class="card">
+    <header>
+      <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+      {% if not order.validated %}
+      {% endif %}
+    </header>
+    {% if order.lines.all %}
+    <ul>
+      {% for line in order.lines.all %}
+      <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
