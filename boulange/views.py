@@ -215,12 +215,18 @@ def delete_order(request, order_id):
         raise PermissionDenied
     order.delete()
     return redirect("boulange:orders")
+    
 
 
 @login_required
-def validate_cart(request):
+def validate_orders(request, payment=False):
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
-    orders = Order.objects.filter(customer=request.user).filter(validated=False).filter(delivery_date__date__gte=available_timespan_start).filter(delivery_date__date__lte=available_timespan_end)
+    orders = Order.objects.filter(customer=request.user).filter(validated=False).filter(delivery_date__date__gte=available_timespan_start).filter(delivery_date__date__lte=available_timespan_end).filter(delivery_date__weekly_delivery__online_payment=payment)
+    if not payment:
+        for o in orders:
+            o.validated = True
+            o.save()
+        return redirect("boulange:orders")
     checkout_price = 0
     for o in orders:
         checkout_price += o.total_price
@@ -241,6 +247,11 @@ def validate_cart(request):
         o.save()
     context = {"checkout": checkout}
     return redirect("boulange:payment", checkout_id=checkout.id)
+
+
+@login_required
+def validate_cart(request):
+    return validate_orders(request, payment=True)
 
 
 @login_required
@@ -356,18 +367,21 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     products = None
     if order:
         products = weekly_delivery.get_available_products()
-    validated_orders, cart = [], []
+    validated_orders, cart, to_validate = [], [], []
     for o in Order.objects.filter(customer=request.user).order_by("-id"):
         if o.validated:
             validated_orders.append(o)
         elif o.checkout:
             return redirect("boulange:payment", checkout_id=o.checkout.id)
-        else:
+        elif o.delivery_date.weekly_delivery.online_payment:
             cart.append(o)
+        else:
+            to_validate.append(o)
 
     context = {
         "validated_orders": validated_orders,
         "cart": cart,
+        "to_validate": to_validate,
         "order": order,
         "order_id": order_id,
         "weekly_delivery": weekly_delivery,

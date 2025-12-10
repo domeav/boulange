@@ -45,6 +45,36 @@
     </p>
   </form>
 </section>
+{% if to_validate %}
+<section class="leftbordered">
+  <h2>Commandes à valider</h2>
+  <form method="POST" action="{% url 'boulange:validate_orders' %}">
+    {% csrf_token %}
+    <p>
+      <button class="success big" onclick="return confirm('Attention : une commande validée vous engage et ne pourra plus être modifiée !');">Valider les commandes</button>
+    </p>
+    <div class="flex three">
+      {% for order in to_validate %}
+      <article class="card">
+	<header>
+	  <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+	</header>
+	{% if order.lines.all %}
+	<ul>
+	  {% for line in order.lines.all %}
+	  <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	  {% endfor %}
+	</ul>
+	{% endif %}
+	<a class="button warning small" href="{% url 'boulange:orders' order_id=order.id edit=True %}">Modifier</a>
+	<a class="button small" href="{% url 'boulange:orders' order_id=order.id duplicate=True %}">Dupliquer</a>
+	<a class="button error small" href="{% url 'boulange:delete_order' order_id=order.id %}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette commande ?');">Supprimer</a>
+      </article>
+      {% endfor %}
+    </div>
+  </form>
+</section>
+{% endif %}
 {% if cart %}
 <section class="leftbordered">
   <h2>Panier de commandes en cours</h2>
@@ -72,6 +102,7 @@
       </article>
       {% endfor %}
     </div>
+  </form>
 </section>
 {% endif %}
 <section class="leftbordered">

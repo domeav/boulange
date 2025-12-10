@@ -205,6 +205,7 @@ class WeeklyDelivery(models.Model):
     }
     batch_target = models.CharField(max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
     public_delivery_point = models.BooleanField(default=True)
+    online_payment = models.BooleanField(default=True)
     DAY_OF_WEEK = {
         0: "lundi",
         1: "mardi",
