@@ -436,8 +436,8 @@ def check_delivery_dates_consistency(request):
 def delivery_receipt(request, delivery_date_id=None, filter_on_user=False):
     delivery_date = DeliveryDate.objects.get(id=delivery_date_id)
     if filter_on_user or not request.user.is_staff:
-        orders = delivery_date.order_set.filter(customer=request.user)
+        orders = delivery_date.order_set.filter(customer=request.user).filter(validated=True)
     else:
-        orders = delivery_date.order_set.all()
+        orders = delivery_date.order_set.filter(validated=True)
     context = {"delivery_date": delivery_date, "orders": orders}
     return render(request, "boulange/delivery_receipt.html", context)
