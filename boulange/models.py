@@ -565,6 +565,12 @@ class Checkout(models.Model):
     remote_id = models.CharField(max_length=64)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return f"Panier SumUp n°{self.id}"
+    
+    class Meta:
+        verbose_name = "Panier"
+
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)

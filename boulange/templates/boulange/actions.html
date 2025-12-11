@@ -78,7 +78,7 @@
     {% for delivery_date, lines in actions.delivery.items %}
     <article class="card">
       <header>
-	<h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date }}</a></h3>
+	<h3><a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date.weekly_delivery.customer }}</a></h3>
       </header>
       <ul>
         {% for product, nb in lines.items %}

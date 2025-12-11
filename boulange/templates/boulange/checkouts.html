@@ -15,14 +15,18 @@
   {% endif %}
   <article class="card">
     <header>
-      <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+      <b>
+	{{ order.delivery_date.weekly_delivery.customer }}
+	<br>
+	{{ order.delivery_date.date|date:"l d/m/y" }} : {{ order.total_price|floatformat:2 }}€
+      </b>
       {% if not order.validated %}
       {% endif %}
     </header>
     {% if order.lines.all %}
     <ul>
       {% for line in order.lines.all %}
-      <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+      <li>{{ line.product }}<br>{{ line.product.price }}€ x {{ line.quantity }}</li>
       {% endfor %}
     </ul>
     {% endif %}

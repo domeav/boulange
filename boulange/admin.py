@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 
 from .models import (
+    Checkout,
     Customer,
     DeliveryDate,
     Ingredient,
@@ -125,6 +126,30 @@ class DeliveryDateAdmin(admin.ModelAdmin):
 
 admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)
+
+@admin.action(description="Cancel selected checkouts and reset related orders validation status")
+def cancel_checkouts(modeladmin, request, queryset):
+    for checkout in queryset.all():
+        for order in checkout.order_set.all():
+            order.validated = False
+            order.checkout = None
+            order.save()
+
+
+class CheckoutAdmin(admin.ModelAdmin):
+    actions = [cancel_checkouts]
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            del actions["delete_selected"]
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+    
+admin.site.register(Checkout, CheckoutAdmin)
+
 
 
 class OrderLineInline(admin.TabularInline):

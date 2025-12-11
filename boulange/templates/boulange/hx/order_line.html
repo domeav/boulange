@@ -7,7 +7,7 @@
     hx-swap="innerHTML"
     hx-vals="js:{index: Array.from(document.getElementsByName('product_id')).indexOf(this)}">
     {% for product in products %}
-    <option value="{{ product.id }}" {% if line.product.id == product.id %}selected{% endif %}>{{ product }} ({{ product.price }}€)</option>
+    <option value="{{ product.id }}" {% if line.product.id == product.id %}selected{% endif %}>{{ product }} : {{ product.price }}€</option>
     {% endfor %}
     <option>
   </select>

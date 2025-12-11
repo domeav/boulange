@@ -57,12 +57,16 @@
       {% for order in to_validate %}
       <article class="card">
 	<header>
-	  <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+	  <b>
+	    {{ order.delivery_date.weekly_delivery.customer }}
+	    <br>
+	    {{ order.delivery_date.date|date:"l d/m/y" }} : {{ order.total_price|floatformat:2 }}€
+	  </b>
 	</header>
 	{% if order.lines.all %}
 	<ul>
 	  {% for line in order.lines.all %}
-	  <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	  <li>{{ line.product }}<br>{{ line.product.price }}€ x {{ line.quantity }}</li>
 	  {% endfor %}
 	</ul>
 	{% endif %}
@@ -87,12 +91,16 @@
       {% for order in cart %}
       <article class="card">
 	<header>
-	  <b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+	  <b>
+	    {{ order.delivery_date.weekly_delivery.customer }}
+	    <br>
+	    {{ order.delivery_date.date|date:"l d/m/y" }} : {{ order.total_price|floatformat:2 }}€
+	  </b>
 	</header>
 	{% if order.lines.all %}
 	<ul>
 	  {% for line in order.lines.all %}
-	  <li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	  <li>{{ line.product }}<br>{{ line.product.price }}€ x {{ line.quantity }}</li>
 	  {% endfor %}
 	</ul>
 	{% endif %}
@@ -111,12 +119,16 @@
     {% for order in validated_orders %}
     <article class="card">
       <header>
-	<b>{{ order.delivery_date }} : {{ order.total_price }}€</b>
+	<b>
+	  {{ order.delivery_date.weekly_delivery.customer }}
+	  <br>
+	  {{ order.delivery_date.date|date:"l d/m/y" }} : {{ order.total_price|floatformat:2 }}€
+	</b>
       </header>
       {% if order.lines.all %}
       <ul>
 	{% for line in order.lines.all %}
-	<li>{{ line.product }} ({{ line.product.price }}€) x {{ line.quantity }}</li>
+	<li>{{ line.product }}<br>{{ line.product.price }}€ x {{ line.quantity }}</li>
 	{% endfor %}
       </ul>
       {% endif %}
