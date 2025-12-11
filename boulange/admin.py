@@ -127,6 +127,7 @@ class DeliveryDateAdmin(admin.ModelAdmin):
 admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)
 
+
 @admin.action(description="Cancel selected checkouts and reset related orders validation status")
 def cancel_checkouts(modeladmin, request, queryset):
     for checkout in queryset.all():
@@ -147,9 +148,9 @@ class CheckoutAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-    
-admin.site.register(Checkout, CheckoutAdmin)
 
+
+admin.site.register(Checkout, CheckoutAdmin)
 
 
 class OrderLineInline(admin.TabularInline):
