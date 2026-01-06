@@ -182,7 +182,7 @@ def reset_password(request, token):
 
 
 def _get_start_end_command_period():
-    available_timespan_start = date.today() + timedelta(days=2)
+    available_timespan_start = (datetime.now() + timedelta(days=1, hours=12)).date()
     available_timespan_end = date.today() + timedelta(days=56)
     return available_timespan_start, available_timespan_end
 
