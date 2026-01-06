@@ -155,7 +155,7 @@ def account_init(request):
 Rendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n
 {request.build_absolute_uri('/reset_password/'+str(token.token))}\n
 Ce lien est valable 24h.\n
-Attention : votre identifiant pour l'accès au service est : {customer.username}""",
+Attention : votre nom d'utilisateur/identifiant pour l'accès au service est : {customer.username}""",
         "boulangerie@lafermebioduresto.bzh",
         [customer.email],
         fail_silently=False,
