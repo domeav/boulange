@@ -365,7 +365,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
             order_id = order.id
         if duplicate:
             order_id = False
-    if request.user.is_professional:
+    if request.user.is_professional and WeeklyDelivery.objects.filter(customer=request.user):
         available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
     else:
         available_weekly_deliveries = WeeklyDelivery.objects.filter(active=True).filter(Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all()))

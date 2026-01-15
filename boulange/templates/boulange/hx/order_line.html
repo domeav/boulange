@@ -7,7 +7,7 @@
     hx-swap="innerHTML"
     hx-vals="js:{index: Array.from(document.getElementsByName('product_id')).indexOf(this)}">
     {% for product in products %}
-    <option value="{{ product.id }}" {% if line.product.id == product.id %}selected{% endif %}>{{ product }} : {{ product.price }}€</option>
+    <option value="{{ product.id }}" {% if line.product.id == product.id %}selected{% endif %}>{{ product }} : {{ product.price|floatformat:2 }}€</option>
     {% endfor %}
     <option>
   </select>
@@ -25,7 +25,7 @@
   </div>
   <div>
     Prix :
-    <span class="line-sum">{% if line %}{{ line.get_price }}{% else %}0{% endif %}</span>€
+    <span class="line-sum">{% if line %}{{ line.get_price|floatformat:2 }}{% else %}0{% endif %}</span>€
   </div>
   <button class="fourth error small" onclick="javascript:this.parentNode.remove()">☓ supprimer la ligne</button>
 </div>
