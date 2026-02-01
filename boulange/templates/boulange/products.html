@@ -5,11 +5,10 @@
 {% block content %}
 <section class="flex three">
   {% for product in products %}
-  {% if product.active %}
   <article class="card">
     <header>
       <h3>{{ product.ref }}</h3><br/>
-      <b>{{ product.name }}</b>
+      <b>{{ product.name }}{% if not product.active %} (désactivé){% endif %}</b>
     </header>
     <ul>
       {% if product.orig_product %}
@@ -35,7 +34,6 @@
     <pre>{{ product.notes }}</pre>
     {% endif %}
   </article>
-  {% endif %}
   {% endfor %}
 </section>
 {% endblock %}
