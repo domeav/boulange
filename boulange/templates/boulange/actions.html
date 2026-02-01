@@ -54,13 +54,14 @@
 	{% endfor %}
       </div>
       {% endwith %}
-      <hr/>
+      {% if not to_print %}<hr/>{% endif %}
       <h4 style="margin-left: 15px;">Division</h4>
       <ul>
         {% for product, qty in data.division.items %}
         <li>{{ product }} : {{ qty }}</li>
         {% endfor %}
       </ul>
+      {% if to_print %}<hr/>{% endif %}
     </article>
     {% endfor %}
   </div>
