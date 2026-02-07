@@ -29,7 +29,7 @@ class ProductLineInline(admin.TabularInline):
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "ref", "price", "active")
+    list_display = ("name", "ref", "price", "display_priority", "active")
     inlines = [ProductLineInline]
     search_fields = ["ref"]
     save_as = True

@@ -400,7 +400,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
 
 @login_required
 def products(request):
-    context = {"products": Product.objects.all().order_by("name")}
+    context = {"products": Product.objects.all()}
     return render(request, "boulange/products.html", context)
 
 

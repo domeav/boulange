@@ -159,7 +159,7 @@ class Product(models.Model):
             models.Index(fields=["ref"]),
         ]
         verbose_name = "Produit"
-        ordering = ["name"]
+        ordering = ["-display_priority", "name"]
 
 
 class ProductLine(models.Model):
@@ -220,7 +220,7 @@ class WeeklyDelivery(models.Model):
     allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries", blank=True)
 
     def get_available_products(self):
-        products = Product.objects.filter(active=True).order_by("name")
+        products = Product.objects.filter(active=True)
         return [p for p in products if p.is_available_on_day(self.day_of_week)]
 
     def generate_delivery_dates(self):
