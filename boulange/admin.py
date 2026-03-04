@@ -79,8 +79,8 @@ class MyDateFilter(admin.DateFieldListFilter):
             if linkname != "Les 7 derniers jours":
                 newlinks.append((linkname, linkinfo))
         self.links = newlinks
-        self.links.insert(2, ("Aujourd'hui et après", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=365)}))
-        self.links.insert(2, ("Demain", {"date__gte": date.today() + timedelta(days=1), "date__lt": date.today() + timedelta(days=2)}))
+        self.links.insert(2, ("Aujourd'hui et après", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=365)}))
+        self.links.insert(2, ("Demain", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=2)}))
 
 
 @admin.action(description="Duplicate commands from the older selected deliverydate to the newer ones, by weeklydelivery")

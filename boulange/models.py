@@ -30,6 +30,7 @@ class Ingredient(models.Model):
     soaking_ingredient = models.ForeignKey("Ingredient", on_delete=models.PROTECT, null=True, blank=True)
     # qty of water needed is ing weight * coef
     soaking_coef = models.FloatField(default=1)
+    decimal_round = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name

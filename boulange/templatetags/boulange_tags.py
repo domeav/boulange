@@ -1,9 +1,7 @@
 from django.template.defaultfilters import register
+from django.utils.safestring import SafeString
 
 from boulange import SPECIAL_UNITS_WEIGHTS
-
-SALT = "Sel"
-
 
 @register.filter(name="dict_key")
 def dict_key(d, k):
@@ -14,11 +12,9 @@ def dict_key(d, k):
 @register.filter(name="bround")
 def bround(value, ing=None):
     """Rounds depending on ingredient"""
-    if hasattr(ing, "name"):
-        ing = ing.name
-    if ing == SALT:
-        return round(value)
-    elif ing is None or ing in SPECIAL_UNITS_WEIGHTS:
-        return value
-    else:
-        return round(value / 10) * 10
+    if type(ing) not in (str, SafeString):
+        if ing and not ing.decimal_round:
+            return round(value)
+        elif ing is None or ing.name in SPECIAL_UNITS_WEIGHTS:
+            return value
+    return round(value / 10) * 10
