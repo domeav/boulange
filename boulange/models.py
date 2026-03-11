@@ -46,7 +46,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
     # if orig_product is set we'll be using its ingredients with quantity * coef
-    orig_product = models.ForeignKey("Product", on_delete=models.CASCADE, null=True, blank=True)
+    orig_product = models.ForeignKey("Product", on_delete=models.PROTECT, null=True, blank=True)
     # when product_lines are defined in another product (orig_product)
     coef = models.FloatField(default=1)
     # recipe quantities are set for a given number of units
@@ -165,7 +165,7 @@ class Product(models.Model):
 
 class ProductLine(models.Model):
     product = models.ForeignKey(Product, related_name="raw_ingredients", on_delete=models.CASCADE)
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
     quantity = models.FloatField()
 
     class Meta:
@@ -198,7 +198,7 @@ class WeeklyDelivery(models.Model):
     # - allowed_customers set : accessible seulement aux clients listés
     # - public_delivery_point True : accessible à tous sauf les pros
     # - public_delivery_point False + attaché un un customer pro (accessible seulement par lui)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
     BATCH_TARGET = {
         "SAME_DAY": "same day",
@@ -565,7 +565,7 @@ class Actions(dict):
 
 class Checkout(models.Model):
     remote_id = models.CharField(max_length=64)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
 
     def __str__(self):
         return f"Panier SumUp n°{self.id}"
@@ -576,7 +576,7 @@ class Checkout(models.Model):
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.CASCADE)
+    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.PROTECT)
     notes = models.TextField(blank=True, null=True)
     validated = models.BooleanField(default=True)
     checkout = models.ForeignKey(Checkout, on_delete=models.SET_NULL, blank=True, null=True)
