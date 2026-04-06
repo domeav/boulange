@@ -230,14 +230,16 @@ class WeeklyDelivery(models.Model):
         current = date.today()
         one_year = current + timedelta(days=365)
         existing_dates = set()
-        for ddate in DeliveryDate.objects.all():
-            existing_dates.add((ddate.weekly_delivery.id, ddate.date))
+        for ddate in DeliveryDate.objects.filter(weekly_delivery=self).filter(date__gte=current):
+            existing_dates.add(ddate.date)
         while current <= one_year:
             if current.weekday() == self.day_of_week:
-                if (self.id, current) not in existing_dates:
+                if current not in existing_dates:
                     delivery_date = DeliveryDate(weekly_delivery=self, date=current)
                     delivery_date.save()
-            current += timedelta(days=1)
+                current += timedelta(days=7)
+            else:
+                current += timedelta(days=1)
 
     def __str__(self):
         return f"{self.customer}: {self.DAY_OF_WEEK[self.day_of_week]}"

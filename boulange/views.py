@@ -112,7 +112,7 @@ class OrderLineViewSet(viewsets.ModelViewSet):
 
 @api_view(["POST"])
 def generate_delivery_dates(request):
-    for dday in WeeklyDelivery.objects.all():
+    for dday in WeeklyDelivery.objects.filter(active=True):
         dday.generate_delivery_dates()
     return Response({"message": "Delivery dates generated!"})
 
