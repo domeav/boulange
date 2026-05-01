@@ -139,6 +139,8 @@ def cancel_checkouts(modeladmin, request, queryset):
 
 class CheckoutAdmin(admin.ModelAdmin):
     actions = [cancel_checkouts]
+    fields = ["remote_id", "customer"]
+    inlines = [OrderInline]
 
     def get_actions(self, request):
         actions = super().get_actions(request)
