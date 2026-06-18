@@ -3,6 +3,7 @@ from django.utils.safestring import SafeString
 
 from boulange import SPECIAL_UNITS_WEIGHTS
 
+
 @register.filter(name="dict_key")
 def dict_key(d, k):
     """Returns the given key from a dictionary."""

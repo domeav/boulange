@@ -1,6 +1,6 @@
 from collections import defaultdict
-from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
+from functools import wraps
 
 import requests
 from django.contrib.auth.decorators import login_required
@@ -11,6 +11,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
@@ -20,8 +21,6 @@ from resto.settings import (
     SUMUP_API_KEY,
     SUMUP_CHECKOUTS_URL,
     SUMUP_MERCHANT_CODE,
-    SUMUP_PUBLIC_API_KEY,
-    SUMUP_RECEIPTS_URL,
 )
 
 from .models import (
@@ -47,7 +46,19 @@ from .serializers import (
     WeeklyDeliverySerializer,
 )
 
-TZ = ZoneInfo("Europe/Paris")
+
+def staff_required(view_func):
+    """login_required + staff check, returning 403 (not a redirect) for authenticated non-staff users."""
+
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
 
 # REST FRAMEWORK
 
@@ -111,6 +122,7 @@ class OrderLineViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.IsAdminUser])
 def generate_delivery_dates(request):
     for dday in WeeklyDelivery.objects.filter(active=True):
         dday.generate_delivery_dates()
@@ -118,10 +130,16 @@ def generate_delivery_dates(request):
 
 
 def _get_actions(target_date):
-    delivery_dates = DeliveryDate.objects.filter(date__gte=target_date).filter(active=True).filter(date__lte=target_date + timedelta(days=2)).all()
+    delivery_dates = (
+        DeliveryDate.objects.filter(date__gte=target_date)
+        .filter(active=True)
+        .filter(date__lte=target_date + timedelta(days=2))
+        .select_related("weekly_delivery")
+        .prefetch_related("order_set__lines__product__orig_product__raw_ingredients__ingredient")
+    )
     actions = None
     for delivery_date in delivery_dates:
-        for order in delivery_date.order_set.filter(validated=True).all():
+        for order in delivery_date.order_set.filter(validated=True):
             actions = order.get_actions(target_date, actions)
     if actions:
         actions.finalize()
@@ -145,29 +163,41 @@ def index(request):
 
 
 def account_init(request):
-    if not request.POST["email"]:
+    email = request.POST.get("email")
+    if not email:
         return redirect("boulange:index")
-    customer = get_object_or_404(Customer, email=request.POST["email"])
-    token = ResetAccountToken(customer=customer)
-    send_mail(
-        "Boulangerie de la Ferme du Resto : initialisation de votre compte",
-        f"""Bonjour,\n
+    customer = Customer.objects.filter(email=email).first()
+    # Always render the same confirmation page so the response does not reveal
+    # whether an account exists for the submitted address (avoid user enumeration).
+    if customer is not None:
+        # Throttle: don't send a fresh link (nor create a token) if one was already
+        # issued recently, to prevent using this endpoint for email bombing.
+        recently = timezone.now() - timedelta(minutes=10)
+        if not ResetAccountToken.objects.filter(customer=customer, created__gte=recently).exists():
+            token = ResetAccountToken(customer=customer)
+            token.save()
+            send_mail(
+                "Boulangerie de la Ferme du Resto : initialisation de votre compte",
+                f"""Bonjour,\n
 Rendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n
 {request.build_absolute_uri('/reset_password/'+str(token.token))}\n
 Ce lien est valable 24h.\n
 Attention : votre nom d'utilisateur/identifiant pour l'accès au service est : {customer.username}""",
-        "boulangerie@lafermebioduresto.bzh",
-        [customer.email],
-        fail_silently=False,
-    )
-    token.save()
+                "boulangerie@lafermebioduresto.bzh",
+                [customer.email],
+                fail_silently=False,
+            )
     return render(request, "registration/account_init.html")
 
 
 def reset_password(request, token):
     token = get_object_or_404(ResetAccountToken, token=token)
+    # Enforce expiry before doing anything else, so an expired token can't be used
+    # to set a password through a POST request either.
+    if (timezone.now() - token.created) > timedelta(days=1):
+        return HttpResponse("Ce lien n'est plus valide")
     if request.POST:
-        if len(request.POST["newpw"]) < 8:
+        if len(request.POST.get("newpw", "")) < 8:
             return redirect("boulange:reset_password", token=token.token)
         else:
             token.customer.set_password(request.POST["newpw"])
@@ -175,38 +205,39 @@ def reset_password(request, token):
             token.delete()
             return redirect("boulange:index")
 
-    if (datetime.now(TZ) - token.created) > timedelta(days=1):
-        return HttpResponse("Ce lien n'est plus valide")
     context = {"token": token}
     return render(request, "registration/reset_password.html", context=context)
 
 
 def _get_start_end_command_period():
-    available_timespan_start = (datetime.now() + timedelta(days=1, hours=12)).date()
+    available_timespan_start = (timezone.localtime() + timedelta(days=1, hours=12)).date()
     available_timespan_end = date.today() + timedelta(days=56)
     return available_timespan_start, available_timespan_end
 
 
+@login_required
 def hx_get_dates_for_weekly_delivery(request):
-    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST["weekly_delivery_id"])
+    weekly_delivery = get_object_or_404(WeeklyDelivery, id=request.POST["weekly_delivery_id"])
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
     selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
     order = None
     if request.POST["order_id"]:
-        order = Order.objects.get(id=request.POST["order_id"])
+        order = get_object_or_404(Order, id=request.POST["order_id"])
     context = {"selectable_delivery_dates": selectable_delivery_dates, "strip_lines": request.POST["event_type"] == "change", "order": order}
     return render(request, "boulange/hx/available_dates.html", context=context)
 
 
+@login_required
 def hx_order_line(request):
-    weekly_delivery = WeeklyDelivery.objects.get(id=request.POST["weekly_delivery_id"])
+    weekly_delivery = get_object_or_404(WeeklyDelivery, id=request.POST["weekly_delivery_id"])
     context = {"products": weekly_delivery.get_available_products()}
     return render(request, "boulange/hx/order_line.html", context=context)
 
 
+@login_required
 def hx_order_line_sum(request):
     index = int(request.POST["index"])
-    product = Product.objects.get(id=int(request.POST.getlist("product_id")[index]))
+    product = get_object_or_404(Product, id=int(request.POST.getlist("product_id")[index]))
     try:
         product_qty = int(request.POST.getlist("product_qty")[index])
     except ValueError:
@@ -216,7 +247,7 @@ def hx_order_line_sum(request):
 
 @login_required
 def delete_order(request, order_id):
-    order = Order.objects.get(id=order_id)
+    order = get_object_or_404(Order, id=order_id)
     if order.customer != request.user or order.validated or order.checkout:
         raise PermissionDenied
     order.delete()
@@ -260,7 +291,6 @@ def validate_orders(request, payment=False):
     for o in orders:
         o.checkout = checkout
         o.save()
-    context = {"checkout": checkout}
     return redirect("boulange:payment", checkout_id=checkout.id)
 
 
@@ -271,7 +301,7 @@ def validate_cart(request):
 
 @login_required
 def payment(request, checkout_id):
-    checkout = Checkout.objects.get(id=checkout_id)
+    checkout = get_object_or_404(Checkout, id=checkout_id)
     if checkout.customer != request.user:
         raise PermissionDenied
     response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
@@ -283,7 +313,9 @@ def payment(request, checkout_id):
 
 @login_required
 def finalize(request, checkout_id):
-    checkout = Checkout.objects.get(id=checkout_id)
+    checkout = get_object_or_404(Checkout, id=checkout_id)
+    if checkout.customer != request.user:
+        raise PermissionDenied
     response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
     response.raise_for_status()
     checkout_data = response.json()
@@ -314,7 +346,9 @@ Merci et à bientôt !\n\n
 
 @login_required
 def cancel_checkout(request):
-    checkout = Checkout.objects.get(id=request.POST["checkout_id"])
+    checkout = get_object_or_404(Checkout, id=request.POST["checkout_id"])
+    if checkout.customer != request.user:
+        raise PermissionDenied
     remote_id = checkout.remote_id
     checkout.delete()
     response = requests.delete(f"{SUMUP_CHECKOUTS_URL}/{remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
@@ -334,7 +368,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     if request.POST:
         if request.POST["order_id"]:
             # editing existing order
-            order = Order.objects.get(id=int(request.POST["order_id"]))
+            order = get_object_or_404(Order, id=int(request.POST["order_id"]))
             if order.validated or order.customer != request.user or order.checkout:
                 raise PermissionDenied
             order.delivery_date_id = int(request.POST["delivery_date"])
@@ -355,7 +389,7 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     order = None
     weekly_delivery = None
     if order_id:
-        order = Order.objects.get(id=order_id)
+        order = get_object_or_404(Order, id=order_id)
         if order.customer != request.user:
             raise PermissionDenied
         weekly_delivery = order.delivery_date.weekly_delivery
@@ -398,13 +432,13 @@ def orders(request, order_id=None, edit=False, duplicate=False):
     return render(request, "boulange/orders.html", context=context)
 
 
-@login_required
+@staff_required
 def products(request):
     context = {"products": Product.objects.all()}
     return render(request, "boulange/products.html", context)
 
 
-@login_required
+@staff_required
 def actions(request, year=None, month=None, day=None, to_print=False, section=None):
     if not (year and month and day):
         target_date = date.today()
@@ -417,9 +451,9 @@ def actions(request, year=None, month=None, day=None, to_print=False, section=No
     return render(request, "boulange/actions.html", context)
 
 
-@login_required
+@staff_required
 def check_delivery_dates_consistency(request):
-    delivery_dates = DeliveryDate.objects.all()
+    delivery_dates = DeliveryDate.objects.select_related("weekly_delivery").prefetch_related("order_set")
     dds_by_weeklydelivery_and_date = defaultdict(list)
     annoying = {}
     for dd in delivery_dates:
@@ -441,10 +475,9 @@ def check_delivery_dates_consistency(request):
 
 @login_required
 def delivery_receipt(request, delivery_date_id=None, filter_on_user=False):
-    delivery_date = DeliveryDate.objects.get(id=delivery_date_id)
+    delivery_date = get_object_or_404(DeliveryDate, id=delivery_date_id)
+    orders = delivery_date.order_set.filter(validated=True).select_related("customer").prefetch_related("lines__product")
     if filter_on_user or not request.user.is_staff:
-        orders = delivery_date.order_set.filter(customer=request.user).filter(validated=True)
-    else:
-        orders = delivery_date.order_set.filter(validated=True)
+        orders = orders.filter(customer=request.user)
     context = {"delivery_date": delivery_date, "orders": orders}
     return render(request, "boulange/delivery_receipt.html", context)

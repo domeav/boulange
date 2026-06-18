@@ -1,10 +1,11 @@
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 from boulange import SPECIAL_UNITS_WEIGHTS
 from boulange.templatetags.boulange_tags import bround
@@ -83,6 +84,8 @@ class Product(models.Model):
                 return self.available_saturdays
             case 6:
                 return self.available_sundays
+            case _:
+                return False
 
     def get_short_recipe_name(self):
         return f"{self.name.split(' (')[0]}/{self.ref}"
@@ -189,7 +192,7 @@ class Customer(AbstractUser):
 
 class ResetAccountToken(models.Model):
     token = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created = models.DateTimeField(default=datetime.now)
+    created = models.DateTimeField(default=timezone.now)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
 
 
@@ -245,8 +248,16 @@ class WeeklyDelivery(models.Model):
         return f"{self.customer}: {self.DAY_OF_WEEK[self.day_of_week]}"
 
     def save(self, **kwargs):
+        # Only (re)generate the year of delivery dates when the schedule actually
+        # changes, instead of on every save (e.g. editing notes), which is costly.
+        previous = None
+        if self.pk is not None:
+            previous = WeeklyDelivery.objects.filter(pk=self.pk).values("day_of_week", "active").first()
         super().save(**kwargs)
-        self.generate_delivery_dates()
+        schedule_changed = previous is None or previous["day_of_week"] != self.day_of_week
+        reactivated = previous is not None and self.active and not previous["active"]
+        if schedule_changed or reactivated:
+            self.generate_delivery_dates()
 
     class Meta:
         ordering = ["day_of_week", "customer"]
@@ -271,6 +282,7 @@ class DeliveryDate(models.Model):
         ordering = ["date", "weekly_delivery"]
         verbose_name = "Date de livraison"
         verbose_name_plural = "Dates de livraison"
+        unique_together = ("weekly_delivery", "date")
 
     def get_total(self):
         total = 0
@@ -633,7 +645,9 @@ class OrderLine(models.Model):
     def get_price(self):
         total = self.product.price * self.quantity
         if self.order.customer.is_professional:
-            total = (total - total * Decimal(TVA / 100)) * Decimal(1 - self.order.customer.pro_discount_percentage / 100)
+            tva_rate = Decimal(str(TVA)) / 100
+            discount_rate = Decimal(str(self.order.customer.pro_discount_percentage)) / 100
+            total = (total - total * tva_rate) * (1 - discount_rate)
         return total
 
     class Meta:

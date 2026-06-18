@@ -1,17 +1,23 @@
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
+from django.core import mail
+from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .models import (
+    Checkout,
     Customer,
     DeliveryDate,
     Ingredient,
     Order,
     OrderLine,
     Product,
+    ResetAccountToken,
     WeeklyDelivery,
 )
 
@@ -679,3 +685,191 @@ class ViewTests(ExtendedTestCase):
             """,
             response.content.decode("utf-8"),
         )
+
+
+class AccessControlTests(ExtendedTestCase):
+    """Covers the access-control fixes: ownership checks and staff gating."""
+
+    fixtures = ["data/base.json"]
+    next_monday = date.today() + timedelta(days=7 - date.today().weekday())
+
+    def setUp(self):
+        self.context = populate()
+
+    def _delivery_date(self):
+        return DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+
+    # --- #4 staff-only views must reject authenticated non-staff users ---
+
+    def test_staff_views_forbidden_for_regular_customer(self):
+        client = Client()
+        client.force_login(self.context["guy"])
+        for url in ("/actions/", "/products/", "/check_delivery_dates_consistency/"):
+            self.assertEqual(client.get(url).status_code, 403, msg=url)
+
+    def test_staff_views_allowed_for_staff(self):
+        client = Client()
+        client.force_login(self.context["admin"])
+        for url in ("/actions/", "/products/", "/check_delivery_dates_consistency/"):
+            self.assertEqual(client.get(url).status_code, 200, msg=url)
+
+    def test_staff_views_redirect_anonymous_to_login(self):
+        client = Client()
+        response = client.get("/actions/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login", response.url)
+
+    # --- #2 cancel_checkout ownership ---
+
+    def test_cancel_checkout_rejects_other_customer(self):
+        checkout = Checkout.objects.create(remote_id="remote-x", customer=self.context["store"])
+        client = Client()
+        client.force_login(self.context["guy"])
+        with patch("boulange.views.requests.delete") as remote:
+            response = client.post("/cancel_checkout/", {"checkout_id": checkout.id})
+        self.assertEqual(response.status_code, 403)
+        remote.assert_not_called()
+        # checkout must still exist
+        self.assertTrue(Checkout.objects.filter(id=checkout.id).exists())
+
+    # --- #3 finalize ownership ---
+
+    def test_finalize_rejects_other_customer(self):
+        checkout = Checkout.objects.create(remote_id="remote-x", customer=self.context["store"])
+        client = Client()
+        client.force_login(self.context["guy"])
+        with patch("boulange.views.requests.get") as remote:
+            response = client.get(f"/finalize/{checkout.id}/")
+        self.assertEqual(response.status_code, 403)
+        # ownership is checked before any SumUp network call
+        remote.assert_not_called()
+
+    # --- #5 generate_delivery_dates API permission ---
+
+    def test_generate_delivery_dates_requires_admin(self):
+        anon = APIClient()
+        self.assertEqual(anon.post("/api/generate_delivery_dates/").status_code, 403)
+        regular = APIClient()
+        regular.force_authenticate(user=self.context["guy"])
+        self.assertEqual(regular.post("/api/generate_delivery_dates/").status_code, 403)
+
+    # --- #13 hx_* endpoints require login ---
+
+    def test_hx_endpoints_require_login(self):
+        client = Client()
+        for url in ("/hx/order_line/", "/hx/order_line_sum/", "/hx/get_dates_for_weekly_delivery/"):
+            response = client.post(url, {})
+            self.assertEqual(response.status_code, 302, msg=url)
+            self.assertIn("/accounts/login", response.url, msg=url)
+
+    # --- cleanup: missing objects yield 404, not 500 ---
+
+    def test_missing_objects_return_404(self):
+        client = Client()
+        client.force_login(self.context["guy"])
+        self.assertEqual(client.post("/delete_order/999999").status_code, 404)
+        self.assertEqual(client.get("/payment/999999/").status_code, 404)
+
+
+class PasswordResetTests(ExtendedTestCase):
+    """Covers #6 (expiry enforced on POST), #8 (account_init) and #9 (tz-aware)."""
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+
+    def test_account_init_unknown_email_does_not_leak_and_sends_nothing(self):
+        response = self.client.post("/account_init", {"email": "nobody@example.com"})
+        self.assertEqual(response.status_code, 200)  # same page as a known address, no 404
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(ResetAccountToken.objects.count(), 0)
+
+    def test_account_init_missing_email_does_not_500(self):
+        response = self.client.post("/account_init", {})
+        self.assertEqual(response.status_code, 302)
+
+    def test_account_init_known_email_sends_one_link(self):
+        response = self.client.post("/account_init", {"email": self.context["guy"].email})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(ResetAccountToken.objects.filter(customer=self.context["guy"]).count(), 1)
+
+    def test_account_init_is_throttled(self):
+        for _ in range(3):
+            self.client.post("/account_init", {"email": self.context["guy"].email})
+        # repeated submissions must not create extra tokens / send extra mail
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(ResetAccountToken.objects.filter(customer=self.context["guy"]).count(), 1)
+
+    def test_token_created_is_timezone_aware(self):
+        token = ResetAccountToken.objects.create(customer=self.context["guy"])
+        self.assertTrue(timezone.is_aware(token.created))
+
+    def test_valid_token_resets_password(self):
+        token = ResetAccountToken.objects.create(customer=self.context["guy"])
+        response = self.client.post(f"/reset_password/{token.token}", {"newpw": "a-strong-pw"})
+        self.assertEqual(response.status_code, 302)
+        self.context["guy"].refresh_from_db()
+        self.assertTrue(self.context["guy"].check_password("a-strong-pw"))
+        self.assertFalse(ResetAccountToken.objects.filter(token=token.token).exists())
+
+    def test_expired_token_cannot_reset_password_via_post(self):
+        token = ResetAccountToken.objects.create(customer=self.context["guy"])
+        token.created = timezone.now() - timedelta(days=2)
+        token.save()
+        response = self.client.post(f"/reset_password/{token.token}", {"newpw": "a-strong-pw"})
+        self.assertContains(response, "n'est plus valide")
+        self.context["guy"].refresh_from_db()
+        self.assertFalse(self.context["guy"].check_password("a-strong-pw"))
+        # the token is not consumed by a rejected attempt
+        self.assertTrue(ResetAccountToken.objects.filter(token=token.token).exists())
+
+
+class ModelBehaviourTests(ExtendedTestCase):
+    """Covers #10 (unique delivery dates), #11 (guarded regen), #12 (Decimal price)."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+
+    def test_duplicate_delivery_date_is_rejected(self):
+        existing = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).first()
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                DeliveryDate.objects.create(weekly_delivery=existing.weekly_delivery, date=existing.date)
+
+    def test_save_regenerates_only_when_schedule_changes(self):
+        wd = self.context["monday_delivery"]
+        with patch.object(WeeklyDelivery, "generate_delivery_dates") as gen:
+            wd.notes = "just a note"
+            wd.save()
+            gen.assert_not_called()
+            wd.day_of_week = 5
+            wd.save()
+            gen.assert_called_once()
+
+    def test_save_regenerates_on_reactivation(self):
+        wd = self.context["monday_delivery"]
+        wd.active = False
+        wd.save()
+        with patch.object(WeeklyDelivery, "generate_delivery_dates") as gen:
+            wd.active = True
+            wd.save()
+            gen.assert_called_once()
+
+    def test_professional_price_is_exact_decimal(self):
+        store = self.context["store"]  # professional, 5% discount
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).first()
+        order = Order.objects.create(customer=store, delivery_date=delivery_date)
+        product = Product.objects.get(ref="GN")
+        line = OrderLine.objects.create(order=order, product=product, quantity=3)
+        gross = product.price * 3
+        expected = (gross - gross * (Decimal("5.5") / 100)) * (1 - Decimal("5") / 100)
+        self.assertIsInstance(line.get_price(), Decimal)
+        self.assertEqual(line.get_price(), expected)
+
+    def test_product_availability_out_of_range_is_false(self):
+        product = Product.objects.get(ref="GN")
+        self.assertFalse(product.is_available_on_day(7))
+        self.assertFalse(product.is_available_on_day(-1))
