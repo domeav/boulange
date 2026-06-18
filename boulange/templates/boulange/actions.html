@@ -92,7 +92,7 @@
 </section>
 {% endif %}
 {% endif %}
-{% if actions.preparation.levain_froment_recipe or actions.preparation.levain_sarrasin_recipe or actions.preparation.levain_petit_epeautre_recipe or actions.preparation.trempage %}
+{% if actions.preparation.levain or actions.preparation.trempage %}
 {% if section is None or section == 'preparations' %}
 <section>
   <h2>
@@ -100,57 +100,16 @@
     <a target="_blank" href="{% url 'boulange:actions_print' 'preparations' target_date.year target_date.month target_date.day %}">🖶</a>
   </h2>
   <div class="flex three">
-    {% if actions.preparation.levain_petit_epeautre_recipe %}
+    {% if actions.preparation.levain %}
     <article class="card">
       <header>
-	<h3>Levain de petit épeautre</h3>
+	<h3>Levains</h3>
       </header>
-      {% for step in actions.preparation.levain_petit_epeautre_recipe %}
-      <h4 style="margin-left: 15px;">{{ step.title }}</h4>
       <ul>
-        {% for line in step.lines %}
-        <li>{{ line }}</li>
+        {% for ingredient, qty in actions.preparation.levain.items %}
+        <li>{{ ingredient }} : {{ qty|floatformat:"-1" }} g</li>
         {% endfor %}
       </ul>
-      {% endfor %}
-    </article>
-    {% endif %}
-    {% if actions.preparation.levain_sarrasin_recipe %}
-    <article class="card">
-      <header>
-	<h3>Levain sarrasin</h3>
-      </header>
-      {% for step in actions.preparation.levain_sarrasin_recipe %}
-      <h4 style="margin-left: 15px;">{{ step.title }}</h4>
-      <ul>
-        {% for line in step.lines %}
-        <li>{{ line }}</li>
-        {% endfor %}
-      </ul>
-      {% endfor %}
-      <p>⚠ 20g sont inclus pour le futur levain chef</p>
-      {% if target_date.weekday == 3 %}
-      <p><b>⚠ prévoir 100g en plus (jeudi)</b></p>
-      {% endif %}      
-    </article>
-    {% endif %}
-    {% if actions.preparation.levain_froment_recipe %}
-    <article class="card">
-      <header>
-	<h3>Levain froment</h3>
-      </header>
-      {% for step in actions.preparation.levain_froment_recipe %}
-      <h4 style="margin-left: 15px;">{{ step.title }}</h4>
-      <ul>
-        {% for line in step.lines %}
-        <li>{{ line }}</li>
-        {% endfor %}
-      </ul>
-      {% endfor %}
-      <p>⚠ futur levain chef non inclus</p>
-      {% if target_date.weekday == 3 %}
-      <p><b>⚠ prévoir 1000g en plus (jeudi)</b></p>
-      {% endif %}
     </article>
     {% endif %}
     {% if actions.preparation.trempage %}

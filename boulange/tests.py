@@ -686,6 +686,19 @@ class ViewTests(ExtendedTestCase):
             response.content.decode("utf-8"),
         )
 
+    def test_preparation_screen_shows_levain_quantities(self):
+        next_monday = date.today() + timedelta(days=7 - date.today().weekday())
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=next_monday)
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=delivery_date)
+        OrderLine.objects.create(order=order, product=Product.objects.get(ref="GK"), quantity=1)
+        # For a SAME_DAY delivery, preparation happens the day before delivery.
+        prep_day = next_monday - timedelta(days=1)
+        response = self.client.get(f"/actions/{prep_day.year}/{prep_day.month}/{prep_day.day}/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertIn("Levains", body)
+        self.assertInHTML("<li>Levain froment : 5 g</li>", body)
+
 
 class AccessControlTests(ExtendedTestCase):
     """Covers the access-control fixes: ownership checks and staff gating."""
