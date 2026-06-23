@@ -17,13 +17,10 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from resto.settings import (
-    SUMUP_API_KEY,
-    SUMUP_CHECKOUTS_URL,
-    SUMUP_MERCHANT_CODE,
-)
+from resto.settings import SUMUP_API_KEY, SUMUP_CHECKOUTS_URL, SUMUP_MERCHANT_CODE
 
 from .models import (
+    ORDER_WINDOW_DAYS,
     Checkout,
     Customer,
     DeliveryDate,
@@ -211,13 +208,16 @@ def reset_password(request, token):
 
 def _get_start_end_command_period():
     available_timespan_start = (timezone.localtime() + timedelta(days=1, hours=12)).date()
-    available_timespan_end = date.today() + timedelta(days=56)
+    available_timespan_end = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
     return available_timespan_start, available_timespan_end
 
 
 @login_required
 def hx_get_dates_for_weekly_delivery(request):
     weekly_delivery = get_object_or_404(WeeklyDelivery, id=request.POST["weekly_delivery_id"])
+    # Self-healing in lieu of a cron job: make sure the bookable window is filled
+    # before we list the selectable dates for this delivery.
+    weekly_delivery.ensure_delivery_dates()
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
     selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
     order = None

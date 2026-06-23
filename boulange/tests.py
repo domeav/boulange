@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .models import (
+    ORDER_WINDOW_DAYS,
     Checkout,
     Customer,
     DeliveryDate,
@@ -886,3 +887,79 @@ class ModelBehaviourTests(ExtendedTestCase):
         product = Product.objects.get(ref="GN")
         self.assertFalse(product.is_available_on_day(7))
         self.assertFalse(product.is_available_on_day(-1))
+
+
+class LazyDeliveryDateGenerationTests(ExtendedTestCase):
+    """Cron-less, pure-Django self-healing of the delivery-date horizon."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+        self.client.force_login(self.context["guy"])
+
+    def _post_dates(self, weekly_delivery):
+        return self.client.post(
+            "/hx/get_dates_for_weekly_delivery/",
+            {"weekly_delivery_id": weekly_delivery.id, "order_id": "", "event_type": "load"},
+        )
+
+    def test_ensure_is_a_noop_when_window_already_covered(self):
+        # populate() already generated a full year, so nothing should be regenerated.
+        wd = self.context["monday_delivery"]
+        with patch.object(WeeklyDelivery, "generate_delivery_dates") as gen:
+            wd.ensure_delivery_dates()
+            gen.assert_not_called()
+
+    def test_ensure_regenerates_when_horizon_falls_inside_window(self):
+        wd = self.context["monday_delivery"]
+        # Drop every date that is beyond the bookable window: the horizon now ends
+        # inside the window, so ensure_delivery_dates() must refill it.
+        cutoff = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
+        wd.deliverydate_set.filter(date__gt=cutoff).delete()
+        self.assertFalse(wd.deliverydate_set.filter(date__gt=cutoff).exists())
+        wd.ensure_delivery_dates()
+        furthest = wd.deliverydate_set.order_by("-date").first().date
+        self.assertGreater(furthest, cutoff)
+
+    def test_date_picker_request_self_heals_the_horizon(self):
+        wd = self.context["monday_delivery"]
+        wd.deliverydate_set.all().delete()
+        self.assertEqual(wd.deliverydate_set.count(), 0)
+        response = self._post_dates(wd)
+        self.assertEqual(response.status_code, 200)
+        # the bookable window is now populated again, purely from the web request
+        needed_until = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
+        self.assertTrue(wd.deliverydate_set.filter(date__gte=needed_until).exists())
+
+    def test_generation_is_idempotent_and_conflict_safe(self):
+        wd = self.context["monday_delivery"]
+        before = wd.deliverydate_set.count()
+        # a second generation (e.g. a concurrent request) must not create duplicates
+        wd.generate_delivery_dates()
+        self.assertEqual(wd.deliverydate_set.count(), before)
+
+    def test_inactive_delivery_is_not_generated(self):
+        wd = self.context["monday_delivery"]
+        wd.deliverydate_set.all().delete()
+        wd.active = False
+        wd.save()
+        wd.ensure_delivery_dates()
+        self.assertEqual(wd.deliverydate_set.count(), 0)
+
+    def test_new_active_delivery_generates_on_creation(self):
+        # A freshly created active delivery must already cover the bookable window
+        # (save() generates), so customers can order from it immediately.
+        wd = WeeklyDelivery.objects.create(customer=self.context["guy"], day_of_week=4, active=True)
+        needed_until = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
+        self.assertTrue(wd.deliverydate_set.filter(date__gte=needed_until).exists())
+
+    def test_new_inactive_delivery_generates_nothing_until_activated(self):
+        wd = WeeklyDelivery.objects.create(customer=self.context["guy"], day_of_week=5, active=False)
+        self.assertEqual(wd.deliverydate_set.count(), 0)
+        # activating it triggers generation
+        wd.active = True
+        wd.save()
+        needed_until = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
+        self.assertTrue(wd.deliverydate_set.filter(date__gte=needed_until).exists())

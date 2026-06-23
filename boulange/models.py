@@ -11,6 +11,12 @@ from boulange import SPECIAL_UNITS_WEIGHTS
 
 TVA = 5.5
 
+# How far ahead customers are allowed to place orders. Delivery dates must always
+# exist at least this far out (mirrored by views._get_start_end_command_period).
+ORDER_WINDOW_DAYS = 56
+# How far ahead delivery dates are pre-generated when (re)generation does run.
+DELIVERY_DATES_HORIZON_DAYS = 365
+
 
 class Settings(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -230,18 +236,35 @@ class WeeklyDelivery(models.Model):
         if not self.active:
             return
         current = date.today()
-        one_year = current + timedelta(days=365)
-        existing_dates = set()
-        for ddate in DeliveryDate.objects.filter(weekly_delivery=self).filter(date__gte=current):
-            existing_dates.add(ddate.date)
-        while current <= one_year:
+        horizon = current + timedelta(days=DELIVERY_DATES_HORIZON_DAYS)
+        existing_dates = set(self.deliverydate_set.filter(date__gte=current).values_list("date", flat=True))
+        to_create = []
+        while current <= horizon:
             if current.weekday() == self.day_of_week:
                 if current not in existing_dates:
-                    delivery_date = DeliveryDate(weekly_delivery=self, date=current)
-                    delivery_date.save()
+                    to_create.append(DeliveryDate(weekly_delivery=self, date=current))
                 current += timedelta(days=7)
             else:
                 current += timedelta(days=1)
+        if to_create:
+            # ignore_conflicts makes this safe against a concurrent request that
+            # is generating the same dates at the same time (unique_together).
+            DeliveryDate.objects.bulk_create(to_create, ignore_conflicts=True)
+
+    def ensure_delivery_dates(self):
+        """Lazily guarantee dates exist to the end of the ordering window.
+
+        This is the pure-Django replacement for a cron job: it is called from the
+        request path (when a customer loads the date picker). The cheap furthest-date
+        check short-circuits on almost every call; the full generation only runs when
+        the horizon would otherwise fall inside the bookable window.
+        """
+        if not self.active:
+            return
+        needed_until = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
+        furthest = self.deliverydate_set.order_by("-date").values_list("date", flat=True).first()
+        if furthest is None or furthest < needed_until:
+            self.generate_delivery_dates()
 
     def __str__(self):
         return f"{self.customer}: {self.DAY_OF_WEEK[self.day_of_week]}"
