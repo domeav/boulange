@@ -3,7 +3,10 @@ from datetime import date, timedelta
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
+from boulange import SPECIAL_UNITS_WEIGHTS
+
 from .models import (
+    TVA,
     Checkout,
     Customer,
     DeliveryDate,
@@ -15,6 +18,39 @@ from .models import (
     Settings,
     WeeklyDelivery,
 )
+
+
+def _ingredient_weight_factors():
+    """ingredient id -> grams per unit of quantity (None when the unit isn't weighable)."""
+    factors = {}
+    for ing in Ingredient.objects.all():
+        if ing.unit == "g":
+            factors[ing.id] = 1
+        elif ing.unit in SPECIAL_UNITS_WEIGHTS:
+            factors[ing.id] = SPECIAL_UNITS_WEIGHTS[ing.unit]
+        else:
+            factors[ing.id] = None
+    return factors
+
+
+def _product_raw_weights(factors):
+    """product id -> grams of its own raw_ingredients (None if any ingredient isn't weighable).
+
+    Used client-side to add the orig_product (base dough) contribution live.
+    """
+    weights = {}
+    for product in Product.objects.prefetch_related("raw_ingredients__ingredient"):
+        total = 0
+        weighable = True
+        for line in product.raw_ingredients.all():
+            factor = factors.get(line.ingredient_id)
+            if factor is None:
+                weighable = False
+                break
+            total += line.quantity * factor
+        weights[product.id] = total if weighable else None
+    return weights
+
 
 admin.site.unregister(Group)
 
@@ -28,11 +64,34 @@ class ProductLineInline(admin.TabularInline):
     extra = 1
 
 
+def _recipe_dough_weight_text(obj):
+    if obj is None or obj.pk is None:
+        return "— (enregistrer pour calculer)"
+    try:
+        per_unit = obj.weight
+    except ValueError:
+        return "non calculable (ingrédient non pesable)"
+    total = per_unit * obj.nb_units
+    return f"{total:.0f} g (recette pour {obj.nb_units} u. — {per_unit:.0f} g/u.)"
+
+
 class ProductAdmin(admin.ModelAdmin):
     list_display = ("name", "ref", "price", "display_priority", "active")
     inlines = [ProductLineInline]
-    search_fields = ["ref"]
+    search_fields = ["ref", "name"]
     save_as = True
+
+    class Media:
+        js = ("boulange/admin_recipe_weight.js",)
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        factors = _ingredient_weight_factors()
+        extra_context = extra_context or {}
+        extra_context["dough_ingredient_factors"] = factors
+        extra_context["dough_product_raw_weights"] = _product_raw_weights(factors)
+        obj = self.get_object(request, object_id) if object_id else None
+        extra_context["dough_weight_initial"] = _recipe_dough_weight_text(obj)
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
 
 admin.site.register(Ingredient, IngredientAdmin)
@@ -42,7 +101,7 @@ admin.site.register(Product, ProductAdmin)
 class CustomerAdmin(admin.ModelAdmin):
     list_filter = ("is_professional",)
     list_display = ("username", "display_name", "email", "is_professional", "pro_discount_percentage", "address")
-    search_fields = ["username", "email"]
+    search_fields = ["display_name", "username", "email"]
     fieldsets = [
         (
             None,
@@ -55,7 +114,7 @@ class CustomerAdmin(admin.ModelAdmin):
 admin.site.register(Customer, CustomerAdmin)
 
 
-@admin.action(description="Generate delivery dates for one year")
+@admin.action(description="Générer les dates de livraison pour un an")
 def generate_delivery_dates(modeladmin, request, queryset):
     for weekly_delivery in queryset:
         weekly_delivery.generate_delivery_dates()
@@ -81,16 +140,18 @@ class MyDateFilter(admin.DateFieldListFilter):
         self.links = newlinks
         self.links.insert(2, ("Aujourd'hui et après", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=365)}))
         self.links.insert(2, ("Demain", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=2)}))
+        # today and the 7 preceding days (8 days, until is exclusive)
+        self.links.insert(2, ("Les 8 derniers jours", {self.lookup_kwarg_since: date.today() - timedelta(days=7), self.lookup_kwarg_until: date.today() + timedelta(days=1)}))
 
 
-@admin.action(description="Duplicate commands from the older selected deliverydate to the newer ones, by weeklydelivery")
-def duplicate_delivery_date_commands(modeladmin, request, queryset):
+@admin.action(description="Dupliquer les commandes de la date sélectionnée la plus ancienne vers les plus récentes, par livraison hebdo")
+def duplicate_delivery_date_orders(modeladmin, request, queryset):
     original_delivery_dates = {}
     for delivery_date in queryset.order_by("date"):
         if delivery_date.weekly_delivery not in original_delivery_dates:
             original_delivery_dates[delivery_date.weekly_delivery] = delivery_date
         else:
-            delivery_date.duplicate_commands_from(original_delivery_dates[delivery_date.weekly_delivery])
+            delivery_date.duplicate_orders_from(original_delivery_dates[delivery_date.weekly_delivery])
 
 
 class OrderInline(admin.TabularInline):
@@ -102,9 +163,53 @@ class OrderInline(admin.TabularInline):
     show_change_link = True
 
 
+class ActiveCustomerDeliveryFilter(admin.RelatedFieldListFilter):
+    """weekly_delivery filter, restricted to deliveries of active customers."""
+
+    def field_choices(self, field, request, model_admin):
+        ordering = self.field_admin_ordering(field, request, model_admin)
+        return field.get_choices(include_blank=False, limit_choices_to={"customer__is_active": True}, ordering=ordering)
+
+
+class SingleDateFilter(admin.SimpleListFilter):
+    """Calendar (HTML5 date input) to filter delivery dates on one exact day."""
+
+    title = "date précise"
+    parameter_name = "exact_date"
+    template = "admin/boulange/single_date_filter.html"
+
+    def lookups(self, request, model_admin):
+        return ()
+
+    def has_output(self):
+        # render the date picker even though there are no fixed choices
+        return True
+
+    def choices(self, changelist):
+        other_params = {key: value for key, value in changelist.get_filters_params().items() if key != self.parameter_name}
+        return [
+            {
+                "value": self.value() or "",
+                "selected": bool(self.value()),
+                "other_params": other_params,
+                "clear_query_string": changelist.get_query_string(remove=[self.parameter_name]),
+            }
+        ]
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if not value:
+            return queryset
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            return queryset
+        return queryset.filter(date=parsed)
+
+
 class DeliveryDateAdmin(admin.ModelAdmin):
     list_display = ("weekly_delivery", "date", "active")
-    list_filter = ("active", ("date", MyDateFilter), "weekly_delivery__day_of_week", "weekly_delivery")
+    list_filter = ("active", ("date", MyDateFilter), SingleDateFilter, "weekly_delivery__day_of_week", ("weekly_delivery", ActiveCustomerDeliveryFilter))
     readonly_fields = ("date", "weekly_delivery")
     inlines = [OrderInline]
     search_fields = [
@@ -112,7 +217,12 @@ class DeliveryDateAdmin(admin.ModelAdmin):
         "weekly_delivery__customer__username",
         "date",
     ]
-    actions = [duplicate_delivery_date_commands]
+    actions = [duplicate_delivery_date_orders]
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
 
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
@@ -128,7 +238,7 @@ admin.site.register(WeeklyDelivery, WeeklyDeliveryAdmin)
 admin.site.register(DeliveryDate, DeliveryDateAdmin)
 
 
-@admin.action(description="Cancel selected checkouts and reset related orders validation status")
+@admin.action(description="Annuler les paniers sélectionnés et réinitialiser le statut des commandes liées")
 def cancel_checkouts(modeladmin, request, queryset):
     for checkout in queryset.all():
         for order in checkout.order_set.all():
@@ -160,14 +270,33 @@ class OrderLineInline(admin.TabularInline):
     extra = 3
     autocomplete_fields = ["product"]
 
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        field = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "quantity":
+            # default new order lines to 1 (existing saved lines keep their value)
+            field.initial = 1
+        return field
+
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = ("customer", "delivery_date")
     model = Order
     inlines = [OrderLineInline]
     save_as = True
-    autocomplete_fields = ["delivery_date"]
+    autocomplete_fields = ["delivery_date", "customer"]
     list_filter = [("delivery_date__date", MyDateFilter), "customer__display_name"]
+
+    class Media:
+        js = ("boulange/admin_order_price.js",)
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["order_product_prices"] = {p.id: float(p.price) for p in Product.objects.all()}
+        extra_context["order_customers"] = {c.id: {"pro": c.is_professional, "discount": c.pro_discount_percentage} for c in Customer.objects.all()}
+        extra_context["order_tva"] = TVA
+        obj = self.get_object(request, object_id) if object_id else None
+        extra_context["order_price_initial"] = f"{obj.total_price:.2f} €" if obj is not None else "0.00 €"
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
 
 admin.site.register(Order, OrderAdmin)

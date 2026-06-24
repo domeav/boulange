@@ -1,0 +1,19 @@
+<details data-filter-title="{{ title }}"{% if choices.0.selected %} open{% endif %}>
+  <summary>{{ title }}</summary>
+  <ul>
+    <li>
+      {% with choice=choices.0 %}
+      <form method="get" style="padding: 4px 8px;">
+        {% for key, value in choice.other_params.items %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+        <input type="date" name="{{ spec.parameter_name }}" value="{{ choice.value }}">
+        <button type="submit" class="button" style="padding: 2px 8px;">Filtrer</button>
+        {% if choice.selected %}
+        <p style="margin: 4px 0 0;"><a href="{{ choice.clear_query_string }}">Effacer</a></p>
+        {% endif %}
+      </form>
+      {% endwith %}
+    </li>
+  </ul>
+</details>

@@ -56,6 +56,10 @@
           <a href="{% url 'boulange:orders' %}">Mes commandes</a>
 	  <br>
 	  <a href="{% url 'boulange:checkouts' %}">Mes paiements</a>
+	  {% if request.user.is_staff %}
+	  <br>
+	  <a href="{% url 'admin:index' %}">Admin</a>
+	  {% endif %}
 	</div>
       </section>
       <h1>{% block title %}{% endblock %}</h1>

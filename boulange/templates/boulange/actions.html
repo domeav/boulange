@@ -23,7 +23,7 @@
     Boulange
     <a target="_blank" href="{% url 'boulange:actions_print' 'boulange' target_date.year target_date.month target_date.day %}">🖶</a>
   </h2>
-  Nb de pains cuits : {{ actions.bakery.nb_breads }}
+  Poids de pâte crue (pain) : {{ actions.bakery.bread_dough_kg|floatformat:2 }} kg
   <div class="flex three">
     {% for recipe, data in actions.bakery.items %}
     <article class="card">

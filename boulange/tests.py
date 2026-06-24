@@ -519,6 +519,31 @@ class ActionsTests(ExtendedTestCase):
         self.assertEqual(len(actions["preparation"]["levain"]), 0)
         self.assertEqual(len(actions["preparation"]["trempage"]), 0)
 
+    def test_bread_dough_weight(self):
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+        order = Order(customer=self.context["guy"], delivery_date=delivery_date)
+        order.save()
+        gk = Product.objects.get(ref="GK")  # bread (1251 g of dough per unit)
+        foc = Product.objects.get(ref="FOC")  # focaccia: not a bread, must be excluded
+        OrderLine(order=order, product=gk, quantity=1).save()
+        OrderLine(order=order, product=foc, quantity=1).save()
+        actions = order.get_actions(self.next_monday)
+        actions.finalize()
+        # both doughs are baked, but only the bread's dough is counted
+        self.assertEqual(actions["bakery"].bread_dough_weight, 1251.0)
+        self.assertAlmostEqual(actions["bakery"].bread_dough_kg(), 1.251)
+
+    def test_bread_dough_weight_sums_multiple_breads(self):
+        delivery_date = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=self.next_monday)
+        order = Order(customer=self.context["guy"], delivery_date=delivery_date)
+        order.save()
+        OrderLine(order=order, product=Product.objects.get(ref="PSa"), quantity=5).save()
+        OrderLine(order=order, product=Product.objects.get(ref="PSe"), quantity=3).save()
+        actions = order.get_actions(self.next_monday)
+        actions.finalize()
+        # matches the per-recipe weights asserted in test_small_breads_batch (3051 + 2114)
+        self.assertAlmostEqual(actions["bakery"].bread_dough_weight, 5165.0)
+
 
 class RestTests(ExtendedTestCase):
     fixtures = ["data/base.json"]
@@ -657,6 +682,18 @@ class ViewTests(ExtendedTestCase):
         self.context = populate()
         self.client.force_login(self.context["admin"])
 
+    def test_nav_shows_admin_link_for_staff(self):
+        response = self.client.get("/orders/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/admin/"')
+
+    def test_nav_hides_admin_link_for_non_staff(self):
+        client = Client()
+        client.force_login(self.context["guy"])
+        response = client.get("/orders/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'href="/admin/"')
+
     def test_focaccia_recipe(self):
         response = self.client.get("/products/")
         self.assertEqual(response.status_code, 200)
@@ -699,6 +736,164 @@ class ViewTests(ExtendedTestCase):
         body = response.content.decode("utf-8")
         self.assertIn("Levains", body)
         self.assertInHTML("<li>Levain froment : 5 g</li>", body)
+
+
+class AdminTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        admin = self.context["admin"]
+        admin.is_superuser = True
+        admin.save()
+        self.client = Client()
+        self.client.force_login(admin)
+
+    def test_product_change_shows_recipe_dough_weight(self):
+        gk = Product.objects.get(ref="GK")
+        response = self.client.get(f"/admin/boulange/product/{gk.id}/change/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertIn("Poids de pâte crue", body)
+        # server-rendered initial value (JS keeps it live afterwards)
+        self.assertIn(f"{gk.weight * gk.nb_units:.0f} g", body)
+
+    def test_order_inline_defaults_quantity_to_one(self):
+        guy = self.context["guy"]
+        delivery_date = self.context["monday_delivery"].deliverydate_set.first()
+        order = Order.objects.create(customer=guy, delivery_date=delivery_date)
+        OrderLine.objects.create(order=order, product=Product.objects.get(ref="GK"), quantity=7)
+        response = self.client.get(f"/admin/boulange/order/{order.id}/change/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        # existing saved line keeps its value
+        self.assertRegex(body, r'name="lines-0-quantity"[^>]*value="7"')
+        # new (extra) rows default to 1
+        self.assertRegex(body, r'name="lines-1-quantity"[^>]*value="1"')
+
+    def test_order_change_shows_live_price(self):
+        guy = self.context["guy"]
+        dd = self.context["monday_delivery"].deliverydate_set.first()
+        order = Order.objects.create(customer=guy, delivery_date=dd)
+        OrderLine.objects.create(order=order, product=Product.objects.get(ref="GK"), quantity=2)
+        response = self.client.get(f"/admin/boulange/order/{order.id}/change/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertIn("Prix de la commande", body)
+        self.assertIn('id="order-total-price"', body)
+        self.assertIn('id="order-product-prices"', body)
+        self.assertIn('id="order-customers"', body)
+        self.assertIn("boulange/admin_order_price.js", body)
+        # server-rendered initial total (JS keeps it live afterwards)
+        self.assertIn(f"{order.total_price:.2f} €", body)
+
+    def test_product_autocomplete_searches_code_and_name(self):
+        gk = Product.objects.get(ref="GK")  # ref "GK", name "Semi-complet kasha LL (1 kg)"
+        base = "/admin/autocomplete/?app_label=boulange&model_name=orderline&field_name=product&term="
+        # search by a name fragment that is not in the ref
+        by_name = self.client.get(base + "kasha")
+        self.assertEqual(by_name.status_code, 200)
+        self.assertIn(gk.id, {int(r["id"]) for r in by_name.json()["results"]})
+        # search by the code/ref still works
+        by_code = self.client.get(base + "GK")
+        self.assertIn(gk.id, {int(r["id"]) for r in by_code.json()["results"]})
+
+    def test_order_change_customer_is_autocomplete(self):
+        guy = self.context["guy"]
+        dd = self.context["monday_delivery"].deliverydate_set.first()
+        order = Order.objects.create(customer=guy, delivery_date=dd)
+        response = self.client.get(f"/admin/boulange/order/{order.id}/change/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        # the customer field uses the admin autocomplete (select2) widget
+        self.assertRegex(body, r'name="customer"[^>]*class="admin-autocomplete"')
+
+    def test_order_price_reflects_professional_discount(self):
+        store = self.context["store"]  # professional, 5% discount
+        dd = self.context["monday_delivery"].deliverydate_set.first()
+        order = Order.objects.create(customer=store, delivery_date=dd)
+        OrderLine.objects.create(order=order, product=Product.objects.get(ref="GK"), quantity=2)
+        body = self.client.get(f"/admin/boulange/order/{order.id}/change/").content.decode("utf-8")
+        # the displayed total is net of TVA and discounted, not the raw 6.5 x 2
+        self.assertIn(f"{order.total_price:.2f} €", body)
+        self.assertNotIn("13.00 €", body)
+
+    def test_deliverydate_changelist_has_last_8_days_filter(self):
+        response = self.client.get("/admin/boulange/deliverydate/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Les 8 derniers jours")
+
+    def test_deliverydate_last_8_days_filter_range(self):
+        wd = self.context["monday_delivery"]
+        today = date.today()
+        in_range = DeliveryDate.objects.create(weekly_delivery=wd, date=today - timedelta(days=3))
+        out_range = DeliveryDate.objects.create(weekly_delivery=wd, date=today - timedelta(days=10))
+        response = self.client.get(
+            "/admin/boulange/deliverydate/",
+            {"date__gte": (today - timedelta(days=7)).isoformat(), "date__lt": (today + timedelta(days=1)).isoformat()},
+        )
+        self.assertEqual(response.status_code, 200)
+        ids = set(response.context["cl"].queryset.values_list("id", flat=True))
+        self.assertIn(in_range.id, ids)
+        self.assertNotIn(out_range.id, ids)
+
+    def test_deliverydate_changelist_has_no_bulk_delete(self):
+        response = self.client.get("/admin/boulange/deliverydate/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertNotIn('value="delete_selected"', body)
+        # the custom duplicate action is still offered
+        self.assertIn('value="duplicate_delivery_date_orders"', body)
+
+    def test_deliverydate_changelist_has_single_date_picker(self):
+        response = self.client.get("/admin/boulange/deliverydate/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'type="date"')
+        self.assertContains(response, 'name="exact_date"')
+
+    def test_deliverydate_single_date_filter(self):
+        wd = self.context["monday_delivery"]
+        today = date.today()
+        target = DeliveryDate.objects.create(weekly_delivery=wd, date=today - timedelta(days=3))
+        other = DeliveryDate.objects.create(weekly_delivery=wd, date=today - timedelta(days=10))
+        response = self.client.get("/admin/boulange/deliverydate/", {"exact_date": (today - timedelta(days=3)).isoformat()})
+        self.assertEqual(response.status_code, 200)
+        results = response.context["cl"].queryset
+        ids = set(results.values_list("id", flat=True))
+        self.assertIn(target.id, ids)
+        self.assertNotIn(other.id, ids)
+        for dd in results:
+            self.assertEqual(dd.date, today - timedelta(days=3))
+
+    def test_deliverydate_filter_excludes_inactive_customers(self):
+        import re
+
+        active_cust = Customer.objects.create(username="activecust", display_name="ActiveCust", email="a@x.net", is_active=True)
+        inactive_cust = Customer.objects.create(username="inactivecust", display_name="InactiveCust", email="i@x.net", is_active=False)
+        WeeklyDelivery.objects.create(customer=active_cust, day_of_week=4, active=True)
+        WeeklyDelivery.objects.create(customer=inactive_cust, day_of_week=5, active=True)
+        response = self.client.get("/admin/boulange/deliverydate/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        # isolate the right-hand filter sidebar
+        nav = re.search(r'id="changelist-filter".*?</nav>', body, re.S)
+        self.assertIsNotNone(nav)
+        nav = nav.group(0)
+        self.assertIn("ActiveCust", nav)
+        self.assertNotIn("InactiveCust", nav)
+
+    def test_product_change_includes_live_update_assets(self):
+        gk = Product.objects.get(ref="GK")
+        response = self.client.get(f"/admin/boulange/product/{gk.id}/change/")
+        body = response.content.decode("utf-8")
+        # the live-update result container, the data payloads and the script must be present
+        self.assertIn('id="recipe-dough-weight"', body)
+        self.assertIn('id="dough-ingredient-factors"', body)
+        self.assertIn('id="dough-product-raw-weights"', body)
+        self.assertIn("boulange/admin_recipe_weight.js", body)
+        # the ingredient-factor payload should carry a known weighable ingredient (grams -> 1)
+        flour = Ingredient.objects.get(name="Farine blé")
+        self.assertIn(f'"{flour.id}": 1', body)
 
 
 class AccessControlTests(ExtendedTestCase):
@@ -948,6 +1143,28 @@ class LazyDeliveryDateGenerationTests(ExtendedTestCase):
         wd.ensure_delivery_dates()
         self.assertEqual(wd.deliverydate_set.count(), 0)
 
+    def test_deactivating_delivery_deactivates_future_dates_only(self):
+        wd = self.context["monday_delivery"]
+        past = DeliveryDate.objects.create(weekly_delivery=wd, date=date.today() - timedelta(days=7))
+        self.assertTrue(wd.deliverydate_set.filter(date__gte=date.today(), active=True).exists())
+        wd.active = False
+        wd.save()
+        # upcoming dates are now inactive (but still present)...
+        self.assertEqual(wd.deliverydate_set.filter(date__gte=date.today(), active=True).count(), 0)
+        self.assertTrue(wd.deliverydate_set.filter(date__gte=date.today()).exists())
+        # ...while past dates are left untouched
+        past.refresh_from_db()
+        self.assertTrue(past.active)
+
+    def test_reactivating_delivery_reactivates_future_dates(self):
+        wd = self.context["monday_delivery"]
+        wd.active = False
+        wd.save()
+        self.assertEqual(wd.deliverydate_set.filter(date__gte=date.today(), active=True).count(), 0)
+        wd.active = True
+        wd.save()
+        self.assertFalse(wd.deliverydate_set.filter(date__gte=date.today(), active=False).exists())
+
     def test_new_active_delivery_generates_on_creation(self):
         # A freshly created active delivery must already cover the bookable window
         # (save() generates), so customers can order from it immediately.
@@ -963,3 +1180,144 @@ class LazyDeliveryDateGenerationTests(ExtendedTestCase):
         wd.save()
         needed_until = date.today() + timedelta(days=ORDER_WINDOW_DAYS)
         self.assertTrue(wd.deliverydate_set.filter(date__gte=needed_until).exists())
+
+
+class DuplicateDeliveryDateOrdersTests(ExtendedTestCase):
+    """The 'duplicate orders' admin action: oldest selected date -> newer ones, per weekly delivery."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+
+    def _make_order(self, delivery_date, customer, items):
+        order = Order.objects.create(customer=customer, delivery_date=delivery_date)
+        for ref, qty in items:
+            OrderLine.objects.create(order=order, product=Product.objects.get(ref=ref), quantity=qty)
+        return order
+
+    @staticmethod
+    def _lines(delivery_date):
+        order = delivery_date.order_set.first()
+        return set(order.lines.values_list("product__ref", "quantity"))
+
+    def test_duplicates_from_oldest_to_all_newer_single_wd(self):
+        from boulange.admin import duplicate_delivery_date_orders
+
+        m1, m2, m3 = list(self.context["monday_delivery"].deliverydate_set.order_by("date")[:3])
+        self._make_order(m1, self.context["guy"], [("GK", 2), ("PN", 1)])
+        qs = DeliveryDate.objects.filter(id__in=[m1.id, m2.id, m3.id])
+
+        duplicate_delivery_date_orders(None, None, qs)
+
+        # source untouched; both newer dates received a faithful copy
+        self.assertEqual(m1.order_set.count(), 1)
+        self.assertEqual(m2.order_set.count(), 1)
+        self.assertEqual(m3.order_set.count(), 1)
+        self.assertEqual(self._lines(m2), {("GK", 2), ("PN", 1)})
+        self.assertEqual(self._lines(m3), {("GK", 2), ("PN", 1)})
+        self.assertEqual(m2.order_set.first().customer, self.context["guy"])
+
+    def test_duplicates_grouped_by_weekly_delivery(self):
+        from boulange.admin import duplicate_delivery_date_orders
+
+        m1, m2 = list(self.context["monday_delivery"].deliverydate_set.order_by("date")[:2])
+        w1, w2 = list(self.context["wednesday_delivery"].deliverydate_set.order_by("date")[:2])
+        self._make_order(m1, self.context["guy"], [("GK", 2)])
+        self._make_order(w1, self.context["store"], [("PN", 5), ("BR", 3)])
+
+        qs = DeliveryDate.objects.filter(id__in=[m1.id, m2.id, w1.id, w2.id])
+        duplicate_delivery_date_orders(None, None, qs)
+
+        # each newer date receives ONLY its own weekly delivery's oldest order (no cross-contamination)
+        self.assertEqual(m2.order_set.count(), 1)
+        self.assertEqual(self._lines(m2), {("GK", 2)})
+        self.assertEqual(w2.order_set.count(), 1)
+        self.assertEqual(self._lines(w2), {("PN", 5), ("BR", 3)})
+
+    def test_oldest_is_source_and_targets_accumulate(self):
+        from boulange.admin import duplicate_delivery_date_orders
+
+        m1, m2, m3 = list(self.context["monday_delivery"].deliverydate_set.order_by("date")[:3])
+        # orders exist on m1 (oldest) and m2 (middle)
+        self._make_order(m1, self.context["guy"], [("GK", 1)])
+        self._make_order(m2, self.context["guy"], [("PN", 9)])
+
+        qs = DeliveryDate.objects.filter(id__in=[m1.id, m2.id, m3.id])
+        duplicate_delivery_date_orders(None, None, qs)
+
+        # the oldest (m1) is the source: m3 receives GK, NOT m2's PN
+        self.assertEqual(self._lines(m3), {("GK", 1)})
+        # the action APPENDS rather than replaces: m2 keeps its own order and also
+        # receives a copy of m1's, ending up with both
+        m2_orders = {frozenset(o.lines.values_list("product__ref", "quantity")) for o in m2.order_set.all()}
+        self.assertEqual(m2_orders, {frozenset({("PN", 9)}), frozenset({("GK", 1)})})
+
+    def test_action_is_not_idempotent(self):
+        from boulange.admin import duplicate_delivery_date_orders
+
+        m1, m2 = list(self.context["monday_delivery"].deliverydate_set.order_by("date")[:2])
+        self._make_order(m1, self.context["guy"], [("GK", 1)])
+        qs = DeliveryDate.objects.filter(id__in=[m1.id, m2.id])
+
+        # running the action twice duplicates the order onto m2 twice (no dedup guard)
+        duplicate_delivery_date_orders(None, None, qs)
+        duplicate_delivery_date_orders(None, None, qs)
+        self.assertEqual(m2.order_set.count(), 2)
+
+    def test_action_runs_through_admin(self):
+        admin = self.context["admin"]
+        admin.is_superuser = True
+        admin.save()
+        client = Client()
+        client.force_login(admin)
+        m1, m2 = list(self.context["monday_delivery"].deliverydate_set.order_by("date")[:2])
+        self._make_order(m1, self.context["guy"], [("GK", 1)])
+
+        response = client.post(
+            "/admin/boulange/deliverydate/",
+            {"action": "duplicate_delivery_date_orders", "_selected_action": [str(m1.id), str(m2.id)]},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(m2.order_set.count(), 1)
+        self.assertEqual(self._lines(m2), {("GK", 1)})
+
+
+class LocalizationTests(ExtendedTestCase):
+    """Guard the French labels so English can't creep back into the admin."""
+
+    def test_model_verbose_names_are_french(self):
+        self.assertEqual(Ingredient._meta.verbose_name, "Ingrédient")
+        self.assertEqual(Ingredient._meta.verbose_name_plural, "Ingrédients")
+        self.assertEqual(Product._meta.verbose_name, "Produit")
+        self.assertEqual(WeeklyDelivery._meta.verbose_name, "Livraison hebdo")
+        self.assertEqual(Order._meta.verbose_name, "Commande")
+        self.assertEqual(OrderLine._meta.verbose_name, "Ligne de commande")
+        from boulange.models import ProductLine
+
+        self.assertEqual(ProductLine._meta.verbose_name, "Ligne de recette")
+
+    def test_field_labels_are_french(self):
+        self.assertEqual(Product._meta.get_field("ref").verbose_name, "Référence")
+        self.assertEqual(Product._meta.get_field("nb_units").verbose_name, "Nombre d'unités")
+        # validated bakery-domain terms
+        self.assertEqual(Product._meta.get_field("baked_by_batch").verbose_name, "Cuit par lot entier")
+        self.assertEqual(Product._meta.get_field("orig_product").verbose_name, "Produit d'origine")
+        self.assertEqual(Product._meta.get_field("is_bread").verbose_name, "Produit de type pain")
+        self.assertEqual(OrderLine._meta.get_field("quantity").verbose_name, "Quantité")
+
+    def test_help_text_and_choices_are_french(self):
+        self.assertEqual(Ingredient._meta.get_field("per_unit_price").help_text, "prix par kg, litre ou unité")
+        self.assertEqual(WeeklyDelivery.BATCH_TARGET["SAME_DAY"], "Le jour même")
+        self.assertEqual(WeeklyDelivery.BATCH_TARGET["PREVIOUS_DAY"], "La veille")
+
+    def test_admin_action_labels_are_french(self):
+        from boulange.admin import (
+            cancel_checkouts,
+            duplicate_delivery_date_orders,
+            generate_delivery_dates,
+        )
+
+        self.assertIn("Dupliquer", duplicate_delivery_date_orders.short_description)
+        self.assertIn("Générer", generate_delivery_dates.short_description)
+        self.assertIn("Annuler", cancel_checkouts.short_description)

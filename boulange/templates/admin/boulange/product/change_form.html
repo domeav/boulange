@@ -1,0 +1,12 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+{{ dough_ingredient_factors|json_script:"dough-ingredient-factors" }}
+{{ dough_product_raw_weights|json_script:"dough-product-raw-weights" }}
+<div class="module" id="recipe-dough-weight-box">
+  <h2>Poids de pâte crue (recette)</h2>
+  <p id="recipe-dough-weight" style="padding: 8px 10px; font-size: 1.1em;"
+     data-initial="{{ dough_weight_initial }}">{{ dough_weight_initial }}</p>
+</div>
+{% endblock %}

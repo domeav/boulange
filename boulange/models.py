@@ -19,24 +19,25 @@ DELIVERY_DATES_HORIZON_DAYS = 365
 
 
 class Settings(models.Model):
-    name = models.CharField(max_length=200, unique=True)
-    value = models.CharField(max_length=200)
+    name = models.CharField("Nom", max_length=200, unique=True)
+    value = models.CharField("Valeur", max_length=200)
 
     def __str__(self):
         return f"{self.name}={self.value}"
 
     class Meta:
         verbose_name = "Paramètre"
+        verbose_name_plural = "Paramètres"
 
 
 class Ingredient(models.Model):
-    name = models.CharField(max_length=200)
-    unit = models.CharField(max_length=10)
-    per_unit_price = models.DecimalField(max_digits=5, decimal_places=3, help_text="price per Kg, liter or unit")
-    soaking_ingredient = models.ForeignKey("Ingredient", on_delete=models.PROTECT, null=True, blank=True)
+    name = models.CharField("Nom", max_length=200)
+    unit = models.CharField("Unité", max_length=10)
+    per_unit_price = models.DecimalField("Prix unitaire", max_digits=5, decimal_places=3, help_text="prix par kg, litre ou unité")
+    soaking_ingredient = models.ForeignKey("Ingredient", verbose_name="Ingrédient de trempage", on_delete=models.PROTECT, null=True, blank=True)
     # qty of water needed is ing weight * coef
-    soaking_coef = models.FloatField(default=1)
-    decimal_round = models.BooleanField(default=True)
+    soaking_coef = models.FloatField("Coefficient de trempage", default=1)
+    decimal_round = models.BooleanField("Arrondi décimal", default=True)
 
     def __str__(self):
         return self.name
@@ -44,31 +45,33 @@ class Ingredient(models.Model):
     class Meta:
         indexes = [models.Index(fields=["name"])]
         ordering = ["name"]
+        verbose_name = "Ingrédient"
+        verbose_name_plural = "Ingrédients"
 
 
 class Product(models.Model):
-    name = models.CharField(max_length=200)
-    ref = models.CharField(max_length=20, unique=True)
-    price = models.DecimalField(max_digits=5, decimal_places=2)
-    active = models.BooleanField(default=True)
+    name = models.CharField("Nom", max_length=200)
+    ref = models.CharField("Référence", max_length=20, unique=True)
+    price = models.DecimalField("Prix", max_digits=5, decimal_places=2)
+    active = models.BooleanField("Actif", default=True)
     # if orig_product is set we'll be using its ingredients with quantity * coef
-    orig_product = models.ForeignKey("Product", on_delete=models.PROTECT, null=True, blank=True)
+    orig_product = models.ForeignKey("Product", verbose_name="Produit d'origine", on_delete=models.PROTECT, null=True, blank=True)
     # when product_lines are defined in another product (orig_product)
-    coef = models.FloatField(default=1)
+    coef = models.FloatField("Coefficient", default=1)
     # recipe quantities are set for a given number of units
-    nb_units = models.IntegerField(default=1)
+    nb_units = models.IntegerField("Nombre d'unités", default=1)
     # baking is set as a multiple of nb_units - can't divide
-    baked_by_batch = models.BooleanField(default=False)
-    notes = models.TextField(blank=True, null=True)
-    display_priority = models.IntegerField(default=0)
-    is_bread = models.BooleanField(default=False)
-    available_mondays = models.BooleanField(default=True)
-    available_tuesdays = models.BooleanField(default=True)
-    available_wednesdays = models.BooleanField(default=True)
-    available_thursdays = models.BooleanField(default=True)
-    available_fridays = models.BooleanField(default=True)
-    available_saturdays = models.BooleanField(default=True)
-    available_sundays = models.BooleanField(default=True)
+    baked_by_batch = models.BooleanField("Cuit par lot entier", default=False)
+    notes = models.TextField("Notes", blank=True, null=True)
+    display_priority = models.IntegerField("Priorité d'affichage", default=0)
+    is_bread = models.BooleanField("Produit de type pain", default=False)
+    available_mondays = models.BooleanField("Disponible le lundi", default=True)
+    available_tuesdays = models.BooleanField("Disponible le mardi", default=True)
+    available_wednesdays = models.BooleanField("Disponible le mercredi", default=True)
+    available_thursdays = models.BooleanField("Disponible le jeudi", default=True)
+    available_fridays = models.BooleanField("Disponible le vendredi", default=True)
+    available_saturdays = models.BooleanField("Disponible le samedi", default=True)
+    available_sundays = models.BooleanField("Disponible le dimanche", default=True)
 
     def __str__(self):
         return f"{self.name}/{self.ref}"
@@ -168,30 +171,34 @@ class Product(models.Model):
             models.Index(fields=["ref"]),
         ]
         verbose_name = "Produit"
+        verbose_name_plural = "Produits"
         ordering = ["-display_priority", "name"]
 
 
 class ProductLine(models.Model):
-    product = models.ForeignKey(Product, related_name="raw_ingredients", on_delete=models.CASCADE)
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
-    quantity = models.FloatField()
+    product = models.ForeignKey(Product, verbose_name="Produit", related_name="raw_ingredients", on_delete=models.CASCADE)
+    ingredient = models.ForeignKey(Ingredient, verbose_name="Ingrédient", on_delete=models.PROTECT)
+    quantity = models.FloatField("Quantité")
 
     class Meta:
         ordering = ["ingredient__name"]
+        verbose_name = "Ligne de recette"
+        verbose_name_plural = "Lignes de recette"
 
 
 class Customer(AbstractUser):
-    display_name = models.CharField(max_length=200, unique=True)
-    is_professional = models.BooleanField(default=False)
-    pro_discount_percentage = models.FloatField(default=5.0, blank=True)
-    address = models.CharField(max_length=400, blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
+    display_name = models.CharField("Nom affiché", max_length=200, unique=True)
+    is_professional = models.BooleanField("Professionnel", default=False)
+    pro_discount_percentage = models.FloatField("Remise pro (%)", default=5.0, blank=True)
+    address = models.CharField("Adresse", max_length=400, blank=True, null=True)
+    notes = models.TextField("Notes", blank=True, null=True)
 
     def __str__(self):
         return f"{self.display_name}"
 
     class Meta:
         verbose_name = "Client"
+        verbose_name_plural = "Clients"
         ordering = ["display_name"]
 
 
@@ -206,15 +213,15 @@ class WeeklyDelivery(models.Model):
     # - allowed_customers set : accessible seulement aux clients listés
     # - public_delivery_point True : accessible à tous sauf les pros
     # - public_delivery_point False + attaché un un customer pro (accessible seulement par lui)
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    active = models.BooleanField(default=True)
+    customer = models.ForeignKey(Customer, verbose_name="Client", on_delete=models.PROTECT)
+    active = models.BooleanField("Actif", default=True)
     BATCH_TARGET = {
-        "SAME_DAY": "same day",
-        "PREVIOUS_DAY": "previous day",
+        "SAME_DAY": "Le jour même",
+        "PREVIOUS_DAY": "La veille",
     }
-    batch_target = models.CharField(max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
-    public_delivery_point = models.BooleanField(default=True)
-    online_payment = models.BooleanField(default=True)
+    batch_target = models.CharField("Jour de fabrication", max_length=20, choices=BATCH_TARGET, default="SAME_DAY")
+    public_delivery_point = models.BooleanField("Point de retrait public", default=True)
+    online_payment = models.BooleanField("Paiement en ligne", default=True)
     DAY_OF_WEEK = {
         0: "lundi",
         1: "mardi",
@@ -224,9 +231,9 @@ class WeeklyDelivery(models.Model):
         5: "samedi",
         6: "dimanche",
     }
-    day_of_week = models.IntegerField(choices=DAY_OF_WEEK)
-    notes = models.TextField(blank=True, null=True)
-    allowed_customers = models.ManyToManyField(Customer, related_name="private_weekly_deliveries", blank=True)
+    day_of_week = models.IntegerField("Jour de la semaine", choices=DAY_OF_WEEK)
+    notes = models.TextField("Notes", blank=True, null=True)
+    allowed_customers = models.ManyToManyField(Customer, verbose_name="Clients autorisés", related_name="private_weekly_deliveries", blank=True)
 
     def get_available_products(self):
         products = Product.objects.filter(active=True)
@@ -277,7 +284,14 @@ class WeeklyDelivery(models.Model):
             previous = WeeklyDelivery.objects.filter(pk=self.pk).values("day_of_week", "active").first()
         super().save(**kwargs)
         schedule_changed = previous is None or previous["day_of_week"] != self.day_of_week
+        deactivated = previous is not None and previous["active"] and not self.active
         reactivated = previous is not None and self.active and not previous["active"]
+        if deactivated:
+            # mirror the delivery's state onto its upcoming dates so a discontinued
+            # delivery stops appearing in planning
+            self.deliverydate_set.filter(date__gte=date.today()).update(active=False)
+        if reactivated:
+            self.deliverydate_set.filter(date__gte=date.today()).update(active=True)
         if schedule_changed or reactivated:
             self.generate_delivery_dates()
 
@@ -289,10 +303,10 @@ class WeeklyDelivery(models.Model):
 
 
 class DeliveryDate(models.Model):
-    weekly_delivery = models.ForeignKey(WeeklyDelivery, on_delete=models.CASCADE, null=True)
-    date = models.DateField()
-    active = models.BooleanField(default=True)
-    notes = models.TextField(blank=True, null=True)
+    weekly_delivery = models.ForeignKey(WeeklyDelivery, verbose_name="Livraison hebdo", on_delete=models.CASCADE, null=True)
+    date = models.DateField("Date")
+    active = models.BooleanField("Actif", default=True)
+    notes = models.TextField("Notes", blank=True, null=True)
 
     def __str__(self):
         inactive = ""
@@ -312,7 +326,7 @@ class DeliveryDate(models.Model):
             total += order.total_price
         return total
 
-    def duplicate_commands_from(self, original_delivery_date):
+    def duplicate_orders_from(self, original_delivery_date):
         for order in original_delivery_date.order_set.all():
             order.duplicate_to_delivery_date(self)
 
@@ -337,7 +351,8 @@ class BakeryBatch(dict):
     def __init__(self):
         self.temp_products = defaultdict(int)
         self.sub_batches = defaultdict(dict)
-        self.nb_breads = 0
+        # raw dough weight (grams) of products flagged as bread
+        self.bread_dough_weight = 0
 
     def add_line(self, order_line):
         self.temp_products[order_line.product] += order_line.quantity
@@ -353,8 +368,6 @@ class BakeryBatch(dict):
             for ing, qty in all_ingredients["direct"].items():
                 self.sub_batches[product.orig_product][product][ing] = qty * product.nb_units
             self.sub_batches[product.orig_product][product]["pâton"] = product.get_batch_weight() * line_quantity
-        if product.is_bread:
-            self.nb_breads += line_quantity
         if product.orig_product:
             base_product = product.orig_product
             ing_ref = "base_product"
@@ -369,11 +382,18 @@ class BakeryBatch(dict):
         if product not in self[base_product]["division"]:
             self[base_product]["division"][product] = 0
         self[base_product]["division"][product] += line_quantity
+        product_dough_weight = 0
         for ingredient, ing_qty in all_ingredients[ing_ref].items():
             quantity = line_quantity * ing_qty
             if ingredient not in self[base_product]["ingredients"]:
                 self[base_product]["ingredients"][ingredient] = 0
             self[base_product]["ingredients"][ingredient] += quantity
+            if ingredient.unit in SPECIAL_UNITS_WEIGHTS:
+                product_dough_weight += quantity * SPECIAL_UNITS_WEIGHTS[ingredient.unit]
+            else:
+                product_dough_weight += quantity
+        if product.is_bread:
+            self.bread_dough_weight += product_dough_weight
 
     def finalize(self):
         for product, qty in self.temp_products.items():
@@ -391,6 +411,9 @@ class BakeryBatch(dict):
         self.clear()
         self.update(new_dict)
         self.sub_batches.default_factory = None
+
+    def bread_dough_kg(self):
+        return self.bread_dough_weight / 1000
 
 
 class PreparationBatch(dict):
@@ -451,22 +474,23 @@ class Actions(dict):
 
 
 class Checkout(models.Model):
-    remote_id = models.CharField(max_length=64)
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+    remote_id = models.CharField("Identifiant SumUp", max_length=64)
+    customer = models.ForeignKey(Customer, verbose_name="Client", on_delete=models.PROTECT)
 
     def __str__(self):
         return f"Panier SumUp n°{self.id}"
 
     class Meta:
         verbose_name = "Panier"
+        verbose_name_plural = "Paniers"
 
 
 class Order(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    delivery_date = models.ForeignKey(DeliveryDate, on_delete=models.PROTECT)
-    notes = models.TextField(blank=True, null=True)
-    validated = models.BooleanField(default=True)
-    checkout = models.ForeignKey(Checkout, on_delete=models.SET_NULL, blank=True, null=True)
+    customer = models.ForeignKey(Customer, verbose_name="Client", on_delete=models.PROTECT)
+    delivery_date = models.ForeignKey(DeliveryDate, verbose_name="Date de livraison", on_delete=models.PROTECT)
+    notes = models.TextField("Notes", blank=True, null=True)
+    validated = models.BooleanField("Validée", default=True)
+    checkout = models.ForeignKey(Checkout, verbose_name="Panier", on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
         return f"{self.customer}/{self.delivery_date}"
@@ -504,13 +528,14 @@ class Order(models.Model):
 
     class Meta:
         verbose_name = "Commande"
+        verbose_name_plural = "Commandes"
         ordering = ["-delivery_date", "customer"]
 
 
 class OrderLine(models.Model):
-    order = models.ForeignKey(Order, related_name="lines", on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.PROTECT)
-    quantity = models.IntegerField()
+    order = models.ForeignKey(Order, verbose_name="Commande", related_name="lines", on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, verbose_name="Produit", on_delete=models.PROTECT)
+    quantity = models.IntegerField("Quantité")
 
     def __str__(self):
         return f"{self.quantity} {self.product.ref}"
@@ -525,3 +550,5 @@ class OrderLine(models.Model):
 
     class Meta:
         ordering = ["product__name"]
+        verbose_name = "Ligne de commande"
+        verbose_name_plural = "Lignes de commande"

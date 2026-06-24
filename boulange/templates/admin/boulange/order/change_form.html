@@ -1,0 +1,13 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+{{ order_product_prices|json_script:"order-product-prices" }}
+{{ order_customers|json_script:"order-customers" }}
+{{ order_tva|json_script:"order-tva" }}
+<div class="module" id="order-price-box">
+  <h2>Prix de la commande</h2>
+  <p id="order-total-price" style="padding: 8px 10px; font-size: 1.1em;"
+     data-initial="{{ order_price_initial }}">{{ order_price_initial }}</p>
+</div>
+{% endblock %}
