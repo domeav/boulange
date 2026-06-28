@@ -1442,3 +1442,38 @@ class StatsTests(ExtendedTestCase):
         rows = dict(response.context["rows"])
         self.assertIn(gk, rows)
         self.assertIn(pn, rows)
+
+
+class EmailLoginTests(TestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.user = self.context["guy"]
+        self.user.set_password("secretpw1")
+        self.user.save()
+
+    def test_login_with_username_still_works(self):
+        self.assertTrue(self.client.login(username="guy", password="secretpw1"))
+
+    def test_login_with_email(self):
+        self.assertTrue(self.client.login(username="guy@toto.net", password="secretpw1"))
+
+    def test_login_with_email_is_case_insensitive(self):
+        self.assertTrue(self.client.login(username="GUY@TOTO.NET", password="secretpw1"))
+
+    def test_login_with_email_wrong_password_fails(self):
+        self.assertFalse(self.client.login(username="guy@toto.net", password="wrong"))
+
+    def test_login_with_unknown_email_fails(self):
+        self.assertFalse(self.client.login(username="nobody@toto.net", password="secretpw1"))
+
+    def test_ambiguous_email_is_refused(self):
+        for name in ("dup1", "dup2"):
+            dup = Customer(username=name, display_name=name, email="dup@toto.net")
+            dup.set_password("secretpw1")
+            dup.save()
+        # the shared email is ambiguous, so it cannot be used to log in...
+        self.assertFalse(self.client.login(username="dup@toto.net", password="secretpw1"))
+        # ...but each account can still log in with its username
+        self.assertTrue(self.client.login(username="dup1", password="secretpw1"))
