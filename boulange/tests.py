@@ -1321,3 +1321,124 @@ class LocalizationTests(ExtendedTestCase):
         self.assertIn("Dupliquer", duplicate_delivery_date_orders.short_description)
         self.assertIn("Générer", generate_delivery_dates.short_description)
         self.assertIn("Annuler", cancel_checkouts.short_description)
+
+
+class StatsTests(ExtendedTestCase):
+    """Sales statistics per product over year / quarter / month / custom range (staff only)."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+        self.client.force_login(self.context["admin"])
+
+    @staticmethod
+    def _quarter(d):
+        return d.year, (d.month - 1) // 3 + 1
+
+    def _monday(self):
+        return date.today() + timedelta(days=7 - date.today().weekday())
+
+    def test_requires_staff(self):
+        client = Client()
+        client.force_login(self.context["guy"])
+        self.assertEqual(client.get("/stats/").status_code, 403)
+
+    def test_year_sales_aggregation(self):
+        monday = self._monday()
+        dd = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=monday)
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=dd, validated=True)
+        gk = Product.objects.get(ref="GK")  # price 6.5, non-pro customer -> 13.00
+        OrderLine.objects.create(order=order, product=gk, quantity=2)
+        response = self.client.get("/stats/", {"year": monday.year})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Chiffre d'affaires")
+        rows = dict(response.context["rows"])
+        self.assertEqual(rows[gk]["qty"], 2)
+        self.assertEqual(rows[gk]["amount"], Decimal("13.00"))
+        self.assertEqual(response.context["total_qty"], 2)
+        self.assertEqual(response.context["nb_orders"], 1)
+        self.assertEqual(response.context["total_amount"], Decimal("13.00"))
+
+    def test_margin_calculation(self):
+        monday = self._monday()
+        dd = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=monday)
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=dd, validated=True)
+        gk = Product.objects.get(ref="GK")  # CA 13.00 (non-pro), ingredient cost < price
+        OrderLine.objects.create(order=order, product=gk, quantity=2)
+        response = self.client.get("/stats/", {"year": monday.year})
+        rows = dict(response.context["rows"])
+        expected_cost = gk.cost_price * 2
+        self.assertEqual(rows[gk]["cost"], expected_cost)
+        self.assertEqual(rows[gk]["margin"], Decimal("13.00") - expected_cost)
+        self.assertEqual(response.context["total_cost"], expected_cost)
+        self.assertEqual(response.context["total_margin"], Decimal("13.00") - expected_cost)
+        self.assertGreater(response.context["total_margin_pct"], 0)
+        self.assertLess(response.context["total_margin_pct"], 100)
+
+    def test_unvalidated_orders_are_excluded(self):
+        monday = self._monday()
+        dd = DeliveryDate.objects.filter(weekly_delivery=self.context["monday_delivery"]).get(date=monday)
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=dd, validated=False)
+        OrderLine.objects.create(order=order, product=Product.objects.get(ref="GK"), quantity=2)
+        response = self.client.get("/stats/", {"year": monday.year})
+        self.assertEqual(response.context["total_qty"], 0)
+        self.assertEqual(response.context["nb_orders"], 0)
+
+    def test_quarter_filters_out_other_quarters(self):
+        mondays = list(self.context["monday_delivery"].deliverydate_set.order_by("date"))
+        d1 = mondays[0]
+        year, quarter = self._quarter(d1.date)
+        d2 = next(dd for dd in mondays if self._quarter(dd.date) != (year, quarter))
+        gk = Product.objects.get(ref="GK")
+        pn = Product.objects.get(ref="PN")
+        o1 = Order.objects.create(customer=self.context["guy"], delivery_date=d1, validated=True)
+        OrderLine.objects.create(order=o1, product=gk, quantity=1)
+        o2 = Order.objects.create(customer=self.context["guy"], delivery_date=d2, validated=True)
+        OrderLine.objects.create(order=o2, product=pn, quantity=1)
+        response = self.client.get("/stats/", {"year": year, "quarter": quarter})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["period_label"], f"T{quarter} {year}")
+        rows = dict(response.context["rows"])
+        self.assertIn(gk, rows)
+        self.assertNotIn(pn, rows)
+
+    def test_month_filters_out_other_months(self):
+        mondays = list(self.context["monday_delivery"].deliverydate_set.order_by("date"))
+        d1 = mondays[0]
+        d2 = next(dd for dd in mondays if (dd.date.year, dd.date.month) != (d1.date.year, d1.date.month))
+        gk = Product.objects.get(ref="GK")
+        pn = Product.objects.get(ref="PN")
+        o1 = Order.objects.create(customer=self.context["guy"], delivery_date=d1, validated=True)
+        OrderLine.objects.create(order=o1, product=gk, quantity=1)
+        o2 = Order.objects.create(customer=self.context["guy"], delivery_date=d2, validated=True)
+        OrderLine.objects.create(order=o2, product=pn, quantity=1)
+        response = self.client.get("/stats/", {"year": d1.date.year, "month": d1.date.month})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["granularity"], "month")
+        rows = dict(response.context["rows"])
+        self.assertIn(gk, rows)
+        self.assertNotIn(pn, rows)
+
+    def test_custom_range_is_inclusive_and_bounded(self):
+        mondays = list(self.context["monday_delivery"].deliverydate_set.order_by("date"))
+        d1, d2 = mondays[0], mondays[1]
+        gk = Product.objects.get(ref="GK")
+        pn = Product.objects.get(ref="PN")
+        o1 = Order.objects.create(customer=self.context["guy"], delivery_date=d1, validated=True)
+        OrderLine.objects.create(order=o1, product=gk, quantity=1)
+        o2 = Order.objects.create(customer=self.context["guy"], delivery_date=d2, validated=True)
+        OrderLine.objects.create(order=o2, product=pn, quantity=1)
+        # range covering only d1 (end == start, inclusive)
+        response = self.client.get("/stats/", {"start": d1.date.isoformat(), "end": d1.date.isoformat()})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["granularity"], "custom")
+        rows = dict(response.context["rows"])
+        self.assertIn(gk, rows)
+        self.assertNotIn(pn, rows)
+        # widening to include d2 picks up both
+        response = self.client.get("/stats/", {"start": d1.date.isoformat(), "end": d2.date.isoformat()})
+        rows = dict(response.context["rows"])
+        self.assertIn(gk, rows)
+        self.assertIn(pn, rows)

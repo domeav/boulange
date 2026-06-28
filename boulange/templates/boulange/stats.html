@@ -1,0 +1,83 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Statistiques de vente{% endblock %}
+
+{% block content %}
+<section>
+  {% url 'boulange:stats' as stats_url %}
+  <p>
+    <b>Année :</b>
+    <a href="{{ stats_url }}?year={{ prev_year }}">«&nbsp;{{ prev_year }}</a>
+    {% if granularity == 'year' %}<b>{{ year }}</b>{% else %}<a href="{{ stats_url }}?year={{ year }}">{{ year }}</a>{% endif %}
+    <a href="{{ stats_url }}?year={{ next_year }}">{{ next_year }}&nbsp;»</a>
+  </p>
+  <p>
+    <b>Trimestre :</b>
+    {% for q in quarters %}
+    {% if granularity == 'quarter' and q == quarter %}<b>&nbsp;T{{ q }}&nbsp;</b>{% else %}<a href="{{ stats_url }}?year={{ year }}&amp;quarter={{ q }}">&nbsp;T{{ q }}&nbsp;</a>{% endif %}
+    {% endfor %}
+  </p>
+  <p>
+    <b>Mois :</b>
+    {% for m, label in months %}
+    {% if granularity == 'month' and m == month %}<b>&nbsp;{{ label }}&nbsp;</b>{% else %}<a href="{{ stats_url }}?year={{ year }}&amp;month={{ m }}">&nbsp;{{ label }}&nbsp;</a>{% endif %}
+    {% endfor %}
+  </p>
+  <form method="get" action="{{ stats_url }}">
+    <b>Période :</b>
+    du <input type="date" name="start" value="{{ custom_start }}">
+    au <input type="date" name="end" value="{{ custom_end }}">
+    <button type="submit" class="small">Afficher</button>
+  </form>
+  <h2>{{ period_label }}</h2>
+</section>
+
+<div class="flex three">
+  <article class="card">
+    <header><b>Chiffre d'affaires</b></header>
+    <p class="big">{{ total_amount|floatformat:2 }}&nbsp;€</p>
+  </article>
+  <article class="card">
+    <header><b>Marge</b></header>
+    <p class="big">{{ total_margin|floatformat:2 }}&nbsp;€</p>
+  </article>
+  <article class="card">
+    <header><b>Taux de marge</b></header>
+    <p class="big">{{ total_margin_pct|floatformat:1 }}&nbsp;%</p>
+  </article>
+  <article class="card">
+    <header><b>Commandes</b></header>
+    <p class="big">{{ nb_orders }}</p>
+  </article>
+  <article class="card">
+    <header><b>Unités vendues</b></header>
+    <p class="big">{{ total_qty }}</p>
+  </article>
+  <article class="card">
+    <header><b>Panier moyen</b></header>
+    <p class="big">{{ avg_order|floatformat:2 }}&nbsp;€</p>
+  </article>
+</div>
+
+<section>
+  <table>
+    <thead>
+      <tr><th>Produit</th><th>Quantité</th><th>CA</th><th>Coût</th><th>Marge</th><th>Taux</th></tr>
+    </thead>
+    <tbody>
+      {% for product, data in rows %}
+      <tr>
+        <td>{{ product.ref }} — {{ product.name }}</td>
+        <td>{{ data.qty }}</td>
+        <td>{{ data.amount|floatformat:2 }}&nbsp;€</td>
+        <td>{{ data.cost|floatformat:2 }}&nbsp;€</td>
+        <td>{{ data.margin|floatformat:2 }}&nbsp;€</td>
+        <td>{{ data.margin_pct|floatformat:1 }}&nbsp;%</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">Aucune vente sur cette période.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

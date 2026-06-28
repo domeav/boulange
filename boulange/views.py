@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, timedelta
+from decimal import Decimal
 from functools import wraps
 
 import requests
@@ -449,6 +450,119 @@ def actions(request, year=None, month=None, day=None, to_print=False, section=No
         date_nav.append(target_date + timedelta(days=i))
     context = {"actions": _get_actions(target_date), "target_date": target_date, "date_nav": date_nav, "to_print": to_print, "section": section}
     return render(request, "boulange/actions.html", context)
+
+
+FRENCH_MONTHS = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+MONTH_ABBR = ["", "Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"]
+
+
+def _int_param(value, default=None):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_iso_date(value):
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _stats_period(request):
+    """Resolve a [start, end) window and a label from GET params.
+
+    Precedence: custom range (start & end) > month > quarter > year (default current year).
+    """
+    year = _int_param(request.GET.get("year"), date.today().year)
+    quarter = _int_param(request.GET.get("quarter"))
+    month = _int_param(request.GET.get("month"))
+    custom_start = _parse_iso_date(request.GET.get("start"))
+    custom_end = _parse_iso_date(request.GET.get("end"))
+
+    base = {"year": year, "quarter": None, "month": None, "custom_start": "", "custom_end": ""}
+    if custom_start and custom_end:
+        if custom_start > custom_end:
+            custom_start, custom_end = custom_end, custom_start
+        return {
+            **base,
+            "granularity": "custom",
+            "start": custom_start,
+            "end": custom_end + timedelta(days=1),  # end is inclusive for the user
+            "label": f"Du {custom_start:%d/%m/%Y} au {custom_end:%d/%m/%Y}",
+            "custom_start": custom_start.isoformat(),
+            "custom_end": custom_end.isoformat(),
+        }
+    if month and 1 <= month <= 12:
+        start = date(year, month, 1)
+        end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        return {**base, "granularity": "month", "month": month, "start": start, "end": end, "label": f"{FRENCH_MONTHS[month]} {year}"}
+    if quarter and 1 <= quarter <= 4:
+        first_month = 3 * (quarter - 1) + 1
+        start = date(year, first_month, 1)
+        end = date(year + 1, 1, 1) if first_month + 3 > 12 else date(year, first_month + 3, 1)
+        return {**base, "granularity": "quarter", "quarter": quarter, "start": start, "end": end, "label": f"T{quarter} {year}"}
+    return {**base, "granularity": "year", "start": date(year, 1, 1), "end": date(year + 1, 1, 1), "label": str(year)}
+
+
+@staff_required
+def stats(request):
+    period = _stats_period(request)
+    lines = OrderLine.objects.filter(
+        order__validated=True,
+        order__delivery_date__date__gte=period["start"],
+        order__delivery_date__date__lt=period["end"],
+    ).select_related("product", "order", "order__customer")
+
+    by_product = {}
+    total_amount = Decimal(0)
+    total_qty = 0
+    order_ids = set()
+    for line in lines:
+        entry = by_product.setdefault(line.product, {"qty": 0, "amount": Decimal(0)})
+        amount = line.get_price()
+        entry["qty"] += line.quantity
+        entry["amount"] += amount
+        total_amount += amount
+        total_qty += line.quantity
+        order_ids.add(line.order_id)
+
+    total_cost = Decimal(0)
+    for product, entry in by_product.items():
+        cost = product.cost_price * entry["qty"]
+        entry["cost"] = cost
+        entry["margin"] = entry["amount"] - cost
+        entry["margin_pct"] = entry["margin"] / entry["amount"] * 100 if entry["amount"] else Decimal(0)
+        total_cost += cost
+
+    total_margin = total_amount - total_cost
+    total_margin_pct = total_margin / total_amount * 100 if total_amount else Decimal(0)
+    rows = sorted(by_product.items(), key=lambda item: item[1]["amount"], reverse=True)
+    nb_orders = len(order_ids)
+    avg_order = total_amount / nb_orders if nb_orders else Decimal(0)
+    context = {
+        "rows": rows,
+        "total_amount": total_amount,
+        "total_cost": total_cost,
+        "total_margin": total_margin,
+        "total_margin_pct": total_margin_pct,
+        "total_qty": total_qty,
+        "nb_orders": nb_orders,
+        "avg_order": avg_order,
+        "year": period["year"],
+        "quarter": period["quarter"],
+        "month": period["month"],
+        "granularity": period["granularity"],
+        "period_label": period["label"],
+        "prev_year": period["year"] - 1,
+        "next_year": period["year"] + 1,
+        "quarters": [1, 2, 3, 4],
+        "months": [(i, MONTH_ABBR[i]) for i in range(1, 13)],
+        "custom_start": period["custom_start"],
+        "custom_end": period["custom_end"],
+    }
+    return render(request, "boulange/stats.html", context)
 
 
 @staff_required

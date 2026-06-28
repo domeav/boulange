@@ -33,6 +33,7 @@ urlpatterns = [
     path("cancel_checkout/", views.cancel_checkout, name="cancel_checkout"),
     path("finalize/<checkout_id>/", views.finalize, name="finalize"),
     path("products/", views.products, name="products"),
+    path("stats/", views.stats, name="stats"),
     path("actions/<int:year>/<int:month>/<int:day>/", views.actions, name="actions", kwargs={"to_print": False}),
     path("actions_print/<section>/<int:year>/<int:month>/<int:day>/", views.actions, name="actions_print", kwargs={"to_print": True}),
     path("actions/", views.actions, name="actions"),
