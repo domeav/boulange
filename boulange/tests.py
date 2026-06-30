@@ -821,7 +821,7 @@ class AdminTests(ExtendedTestCase):
     def test_deliverydate_changelist_has_last_8_days_filter(self):
         response = self.client.get("/admin/boulange/deliverydate/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Les 8 derniers jours")
+        self.assertContains(response, "8 jours + demain")
 
     def test_deliverydate_last_8_days_filter_range(self):
         wd = self.context["monday_delivery"]

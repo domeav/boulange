@@ -141,7 +141,7 @@ class MyDateFilter(admin.DateFieldListFilter):
         self.links.insert(2, ("Aujourd'hui et après", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=365)}))
         self.links.insert(2, ("Demain", {self.lookup_kwarg_since: date.today() + timedelta(days=1), self.lookup_kwarg_until: date.today() + timedelta(days=2)}))
         # today and the 7 preceding days (8 days, until is exclusive)
-        self.links.insert(2, ("Les 8 derniers jours", {self.lookup_kwarg_since: date.today() - timedelta(days=7), self.lookup_kwarg_until: date.today() + timedelta(days=1)}))
+        self.links.insert(2, ("8 jours + demain", {self.lookup_kwarg_since: date.today() - timedelta(days=7), self.lookup_kwarg_until: date.today() + timedelta(days=2)}))
 
 
 @admin.action(description="Dupliquer les commandes de la date sélectionnée la plus ancienne vers les plus récentes, par livraison hebdo")
