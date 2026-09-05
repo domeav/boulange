@@ -1813,3 +1813,247 @@ class CheckoutReconciliationTests(ExtendedTestCase):
         self.order.refresh_from_db()
         self.assertTrue(self.order.validated)
         self.assertEqual(len(mail.outbox), 1)
+
+
+class CustomerOrdersHistoryTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.store = self.context["store"]  # professional, 5% discount
+        self.client = Client()
+        self.client.force_login(self.context["admin"])
+        wd = self.context["monday_delivery"]
+        self.product = Product.objects.filter(active=True).first()
+        # one order in January 2026, one in March 2026, both validated
+        self.jan_dd = wd.deliverydate_set.create(date=date(2026, 1, 12))
+        self.mar_dd = wd.deliverydate_set.create(date=date(2026, 3, 9))
+        self.jan_order = Order.objects.create(customer=self.guy, delivery_date=self.jan_dd, validated=True)
+        OrderLine.objects.create(order=self.jan_order, product=self.product, quantity=4)
+        self.mar_order = Order.objects.create(customer=self.guy, delivery_date=self.mar_dd, validated=True)
+        OrderLine.objects.create(order=self.mar_order, product=self.product, quantity=6)
+        # somebody else's order on the same date, and an unvalidated one
+        other = Order.objects.create(customer=self.store, delivery_date=self.jan_dd, validated=True)
+        OrderLine.objects.create(order=other, product=self.product, quantity=100)
+        draft = Order.objects.create(customer=self.guy, delivery_date=self.mar_dd, validated=False)
+        OrderLine.objects.create(order=draft, product=self.product, quantity=99)
+
+    def _get(self, **params):
+        return self.client.get("/customer_orders/", params)
+
+    def test_requires_staff(self):
+        customer_client = Client()
+        customer_client.force_login(self.guy)
+        self.assertEqual(customer_client.get("/customer_orders/").status_code, 403)
+        self.assertEqual(Client().get("/customer_orders/").status_code, 302)
+
+    def test_no_customer_selected_shows_the_search_box(self):
+        r = self._get()
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.context["customer"])
+        self.assertContains(r, "Rechercher un client")
+        self.assertContains(r, "Choisissez un client")
+        # the 200+ customers are not shipped with the page any more
+        self.assertNotContains(r, self.guy.display_name)
+
+    def test_selected_customer_prefills_the_search_box(self):
+        r = self._get(customer=self.guy.id, year=2026)
+        self.assertContains(r, f'value="{self.guy.display_name}"')
+
+    def test_year_shows_every_validated_order(self):
+        r = self._get(customer=self.guy.id, year=2026)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["nb_orders"], 2)
+        self.assertEqual(r.context["total_qty"], 10)
+        self.assertEqual(list(r.context["orders"]), [self.mar_order, self.jan_order])
+
+    def test_month_narrows_the_period(self):
+        r = self._get(customer=self.guy.id, year=2026, month=1)
+        self.assertEqual(r.context["nb_orders"], 1)
+        self.assertEqual(r.context["total_qty"], 4)
+        self.assertEqual(list(r.context["orders"]), [self.jan_order])
+        self.assertContains(r, "Janvier 2026")
+
+    def test_other_customers_and_drafts_are_excluded(self):
+        r = self._get(customer=self.guy.id, year=2026)
+        self.assertEqual(r.context["total_qty"], 10)  # not 110, not 109
+
+    def test_custom_range(self):
+        r = self._get(customer=self.guy.id, start="2026-03-01", end="2026-03-31")
+        self.assertEqual(r.context["nb_orders"], 1)
+        self.assertEqual(list(r.context["orders"]), [self.mar_order])
+
+    def test_period_with_no_order(self):
+        r = self._get(customer=self.guy.id, year=2020)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["nb_orders"], 0)
+        self.assertEqual(r.context["total_amount"], Decimal(0))
+        self.assertContains(r, "Aucune commande sur cette période")
+
+    def test_professional_totals_use_discounted_ht_prices(self):
+        dd = self.context["wednesday_delivery"].deliverydate_set.create(date=date(2026, 1, 14))
+        pro_order = Order.objects.create(customer=self.store, delivery_date=dd, validated=True)
+        line = OrderLine.objects.create(order=pro_order, product=self.product, quantity=10)
+        r = self._get(customer=self.store.id, year=2026, month=1)
+        # 100 units on jan_dd + these 10; both priced through OrderLine.get_price()
+        self.assertEqual(r.context["total_amount"], line.get_price() + Order.objects.get(customer=self.store, delivery_date=self.jan_dd).total_price)
+        self.assertLess(r.context["total_amount"], self.product.price * 110)  # discount + TVA applied
+        self.assertContains(r, "professionnel")
+
+    def test_unknown_customer_is_404(self):
+        self.assertEqual(self._get(customer=999999).status_code, 404)
+
+    def test_garbage_customer_param_is_ignored(self):
+        r = self._get(customer="abc")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.context["customer"])
+
+    def test_period_links_keep_the_selected_customer(self):
+        r = self._get(customer=self.guy.id, year=2026)
+        self.assertContains(r, f"customer={self.guy.id}")
+
+    def test_print_view_strips_the_chrome(self):
+        r = self.client.get("/customer_orders_print/", {"customer": self.guy.id, "year": 2026})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.context["to_print"])
+        self.assertNotContains(r, 'href="/admin/"')
+        self.assertNotContains(r, "Rechercher un client")
+        self.assertContains(r, self.guy.display_name)
+
+    def test_admin_customer_list_links_to_the_history(self):
+        admin_user = self.context["admin"]
+        admin_user.is_superuser = True
+        admin_user.save()
+        r = self.client.get("/admin/boulange/customer/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, f"/customer_orders/?customer={self.guy.id}")
+
+
+class StatsAggregationRefactorTests(ExtendedTestCase):
+    """The stats page was rewritten around the shared aggregation helper."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+        self.client.force_login(self.context["admin"])
+        wd = self.context["monday_delivery"]
+        dd = wd.deliverydate_set.create(date=date(2026, 5, 11))
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=dd, validated=True)
+        self.product = Product.objects.filter(active=True).first()
+        OrderLine.objects.create(order=order, product=self.product, quantity=5)
+
+    def test_stats_still_reports_amount_cost_and_margin(self):
+        r = self.client.get("/stats/", {"year": 2026, "month": 5})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["nb_orders"], 1)
+        self.assertEqual(r.context["total_qty"], 5)
+        self.assertEqual(r.context["total_amount"], self.product.price * 5)
+        self.assertEqual(r.context["total_cost"], self.product.cost_price * 5)
+        self.assertEqual(r.context["total_margin"], r.context["total_amount"] - r.context["total_cost"])
+        self.assertContains(r, "Taux de marge")
+        self.assertContains(r, "Mai 2026")
+
+    def test_stats_period_picker_still_renders(self):
+        r = self.client.get("/stats/")
+        for label in ("Année", "Trimestre", "Mois", "Période"):
+            self.assertContains(r, label)
+
+
+class AdminOrderChangelistTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        admin_user = self.context["admin"]
+        admin_user.is_superuser = True
+        admin_user.save()
+        self.client = Client()
+        self.client.force_login(admin_user)
+        dd = self.context["monday_delivery"].deliverydate_set.first()
+        order = Order.objects.create(customer=self.context["guy"], delivery_date=dd, validated=True)
+        OrderLine.objects.create(order=order, product=Product.objects.filter(active=True).first(), quantity=2)
+
+    def test_changelist_shows_totals_and_search(self):
+        r = self.client.get("/admin/boulange/order/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "€")
+        self.assertContains(r, 'name="q"')
+
+    def test_search_by_customer_name(self):
+        r = self.client.get("/admin/boulange/order/", {"q": self.context["guy"].display_name})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["cl"].result_count, 1)
+        r = self.client.get("/admin/boulange/order/", {"q": "personne inconnue"})
+        self.assertEqual(r.context["cl"].result_count, 0)
+
+
+class CustomerSearchTests(ExtendedTestCase):
+    """The customer history page picks its customer through an htmx type-ahead."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]  # "guy the client"
+        self.store = self.context["store"]  # professional
+        self.client = Client()
+        self.client.force_login(self.context["admin"])
+        dd = self.context["monday_delivery"].deliverydate_set.create(date=date(2026, 2, 9))
+        for customer in (self.guy, self.store):
+            order = Order.objects.create(customer=customer, delivery_date=dd, validated=True)
+            OrderLine.objects.create(order=order, product=Product.objects.filter(active=True).first(), quantity=1)
+
+    def _search(self, q, period=""):
+        return self.client.post("/hx/customer_search/", {"q": q, "period": period})
+
+    def test_requires_staff(self):
+        customer_client = Client()
+        customer_client.force_login(self.guy)
+        self.assertEqual(customer_client.post("/hx/customer_search/", {"q": "guy"}).status_code, 403)
+        self.assertEqual(Client().post("/hx/customer_search/", {"q": "guy"}).status_code, 302)
+
+    def test_matches_on_display_name(self):
+        r = self._search("client")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, self.guy.display_name)
+        self.assertNotContains(r, self.store.display_name)
+
+    def test_matches_on_username_and_email(self):
+        self.assertContains(self._search(self.store.username), self.store.display_name)
+        self.assertContains(self._search("store@toto"), self.store.display_name)
+
+    def test_is_case_insensitive(self):
+        self.assertContains(self._search("GUY"), self.guy.display_name)
+
+    def test_short_query_searches_nothing(self):
+        r = self._search("g")
+        self.assertNotContains(r, self.guy.display_name)
+        self.assertNotContains(r, "Aucun client")
+
+    def test_no_match_is_reported(self):
+        self.assertContains(self._search("zzzzz"), "Aucun client")
+
+    def test_customers_without_orders_are_not_proposed(self):
+        Customer.objects.create(username="ghost", display_name="client fantome", email="ghost@toto.net")
+        self.assertNotContains(self._search("fantome"), "client fantome")
+
+    def test_results_link_to_the_history_and_keep_the_period(self):
+        r = self._search("client", period="year=2026&month=2")
+        self.assertContains(r, f"/customer_orders/?customer={self.guy.id}&amp;year=2026&amp;month=2")
+
+    def test_results_are_capped(self):
+        dd = self.context["monday_delivery"].deliverydate_set.create(date=date(2026, 2, 16))
+        product = Product.objects.filter(active=True).first()
+        for i in range(25):
+            extra = Customer.objects.create(username=f"dupont{i}", display_name=f"dupont {i}", email=f"dupont{i}@toto.net")
+            order = Order.objects.create(customer=extra, delivery_date=dd, validated=True)
+            OrderLine.objects.create(order=order, product=product, quantity=1)
+        r = self._search("dupont")
+        self.assertEqual(r.content.count(b"<li"), 15)
+
+    def test_period_is_optional(self):
+        r = self._search("client")
+        self.assertContains(r, f"/customer_orders/?customer={self.guy.id}")

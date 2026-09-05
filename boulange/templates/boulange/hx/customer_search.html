@@ -1,0 +1,13 @@
+{% if customers %}
+<ul style="list-style: none; margin: 0; padding: 0; border: 1px solid #ccc; max-height: 18em; overflow-y: auto;">
+  {% for c in customers %}
+  <li style="padding: .2em .5em; border-bottom: 1px solid #eee;">
+    <a href="{% url 'boulange:customer_orders' %}?customer={{ c.id }}{% if period_query %}&amp;{{ period_query }}{% endif %}">
+      {{ c.display_name }}{% if c.is_professional %} (pro){% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% elif searched %}
+<p>Aucun client ne correspond à « {{ query }} ».</p>
+{% endif %}

@@ -3,34 +3,8 @@
 {% block title %}Statistiques de vente{% endblock %}
 
 {% block content %}
-<section>
-  {% url 'boulange:stats' as stats_url %}
-  <p>
-    <b>Année :</b>
-    <a href="{{ stats_url }}?year={{ prev_year }}">«&nbsp;{{ prev_year }}</a>
-    {% if granularity == 'year' %}<b>{{ year }}</b>{% else %}<a href="{{ stats_url }}?year={{ year }}">{{ year }}</a>{% endif %}
-    <a href="{{ stats_url }}?year={{ next_year }}">{{ next_year }}&nbsp;»</a>
-  </p>
-  <p>
-    <b>Trimestre :</b>
-    {% for q in quarters %}
-    {% if granularity == 'quarter' and q == quarter %}<b>&nbsp;T{{ q }}&nbsp;</b>{% else %}<a href="{{ stats_url }}?year={{ year }}&amp;quarter={{ q }}">&nbsp;T{{ q }}&nbsp;</a>{% endif %}
-    {% endfor %}
-  </p>
-  <p>
-    <b>Mois :</b>
-    {% for m, label in months %}
-    {% if granularity == 'month' and m == month %}<b>&nbsp;{{ label }}&nbsp;</b>{% else %}<a href="{{ stats_url }}?year={{ year }}&amp;month={{ m }}">&nbsp;{{ label }}&nbsp;</a>{% endif %}
-    {% endfor %}
-  </p>
-  <form method="get" action="{{ stats_url }}">
-    <b>Période :</b>
-    du <input type="date" name="start" value="{{ custom_start }}">
-    au <input type="date" name="end" value="{{ custom_end }}">
-    <button type="submit" class="small">Afficher</button>
-  </form>
-  <h2>{{ period_label }}</h2>
-</section>
+{% url 'boulange:stats' as picker_url %}
+{% include 'boulange/period_picker.html' %}
 
 <div class="flex three">
   <article class="card">

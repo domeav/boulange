@@ -1,0 +1,33 @@
+{% comment %}
+Year / quarter / month / custom-range selector.
+Include with picker_url set to the page's own URL; picker_extra carries any other
+query parameter that must survive the navigation (the selected customer, notably).
+{% endcomment %}
+<section>
+  <p>
+    <b>Année :</b>
+    <a href="{{ picker_url }}?year={{ prev_year }}{{ picker_extra }}">«&nbsp;{{ prev_year }}</a>
+    {% if granularity == 'year' %}<b>{{ year }}</b>{% else %}<a href="{{ picker_url }}?year={{ year }}{{ picker_extra }}">{{ year }}</a>{% endif %}
+    <a href="{{ picker_url }}?year={{ next_year }}{{ picker_extra }}">{{ next_year }}&nbsp;»</a>
+  </p>
+  <p>
+    <b>Trimestre :</b>
+    {% for q in quarters %}
+    {% if granularity == 'quarter' and q == quarter %}<b>&nbsp;T{{ q }}&nbsp;</b>{% else %}<a href="{{ picker_url }}?year={{ year }}&amp;quarter={{ q }}{{ picker_extra }}">&nbsp;T{{ q }}&nbsp;</a>{% endif %}
+    {% endfor %}
+  </p>
+  <p>
+    <b>Mois :</b>
+    {% for m, label in months %}
+    {% if granularity == 'month' and m == month %}<b>&nbsp;{{ label }}&nbsp;</b>{% else %}<a href="{{ picker_url }}?year={{ year }}&amp;month={{ m }}{{ picker_extra }}">&nbsp;{{ label }}&nbsp;</a>{% endif %}
+    {% endfor %}
+  </p>
+  <form method="get" action="{{ picker_url }}">
+    {% if customer %}<input type="hidden" name="customer" value="{{ customer.id }}">{% endif %}
+    <b>Période :</b>
+    du <input type="date" name="start" value="{{ custom_start }}">
+    au <input type="date" name="end" value="{{ custom_end }}">
+    <button type="submit" class="small">Afficher</button>
+  </form>
+  <h2>{{ period_label }}</h2>
+</section>

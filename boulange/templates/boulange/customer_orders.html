@@ -1,0 +1,104 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Historique client{% if customer %} : {{ customer }}{% endif %}{% endblock %}
+
+{% block content %}
+{% url 'boulange:customer_orders' as picker_url %}
+{% if not to_print %}
+<section>
+  <b>Client :</b>
+  <input type="search" name="q" autocomplete="off"
+	 placeholder="Rechercher un client (nom, identifiant, email)…"
+	 value="{% if customer %}{{ customer.display_name }}{% endif %}"
+	 hx-post="{% url 'boulange:hx_customer_search' %}"
+	 hx-trigger="keyup changed delay:300ms, search, focus"
+	 hx-target="#customer-results"
+	 hx-include="[name='period']">
+  <input type="hidden" name="period" value="{{ period_query }}">
+  <div id="customer-results"></div>
+</section>
+{% include 'boulange/period_picker.html' %}
+{% endif %}
+
+{% if not customer %}
+<section>
+  <p>Choisissez un client pour afficher son historique de commandes.</p>
+</section>
+{% else %}
+{% if to_print %}
+<h2>{{ customer }} — {{ period_label }}</h2>
+{% endif %}
+<section>
+  <h3>
+    {{ customer }}
+    {% if customer.is_professional %}<small>— professionnel, remise {{ customer.pro_discount_percentage|floatformat:"-2" }}&nbsp;% (prix HT)</small>{% endif %}
+  </h3>
+  {% if customer.address %}<p>{{ customer.address }}</p>{% endif %}
+  {% if customer.notes %}<p>Notes du client :<pre>{{ customer.notes }}</pre></p>{% endif %}
+</section>
+
+<div class="flex three">
+  <article class="card">
+    <header><b>Total</b></header>
+    <p class="big">{{ total_amount|floatformat:2 }}&nbsp;€</p>
+  </article>
+  <article class="card">
+    <header><b>Commandes</b></header>
+    <p class="big">{{ nb_orders }}</p>
+  </article>
+  <article class="card">
+    <header><b>Unités</b></header>
+    <p class="big">{{ total_qty }}</p>
+  </article>
+</div>
+
+<section>
+  <h3>Récapitulatif par produit</h3>
+  <table>
+    <thead>
+      <tr><th>Produit</th><th>Quantité</th><th>Total</th></tr>
+    </thead>
+    <tbody>
+      {% for product, data in rows %}
+      <tr>
+        <td>{{ product.ref }} — {{ product.name }}</td>
+        <td>{{ data.qty }}</td>
+        <td>{{ data.amount|floatformat:2 }}&nbsp;€</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3">Aucune commande sur cette période.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if orders %}
+<section>
+  <h3>Détail des commandes</h3>
+  {% for order in orders %}
+  <div>
+    <h4>
+      {{ order.delivery_date.date|date:"l d/m/Y" }} — {{ order.delivery_date.weekly_delivery.customer }}
+      : {{ order.total_price|floatformat:2 }}&nbsp;€
+    </h4>
+    {% if order.notes %}<p>Notes de la commande :<pre>{{ order.notes }}</pre></p>{% endif %}
+    <ul>
+      {% for line in order.lines.all %}
+      <li>{{ line.product.name }}/{{ line.product.ref }} : {{ line.quantity }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if not to_print %}
+<section>
+  <a class="button small"
+     href="{% url 'boulange:customer_orders_print' %}?customer={{ customer.id }}&amp;year={{ year }}{% if quarter %}&amp;quarter={{ quarter }}{% endif %}{% if month %}&amp;month={{ month }}{% endif %}{% if custom_start %}&amp;start={{ custom_start }}&amp;end={{ custom_end }}{% endif %}">
+    Version imprimable
+  </a>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

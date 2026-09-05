@@ -2,6 +2,8 @@ from datetime import date, timedelta
 
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.urls import reverse
+from django.utils.html import format_html
 
 from boulange import SPECIAL_UNITS_WEIGHTS
 
@@ -100,7 +102,7 @@ admin.site.register(Product, ProductAdmin)
 
 class CustomerAdmin(admin.ModelAdmin):
     list_filter = ("is_professional",)
-    list_display = ("username", "display_name", "email", "is_professional", "pro_discount_percentage", "address")
+    list_display = ("username", "display_name", "email", "is_professional", "pro_discount_percentage", "address", "order_history")
     search_fields = ["display_name", "username", "email"]
     fieldsets = [
         (
@@ -109,6 +111,10 @@ class CustomerAdmin(admin.ModelAdmin):
         ),
         ("Utilisateur", {"fields": ["is_staff", "is_superuser", "is_active"]}),
     ]
+
+    @admin.display(description="Historique")
+    def order_history(self, obj):
+        return format_html('<a href="{}?customer={}">commandes</a>', reverse("boulange:customer_orders"), obj.id)
 
 
 admin.site.register(Customer, CustomerAdmin)
@@ -279,12 +285,25 @@ class OrderLineInline(admin.TabularInline):
 
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("customer", "delivery_date")
+    list_display = ("customer", "delivery_date", "total_price")
     model = Order
     inlines = [OrderLineInline]
     save_as = True
     autocomplete_fields = ["delivery_date", "customer"]
-    list_filter = [("delivery_date__date", MyDateFilter), "customer__display_name"]
+    # A per-customer sidebar would list every customer that ever ordered (200+ entries),
+    # so the customer is reached through the search box instead.
+    list_filter = [("delivery_date__date", MyDateFilter), "customer__is_professional", "validated"]
+    search_fields = ["customer__display_name", "customer__username", "customer__email"]
+    date_hierarchy = "delivery_date__date"
+
+    def get_queryset(self, request):
+        # total_price walks the lines of every listed order: fetch them in one go rather
+        # than emitting a query per row of the changelist.
+        return super().get_queryset(request).select_related("customer", "delivery_date__weekly_delivery").prefetch_related("lines__product")
+
+    @admin.display(description="Total")
+    def total_price(self, obj):
+        return f"{obj.total_price:.2f} €"
 
     class Media:
         js = ("boulange/admin_order_price.js",)

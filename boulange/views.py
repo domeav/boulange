@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 from functools import wraps
+from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
@@ -609,15 +610,42 @@ def _stats_period(request):
     return {**base, "granularity": "year", "start": date(year, 1, 1), "end": date(year + 1, 1, 1), "label": str(year)}
 
 
-@staff_required
-def stats(request):
-    period = _stats_period(request)
-    lines = OrderLine.objects.filter(
-        order__validated=True,
-        order__delivery_date__date__gte=period["start"],
-        order__delivery_date__date__lt=period["end"],
-    ).select_related("product", "order", "order__customer")
+def _period_context(period):
+    """Everything boulange/period_picker.html needs to draw its year/quarter/month links."""
+    return {
+        "year": period["year"],
+        "quarter": period["quarter"],
+        "month": period["month"],
+        "granularity": period["granularity"],
+        "period_label": period["label"],
+        "prev_year": period["year"] - 1,
+        "next_year": period["year"] + 1,
+        "quarters": [1, 2, 3, 4],
+        "months": [(i, MONTH_ABBR[i]) for i in range(1, 13)],
+        "custom_start": period["custom_start"],
+        "custom_end": period["custom_end"],
+    }
 
+
+def _period_query(period):
+    """The selected window as query parameters, to carry it across links."""
+    if period["granularity"] == "custom":
+        return urlencode({"start": period["custom_start"], "end": period["custom_end"]})
+    params = {"year": period["year"]}
+    if period["granularity"] == "month":
+        params["month"] = period["month"]
+    elif period["granularity"] == "quarter":
+        params["quarter"] = period["quarter"]
+    return urlencode(params)
+
+
+def _aggregate_order_lines(lines):
+    """Product-level totals for a set of order lines.
+
+    Shared by the global stats and the per-customer history so both count money the
+    same way -- in particular through OrderLine.get_price(), which is what applies the
+    TVA exclusion and the discount of professional customers.
+    """
     by_product = {}
     total_amount = Decimal(0)
     total_qty = 0
@@ -640,32 +668,92 @@ def stats(request):
         total_cost += cost
 
     total_margin = total_amount - total_cost
-    total_margin_pct = total_margin / total_amount * 100 if total_amount else Decimal(0)
-    rows = sorted(by_product.items(), key=lambda item: item[1]["amount"], reverse=True)
     nb_orders = len(order_ids)
-    avg_order = total_amount / nb_orders if nb_orders else Decimal(0)
-    context = {
-        "rows": rows,
+    return {
+        "rows": sorted(by_product.items(), key=lambda item: item[1]["amount"], reverse=True),
         "total_amount": total_amount,
         "total_cost": total_cost,
         "total_margin": total_margin,
-        "total_margin_pct": total_margin_pct,
+        "total_margin_pct": total_margin / total_amount * 100 if total_amount else Decimal(0),
         "total_qty": total_qty,
         "nb_orders": nb_orders,
-        "avg_order": avg_order,
-        "year": period["year"],
-        "quarter": period["quarter"],
-        "month": period["month"],
-        "granularity": period["granularity"],
-        "period_label": period["label"],
-        "prev_year": period["year"] - 1,
-        "next_year": period["year"] + 1,
-        "quarters": [1, 2, 3, 4],
-        "months": [(i, MONTH_ABBR[i]) for i in range(1, 13)],
-        "custom_start": period["custom_start"],
-        "custom_end": period["custom_end"],
+        "avg_order": total_amount / nb_orders if nb_orders else Decimal(0),
     }
-    return render(request, "boulange/stats.html", context)
+
+
+@staff_required
+def stats(request):
+    period = _stats_period(request)
+    lines = OrderLine.objects.filter(
+        order__validated=True,
+        order__delivery_date__date__gte=period["start"],
+        order__delivery_date__date__lt=period["end"],
+    ).select_related("product", "order", "order__customer")
+    return render(request, "boulange/stats.html", {**_aggregate_order_lines(lines), **_period_context(period)})
+
+
+CUSTOMER_SEARCH_MIN_CHARS = 2
+CUSTOMER_SEARCH_LIMIT = 15
+
+
+@staff_required
+def hx_customer_search(request):
+    """Type-ahead over the customers who have ordered, for the history page.
+
+    Only customers with at least one validated order are proposed: the others have no
+    history to show. Results are capped so a one-letter query can't render 200 rows.
+    """
+    query = request.POST.get("q", "").strip()
+    customers = Customer.objects.none()
+    searched = len(query) >= CUSTOMER_SEARCH_MIN_CHARS
+    if searched:
+        customers = (
+            Customer.objects.filter(order__validated=True)
+            .filter(Q(display_name__icontains=query) | Q(username__icontains=query) | Q(email__icontains=query))
+            .distinct()
+            .order_by("display_name")[:CUSTOMER_SEARCH_LIMIT]
+        )
+    context = {"customers": customers, "query": query, "searched": searched, "period_query": request.POST.get("period", "")}
+    return render(request, "boulange/hx/customer_search.html", context)
+
+
+@staff_required
+def customer_orders(request, to_print=False):
+    """One customer's order history over a period ("mensuellement par client").
+
+    Also the monthly recap for the professional customers: their lines are priced
+    TVA-excluded and discounted by OrderLine.get_price(), so the totals shown here are
+    the basis of what they get invoiced.
+    """
+    period = _stats_period(request)
+    customer = None
+    customer_id = _int_param(request.GET.get("customer"))
+    if customer_id is not None:
+        customer = get_object_or_404(Customer, id=customer_id)
+    orders = Order.objects.none()
+    aggregation = _aggregate_order_lines(OrderLine.objects.none())
+    if customer is not None:
+        orders = (
+            Order.objects.filter(customer=customer, validated=True)
+            .filter(delivery_date__date__gte=period["start"])
+            .filter(delivery_date__date__lt=period["end"])
+            .select_related("customer", "delivery_date__weekly_delivery__customer")
+            .prefetch_related("lines__product")
+            .order_by("-delivery_date__date")
+        )
+        aggregation = _aggregate_order_lines(OrderLine.objects.filter(order__in=orders).select_related("product", "order", "order__customer"))
+    context = {
+        **aggregation,
+        **_period_context(period),
+        "customer": customer,
+        "orders": orders,
+        # keeps the selected customer while navigating the year/quarter/month links,
+        # and the window while navigating from one customer to another
+        "picker_extra": f"&customer={customer.id}" if customer else "",
+        "period_query": _period_query(period),
+        "to_print": to_print,
+    }
+    return render(request, "boulange/customer_orders.html", context)
 
 
 @staff_required
