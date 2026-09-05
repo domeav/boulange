@@ -1,11 +1,12 @@
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.core import mail
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.test import Client, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -21,6 +22,7 @@ from .models import (
     ResetAccountToken,
     WeeklyDelivery,
 )
+from .views import _get_start_end_command_period
 
 
 class ExtendedTestCase(TestCase):
@@ -1477,3 +1479,337 @@ class EmailLoginTests(TestCase):
         self.assertFalse(self.client.login(username="dup@toto.net", password="secretpw1"))
         # ...but each account can still log in with its username
         self.assertTrue(self.client.login(username="dup1", password="secretpw1"))
+
+
+class OrderSubmissionSecurityTests(ExtendedTestCase):
+    """POST /orders/ is attacker-controlled: everything in it is re-checked server-side."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.client = Client()
+        self.client.force_login(self.guy)
+        self.private_delivery = WeeklyDelivery.objects.create(customer=self.context["store"], day_of_week=4, public_delivery_point=False, online_payment=False)
+        self.private_delivery.generate_delivery_dates()
+        self.weekly_delivery = self.context["monday_delivery"]
+        self.weekly_delivery.public_delivery_point = True
+        self.weekly_delivery.save()
+        self.delivery_date = self.weekly_delivery.deliverydate_set.filter(date__gte=date.today() + timedelta(days=10)).first()
+        self.product = Product.objects.filter(active=True, available_mondays=True).first()
+
+    def _post_order(self, delivery_date, product, quantity=1, order_id=""):
+        return self.client.post(
+            "/orders/",
+            {"order_id": order_id, "delivery_date": delivery_date.id, "notes": "", "product_id": [product.id], "product_qty": [str(quantity)]},
+        )
+
+    # --- delivery date must be one the customer may actually order on ---
+
+    def test_private_delivery_point_is_refused(self):
+        delivery_date = self.private_delivery.deliverydate_set.filter(date__gte=date.today() + timedelta(days=10)).first()
+        self.assertEqual(self._post_order(delivery_date, self.product).status_code, 403)
+        self.assertFalse(Order.objects.filter(customer=self.guy).exists())
+
+    def test_private_delivery_point_is_allowed_once_granted(self):
+        self.private_delivery.allowed_customers.add(self.guy)
+        delivery_date = self.private_delivery.deliverydate_set.filter(date__gte=date.today() + timedelta(days=10)).first()
+        product = Product.objects.filter(active=True, available_fridays=True).first()
+        self.assertEqual(self._post_order(delivery_date, product).status_code, 302)
+        self.assertTrue(Order.objects.filter(customer=self.guy, delivery_date=delivery_date).exists())
+
+    def test_past_delivery_date_is_refused(self):
+        past = DeliveryDate.objects.create(weekly_delivery=self.weekly_delivery, date=date.today() - timedelta(days=30))
+        self.assertEqual(self._post_order(past, self.product).status_code, 403)
+        self.assertFalse(Order.objects.filter(delivery_date=past).exists())
+
+    def test_date_before_the_cutoff_is_refused(self):
+        start, _end = _get_start_end_command_period()
+        too_soon = DeliveryDate.objects.create(weekly_delivery=self.weekly_delivery, date=start - timedelta(days=1))
+        self.assertEqual(self._post_order(too_soon, self.product).status_code, 403)
+        self.assertFalse(Order.objects.filter(delivery_date=too_soon).exists())
+
+    def test_date_beyond_the_order_window_is_refused(self):
+        _start, end = _get_start_end_command_period()
+        too_far = DeliveryDate.objects.create(weekly_delivery=self.weekly_delivery, date=end + timedelta(days=7))
+        self.assertEqual(self._post_order(too_far, self.product).status_code, 403)
+        self.assertFalse(Order.objects.filter(delivery_date=too_far).exists())
+
+    def test_cancelled_delivery_date_is_refused_and_not_offered(self):
+        self.delivery_date.active = False
+        self.delivery_date.save()
+        self.assertEqual(self._post_order(self.delivery_date, self.product).status_code, 403)
+        response = self.client.post(
+            "/hx/get_dates_for_weekly_delivery/",
+            {"weekly_delivery_id": self.weekly_delivery.id, "order_id": "", "event_type": "load"},
+        )
+        self.assertNotContains(response, f'value="{self.delivery_date.id}"')
+
+    # --- products must be on sale on that delivery ---
+
+    def test_product_unavailable_that_weekday_is_refused(self):
+        product = Product.objects.filter(active=True, available_mondays=True).exclude(id=self.product.id).first()
+        product.available_mondays = False
+        product.save()
+        self.assertEqual(self._post_order(self.delivery_date, product).status_code, 403)
+
+    def test_inactive_product_is_refused(self):
+        product = Product.objects.filter(active=True, available_mondays=True).exclude(id=self.product.id).first()
+        product.active = False
+        product.save()
+        self.assertEqual(self._post_order(self.delivery_date, product).status_code, 403)
+
+    # --- quantities may never be negative ---
+
+    def test_negative_quantity_is_dropped(self):
+        self.assertEqual(self._post_order(self.delivery_date, self.product, quantity=-5).status_code, 302)
+        self.assertFalse(OrderLine.objects.filter(quantity__lt=1).exists())
+        self.assertFalse(Order.objects.filter(customer=self.guy).exists())
+
+    def test_negative_line_cannot_lower_the_order_total(self):
+        other = Product.objects.filter(active=True, available_mondays=True).exclude(id=self.product.id).first()
+        self.client.post(
+            "/orders/",
+            {"order_id": "", "delivery_date": self.delivery_date.id, "notes": "", "product_id": [self.product.id, other.id], "product_qty": ["10", "-9"]},
+        )
+        order = Order.objects.get(customer=self.guy)
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(order.lines.first().quantity, 10)
+        self.assertGreater(order.total_price, 0)
+
+    # --- the legitimate flows still work ---
+
+    def test_valid_order_is_created(self):
+        self.assertEqual(self._post_order(self.delivery_date, self.product, quantity=3).status_code, 302)
+        order = Order.objects.get(customer=self.guy)
+        self.assertEqual(order.lines.first().quantity, 3)
+        self.assertFalse(order.validated)
+
+    def test_valid_edit_updates_date_notes_and_lines(self):
+        self._post_order(self.delivery_date, self.product, quantity=3)
+        order = Order.objects.get(customer=self.guy)
+        other_date = self.weekly_delivery.deliverydate_set.filter(date__gt=self.delivery_date.date).first()
+        response = self.client.post(
+            "/orders/",
+            {"order_id": str(order.id), "delivery_date": other_date.id, "notes": "modifiée", "product_id": [self.product.id], "product_qty": ["7"]},
+        )
+        self.assertEqual(response.status_code, 302)
+        order.refresh_from_db()
+        self.assertEqual(order.notes, "modifiée")
+        self.assertEqual(order.delivery_date, other_date)
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(order.lines.first().quantity, 7)
+
+    def test_editing_another_customers_order_is_refused(self):
+        other = Order.objects.create(customer=self.context["store"], delivery_date=self.delivery_date, validated=False)
+        response = self.client.post(
+            "/orders/",
+            {"order_id": str(other.id), "delivery_date": self.delivery_date.id, "notes": "", "product_id": [self.product.id], "product_qty": ["1"]},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Order.objects.filter(id=other.id).exists())
+
+    # --- an order without a single line is not an order ---
+
+    def test_emptying_an_order_deletes_it(self):
+        self._post_order(self.delivery_date, self.product, quantity=3)
+        order = Order.objects.get(customer=self.guy)
+        response = self.client.post(
+            "/orders/",
+            {"order_id": str(order.id), "delivery_date": self.delivery_date.id, "notes": "x", "product_id": [self.product.id], "product_qty": [""]},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Order.objects.filter(id=order.id).exists())
+        self.assertFalse(OrderLine.objects.filter(order_id=order.id).exists())
+
+
+class CancelCheckoutTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.client = Client()
+        self.client.force_login(self.guy)
+        self.checkout = Checkout.objects.create(remote_id="remote-x", customer=self.guy)
+        delivery_date = self.context["monday_delivery"].deliverydate_set.filter(date__gte=date.today() + timedelta(days=10)).first()
+        self.order = Order.objects.create(customer=self.guy, delivery_date=delivery_date, validated=False, checkout=self.checkout)
+
+    def test_cancel_accepted_by_sumup_removes_the_checkout(self):
+        with patch("boulange.views.requests.delete", return_value=Mock(ok=True)) as remote:
+            response = self.client.post("/cancel_checkout/", {"checkout_id": self.checkout.id})
+        remote.assert_called_once()
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Checkout.objects.filter(id=self.checkout.id).exists())
+        self.order.refresh_from_db()
+        self.assertIsNone(self.order.checkout)
+
+    def test_cancel_refused_by_sumup_keeps_the_checkout(self):
+        """SumUp refuses to delete an already-paid checkout: the payment must not be lost."""
+        with patch("boulange.views.requests.delete", return_value=Mock(ok=False, status_code=409)):
+            response = self.client.post("/cancel_checkout/", {"checkout_id": self.checkout.id})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"/payment/{self.checkout.id}/")
+        self.assertTrue(Checkout.objects.filter(id=self.checkout.id).exists())
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.checkout, self.checkout)
+
+
+class OrdersPagePerformanceTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+    NB_ORDERS = 40
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.client = Client()
+        self.client.force_login(self.guy)
+        wd = self.context["monday_delivery"]
+        wd.public_delivery_point = True
+        wd.save()
+        products = list(Product.objects.filter(active=True, available_mondays=True)[:5])
+        for dd in list(wd.deliverydate_set.all()[: self.NB_ORDERS]):
+            order = Order.objects.create(customer=self.guy, delivery_date=dd, validated=True)
+            for p in products:
+                OrderLine.objects.create(order=order, product=p, quantity=2)
+
+    def test_query_count_is_flat(self):
+        """The page must cost the same whether the customer has 40 past orders or 400."""
+        with CaptureQueriesContext(connection) as few:
+            self.client.get("/orders/")
+        wd = self.context["monday_delivery"]
+        products = list(Product.objects.filter(active=True, available_mondays=True)[:5])
+        dates = list(wd.deliverydate_set.all())
+        for i in range(360):
+            order = Order.objects.create(customer=self.guy, delivery_date=dates[i % len(dates)], validated=True)
+            for p in products:
+                OrderLine.objects.create(order=order, product=p, quantity=2)
+        self.assertGreater(Order.objects.filter(customer=self.guy).count(), 300)
+        with CaptureQueriesContext(connection) as many:
+            self.client.get("/orders/")
+        print(f"  /orders/ queries: {len(few.captured_queries)} with 40 orders, {len(many.captured_queries)} with {Order.objects.filter(customer=self.guy).count()}")
+        self.assertEqual(len(few.captured_queries), len(many.captured_queries))
+        self.assertLess(len(many.captured_queries), 15)
+
+    def test_page_size_and_nav(self):
+        r = self.client.get("/orders/")
+        self.assertEqual(len(r.context["validated_orders"]), 12)
+        self.assertEqual(r.context["validated_orders"].paginator.num_pages, 4)
+        self.assertContains(r, "Plus anciennes")
+        r2 = self.client.get("/orders/?page=4")
+        self.assertEqual(len(r2.context["validated_orders"]), self.NB_ORDERS - 36)
+        self.assertContains(r2, "Plus récentes")
+
+    def test_bad_page_param_does_not_500(self):
+        self.assertEqual(self.client.get("/orders/?page=abc").status_code, 200)
+        self.assertEqual(self.client.get("/orders/?page=99999").status_code, 200)
+
+
+class HxEndpointAuthorizationTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.client = Client()
+        self.client.force_login(self.guy)
+        self.private = WeeklyDelivery.objects.create(customer=self.context["store"], day_of_week=4, public_delivery_point=False)
+        self.private.generate_delivery_dates()
+
+    def test_private_dates_are_not_leaked(self):
+        r = self.client.post("/hx/get_dates_for_weekly_delivery/", {"weekly_delivery_id": self.private.id, "order_id": "", "event_type": "load"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_private_products_are_not_leaked(self):
+        self.assertEqual(self.client.post("/hx/order_line/", {"weekly_delivery_id": self.private.id}).status_code, 404)
+
+    def test_granted_customer_still_gets_them(self):
+        self.private.allowed_customers.add(self.guy)
+        r = self.client.post("/hx/get_dates_for_weekly_delivery/", {"weekly_delivery_id": self.private.id, "order_id": "", "event_type": "load"})
+        self.assertEqual(r.status_code, 200)
+        self.assertGreater(r.content.count(b"<option"), 0)
+        self.assertEqual(self.client.post("/hx/order_line/", {"weekly_delivery_id": self.private.id}).status_code, 200)
+
+    def test_public_delivery_still_works(self):
+        wd = self.context["monday_delivery"]
+        wd.public_delivery_point = True
+        wd.save()
+        r = self.client.post("/hx/get_dates_for_weekly_delivery/", {"weekly_delivery_id": wd.id, "order_id": "", "event_type": "load"})
+        self.assertEqual(r.status_code, 200)
+        self.assertGreater(r.content.count(b"<option"), 0)
+
+    def test_another_customers_order_is_not_readable(self):
+        wd = self.context["monday_delivery"]
+        wd.public_delivery_point = True
+        wd.save()
+        dd = wd.deliverydate_set.first()
+        other = Order.objects.create(customer=self.context["store"], delivery_date=dd)
+        r = self.client.post("/hx/get_dates_for_weekly_delivery/", {"weekly_delivery_id": wd.id, "order_id": str(other.id), "event_type": "load"})
+        self.assertEqual(r.status_code, 404)
+
+
+class CheckoutReconciliationTests(ExtendedTestCase):
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.guy = self.context["guy"]
+        self.checkout = Checkout.objects.create(remote_id="remote-x", customer=self.guy)
+        dd = self.context["monday_delivery"].deliverydate_set.filter(date__gte=date.today()).first()
+        self.order = Order.objects.create(customer=self.guy, delivery_date=dd, validated=False, checkout=self.checkout)
+        self.staff = Client()
+        self.staff.force_login(self.context["admin"])
+
+    def _sumup(self, status):
+        return patch("boulange.views.requests.get", return_value=Mock(raise_for_status=Mock(), json=Mock(return_value={"status": status})))
+
+    def test_paid_but_abandoned_checkout_is_picked_up_by_the_baker_screen(self):
+        with self._sumup("PAID"):
+            self.staff.get("/actions/")
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.validated)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.guy.email, mail.outbox[0].to)
+
+    def test_unpaid_checkout_is_left_alone(self):
+        with self._sumup("PENDING"):
+            self.staff.get("/actions/")
+        self.order.refresh_from_db()
+        self.assertFalse(self.order.validated)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_reconciliation_is_not_repeated(self):
+        with self._sumup("PAID"):
+            self.staff.get("/actions/")
+            self.staff.get("/actions/")
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_sumup_being_down_does_not_break_the_baker_screen(self):
+        import requests as requests_lib
+
+        with patch("boulange.views.requests.get", side_effect=requests_lib.ConnectionError("down")):
+            response = self.staff.get("/actions/")
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertFalse(self.order.validated)
+
+    def test_old_checkouts_are_not_reconciled(self):
+        stale = DeliveryDate.objects.create(weekly_delivery=self.context["wednesday_delivery"], date=date.today() - timedelta(days=60))
+        self.order.delivery_date = stale
+        self.order.save()
+        with self._sumup("PAID") as remote:
+            self.staff.get("/actions/")
+        remote.assert_not_called()
+
+    def test_finalize_reload_does_not_resend_the_email(self):
+        customer = Client()
+        customer.force_login(self.guy)
+        with self._sumup("PAID"):
+            r1 = customer.get(f"/finalize/{self.checkout.id}/")
+            r2 = customer.get(f"/finalize/{self.checkout.id}/")
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r2.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.validated)
+        self.assertEqual(len(mail.outbox), 1)

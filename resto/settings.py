@@ -143,6 +143,16 @@ REST_FRAMEWORK = {
 LOGIN_REDIRECT_URL = "/orders"
 LOGOUT_REDIRECT_URL = "/"
 
+# SumUp (online payment). The endpoints are public; the credentials are deliberately
+# empty here and must be provided by local_settings.py on a machine that takes real
+# payments. Declaring them means the project still imports, and the test suite still
+# runs, on a fresh clone that has no local_settings.py at all.
+SUMUP_CHECKOUTS_URL = "https://api.sumup.com/v0.1/checkouts"
+SUMUP_RECEIPTS_URL = "https://api.sumup.com/v1.1/receipts"
+SUMUP_API_KEY = ""
+SUMUP_PUBLIC_API_KEY = ""
+SUMUP_MERCHANT_CODE = ""
+
 try:
     from resto.local_settings import *
 except ModuleNotFoundError:

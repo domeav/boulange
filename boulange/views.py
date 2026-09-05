@@ -4,9 +4,11 @@ from decimal import Decimal
 from functools import wraps
 
 import requests
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
@@ -17,8 +19,6 @@ from django_filters import rest_framework as filters
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
-from resto.settings import SUMUP_API_KEY, SUMUP_CHECKOUTS_URL, SUMUP_MERCHANT_CODE
 
 from .models import (
     ORDER_WINDOW_DAYS,
@@ -213,24 +213,74 @@ def _get_start_end_command_period():
     return available_timespan_start, available_timespan_end
 
 
+def _available_weekly_deliveries(user):
+    """The weekly deliveries a customer is allowed to order from.
+
+    Pros order on their own delivery points; everybody else gets the public ones
+    plus the private ones they have explicitly been granted.
+    """
+    if user.is_professional and WeeklyDelivery.objects.filter(customer=user).exists():
+        return WeeklyDelivery.objects.filter(customer=user).select_related("customer")
+    return WeeklyDelivery.objects.filter(active=True).filter(Q(public_delivery_point=True) | Q(id__in=user.private_weekly_deliveries.all())).select_related("customer")
+
+
+def _validate_order_submission(user, delivery_date_id, product_ids, product_qtys):
+    """Re-check a submitted order server-side and return (delivery_date, lines).
+
+    The form only ever offers dates and products the customer may pick, but the POST
+    is attacker-controlled, so nothing from it is trusted: the delivery date is
+    resolved through the customer's own allowed deliveries and the open ordering
+    window, and every product is looked up in what that delivery actually sells that
+    day. Anything off-limits is a 403. Non-positive quantities are dropped rather
+    than refused, so a blank or 0 field simply means "no line" (and a negative one
+    can never lower the cart total sent to SumUp).
+    """
+    available_timespan_start, available_timespan_end = _get_start_end_command_period()
+    delivery_date = (
+        DeliveryDate.objects.filter(id=delivery_date_id, active=True)
+        .filter(date__gte=available_timespan_start)
+        .filter(date__lte=available_timespan_end)
+        .filter(weekly_delivery__in=_available_weekly_deliveries(user))
+        .select_related("weekly_delivery")
+        .first()
+    )
+    if delivery_date is None:
+        raise PermissionDenied
+    available_products = {product.id: product for product in delivery_date.weekly_delivery.get_available_products()}
+    lines = []
+    for product_id, qty in zip(product_ids, product_qtys):
+        if not qty:
+            continue
+        try:
+            product = available_products[int(product_id)]
+            quantity = int(qty)
+        except (KeyError, TypeError, ValueError):
+            raise PermissionDenied
+        if quantity > 0:
+            lines.append((product, quantity))
+    return delivery_date, lines
+
+
 @login_required
 def hx_get_dates_for_weekly_delivery(request):
-    weekly_delivery = get_object_or_404(WeeklyDelivery, id=request.POST["weekly_delivery_id"])
+    # Resolved through the customer's own deliveries: an arbitrary id would otherwise
+    # list the dates of a private delivery point they have no access to.
+    weekly_delivery = get_object_or_404(_available_weekly_deliveries(request.user), id=request.POST["weekly_delivery_id"])
     # Self-healing in lieu of a cron job: make sure the bookable window is filled
     # before we list the selectable dates for this delivery.
     weekly_delivery.ensure_delivery_dates()
     available_timespan_start, available_timespan_end = _get_start_end_command_period()
-    selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
+    selectable_delivery_dates = weekly_delivery.deliverydate_set.filter(active=True).filter(date__gte=available_timespan_start).filter(date__lte=available_timespan_end).order_by("date")
     order = None
     if request.POST["order_id"]:
-        order = get_object_or_404(Order, id=request.POST["order_id"])
+        order = get_object_or_404(Order, id=request.POST["order_id"], customer=request.user)
     context = {"selectable_delivery_dates": selectable_delivery_dates, "strip_lines": request.POST["event_type"] == "change", "order": order}
     return render(request, "boulange/hx/available_dates.html", context=context)
 
 
 @login_required
 def hx_order_line(request):
-    weekly_delivery = get_object_or_404(WeeklyDelivery, id=request.POST["weekly_delivery_id"])
+    weekly_delivery = get_object_or_404(_available_weekly_deliveries(request.user), id=request.POST["weekly_delivery_id"])
     context = {"products": weekly_delivery.get_available_products()}
     return render(request, "boulange/hx/order_line.html", context=context)
 
@@ -276,13 +326,13 @@ def validate_orders(request, payment=False):
     checkout = Checkout(remote_id="to be defined", customer=request.user)
     checkout.save()
     response = requests.post(
-        SUMUP_CHECKOUTS_URL,
-        headers={"Authorization": f"Bearer {SUMUP_API_KEY}"},
+        settings.SUMUP_CHECKOUTS_URL,
+        headers={"Authorization": f"Bearer {settings.SUMUP_API_KEY}"},
         json={
             "checkout_reference": checkout.id,
             "amount": float(checkout_price),
             "currency": "EUR",
-            "merchant_code": SUMUP_MERCHANT_CODE,
+            "merchant_code": settings.SUMUP_MERCHANT_CODE,
             "description": f"Paiement n°{checkout.id} sur boulange.lafermebioduresto.bzh",
         },
     )
@@ -300,14 +350,63 @@ def validate_cart(request):
     return validate_orders(request, payment=True)
 
 
+def _sumup_checkout_data(checkout):
+    response = requests.get(f"{settings.SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {settings.SUMUP_API_KEY}"})
+    response.raise_for_status()
+    return response.json()
+
+
+def _mark_checkout_paid(checkout, request):
+    """Validate the orders of a paid checkout and notify the customer, exactly once.
+
+    Returns whether this call is the one that validated them, so a reload of finalize()
+    (or a later reconciliation pass) doesn't send the confirmation email a second time.
+    """
+    pending_orders = checkout.order_set.filter(validated=False)
+    if not pending_orders.exists():
+        return False
+    pending_orders.update(validated=True)
+    send_mail(
+        "Boulangerie de la Ferme du Resto : commande validée",
+        f"""Bonjour,\n
+Votre commande a été validée. Retrouvez le détail de vos paiements ici : {request.build_absolute_uri(reverse('boulange:checkouts'))}
+Merci et à bientôt !\n\n
+            """,
+        "boulangerie@lafermebioduresto.bzh",
+        [checkout.customer.email],
+        fail_silently=False,
+    )
+    return True
+
+
+def reconcile_pending_checkouts(request, horizon_days=7):
+    """Pick up payments that the customer's browser never confirmed.
+
+    Confirmation normally happens because SumUp's widget redirects to finalize(), so a
+    customer who pays and then closes the tab leaves a paid checkout whose orders stay
+    unvalidated and invisible to the bakery. Rather than a cron job (same reasoning as
+    ensure_delivery_dates) the baker's own daily screen re-asks SumUp about the few
+    checkouts still pending on a recent or upcoming delivery. Reconciliation must never
+    take that page down, so errors are swallowed per checkout.
+    """
+    pending_checkouts = Checkout.objects.filter(order__validated=False, order__delivery_date__date__gte=date.today() - timedelta(days=horizon_days)).distinct()
+    reconciled = []
+    for checkout in pending_checkouts:
+        try:
+            paid = _sumup_checkout_data(checkout)["status"] == "PAID"
+        except (requests.RequestException, ValueError, KeyError):
+            continue
+        if paid and _mark_checkout_paid(checkout, request):
+            reconciled.append(checkout)
+    return reconciled
+
+
 @login_required
 def payment(request, checkout_id):
     checkout = get_object_or_404(Checkout, id=checkout_id)
     if checkout.customer != request.user:
         raise PermissionDenied
-    response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
-    response.raise_for_status()
-    if response.json()["status"] == "PAID":
+    if _sumup_checkout_data(checkout)["status"] == "PAID":
         return finalize(request, checkout_id)
     return render(request, "boulange/payment.html", context={"checkout": checkout, "email": request.user.email})
 
@@ -317,32 +416,17 @@ def finalize(request, checkout_id):
     checkout = get_object_or_404(Checkout, id=checkout_id)
     if checkout.customer != request.user:
         raise PermissionDenied
-    response = requests.get(f"{SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
-    response.raise_for_status()
-    checkout_data = response.json()
-    # response = requests.get(f"{SUMUP_RECEIPTS_URL}/{checkout_data['transaction_code']}",
-    #                         params={"mid": SUMUP_MERCHANT_CODE},
-    #                         headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
+    checkout_data = _sumup_checkout_data(checkout)
+    # response = requests.get(f"{settings.SUMUP_RECEIPTS_URL}/{checkout_data['transaction_code']}",
+    #                         params={"mid": settings.SUMUP_MERCHANT_CODE},
+    #                         headers={"Authorization": f"Bearer {settings.SUMUP_API_KEY}"})
     # response.raise_for_status()
     # receipt_data = response.json()
     # print(receipt_data)
-    if checkout_data["status"] == "PAID":
-        for order in checkout.order_set.all():
-            order.validated = True
-            order.save()
-        send_mail(
-            "Boulangerie de la Ferme du Resto : commande validée",
-            f"""Bonjour,\n
-Votre commande a été validée. Retrouvez le détail de vos paiements ici : {request.build_absolute_uri(reverse('boulange:checkouts'))}
-Merci et à bientôt !\n\n
-            """,
-            "boulangerie@lafermebioduresto.bzh",
-            [request.user.email],
-            fail_silently=False,
-        )
-
-        return render(request, "boulange/thanks.html")
-    return redirect("boulange:orders")
+    if checkout_data["status"] != "PAID":
+        return redirect("boulange:orders")
+    _mark_checkout_paid(checkout, request)
+    return render(request, "boulange/thanks.html")
 
 
 @login_required
@@ -350,10 +434,15 @@ def cancel_checkout(request):
     checkout = get_object_or_404(Checkout, id=request.POST["checkout_id"])
     if checkout.customer != request.user:
         raise PermissionDenied
-    remote_id = checkout.remote_id
+    # Ask SumUp first and only forget the checkout once it has actually been
+    # cancelled there. Deleting locally up front would lose the payment record of an
+    # already-paid checkout while silently returning its orders to the cart.
+    response = requests.delete(f"{settings.SUMUP_CHECKOUTS_URL}/{checkout.remote_id}", headers={"Authorization": f"Bearer {settings.SUMUP_API_KEY}"})
+    if not response.ok:
+        # Typically a checkout that has already been paid: send the customer back to
+        # the payment page, which re-reads the status and finalizes it.
+        return redirect("boulange:payment", checkout_id=checkout.id)
     checkout.delete()
-    response = requests.delete(f"{SUMUP_CHECKOUTS_URL}/{remote_id}", headers={"Authorization": f"Bearer {SUMUP_API_KEY}"})
-    response.raise_for_status()
     return redirect("boulange:orders")
 
 
@@ -363,29 +452,39 @@ def checkouts(request):
     return render(request, "boulange/checkouts.html", context={"checkouts": checkouts})
 
 
+VALIDATED_ORDERS_PER_PAGE = 12
+
+
 @login_required
 @transaction.atomic
 def orders(request, order_id=None, edit=False, duplicate=False):
     if request.POST:
-        if request.POST["order_id"]:
+        order = None
+        if request.POST.get("order_id"):
             # editing existing order
             order = get_object_or_404(Order, id=int(request.POST["order_id"]))
             if order.validated or order.customer != request.user or order.checkout:
                 raise PermissionDenied
-            order.delivery_date_id = int(request.POST["delivery_date"])
-            order.notes = request.POST["notes"]
-            for line in order.lines.all():
-                line.delete()
-        else:
-            order = Order(customer=request.user, delivery_date_id=int(request.POST["delivery_date"]), notes=request.POST["notes"], validated=False)
-        lines = []
-        for product_id, qty in zip(request.POST.getlist("product_id"), request.POST.getlist("product_qty")):
-            if qty:
-                lines.append(OrderLine(order=order, product_id=product_id, quantity=int(qty)))
-        if lines:
-            order.save()
-            for line in lines:
-                line.save()
+        delivery_date, lines = _validate_order_submission(
+            request.user,
+            request.POST.get("delivery_date"),
+            request.POST.getlist("product_id"),
+            request.POST.getlist("product_qty"),
+        )
+        if not lines:
+            # An order without a single line is not an order: editing everything down
+            # to zero deletes it instead of leaving an empty 0 € order in the cart.
+            if order is not None:
+                order.delete()
+            return redirect("boulange:orders")
+        if order is None:
+            order = Order(customer=request.user, validated=False)
+        order.delivery_date = delivery_date
+        order.notes = request.POST.get("notes", "")
+        order.save()
+        order.lines.all().delete()
+        for product, quantity in lines:
+            OrderLine.objects.create(order=order, product=product, quantity=quantity)
         return redirect("boulange:orders")
     order = None
     weekly_delivery = None
@@ -400,25 +499,28 @@ def orders(request, order_id=None, edit=False, duplicate=False):
             order_id = order.id
         if duplicate:
             order_id = False
-    if request.user.is_professional and WeeklyDelivery.objects.filter(customer=request.user):
-        available_weekly_deliveries = WeeklyDelivery.objects.filter(customer=request.user)
-    else:
-        available_weekly_deliveries = WeeklyDelivery.objects.filter(active=True).filter(Q(public_delivery_point=True) | Q(id__in=request.user.private_weekly_deliveries.all()))
-    if weekly_delivery is None and request.user.order_set.exists():
-        weekly_delivery = request.user.order_set.order_by("-id").first().delivery_date.weekly_delivery
+    available_weekly_deliveries = _available_weekly_deliveries(request.user)
+    if weekly_delivery is None:
+        last_order = request.user.order_set.select_related("delivery_date__weekly_delivery").order_by("-id").first()
+        if last_order is not None:
+            weekly_delivery = last_order.delivery_date.weekly_delivery
     products = None
     if order:
         products = weekly_delivery.get_available_products()
-    validated_orders, cart, to_validate = [], [], []
-    for o in Order.objects.filter(customer=request.user).order_by("-id"):
-        if o.validated:
-            validated_orders.append(o)
-        elif o.checkout:
-            return redirect("boulange:payment", checkout_id=o.checkout.id)
-        elif o.delivery_date.weekly_delivery.online_payment:
+    # Every card renders its delivery point, its lines and its total, so fetch those
+    # up front rather than letting the template emit a query per order and per line.
+    customer_orders = Order.objects.filter(customer=request.user).select_related("customer", "delivery_date__weekly_delivery__customer").prefetch_related("lines__product").order_by("-id")
+    cart, to_validate = [], []
+    for o in customer_orders.filter(validated=False):
+        if o.checkout_id:
+            return redirect("boulange:payment", checkout_id=o.checkout_id)
+        if o.delivery_date.weekly_delivery.online_payment:
             cart.append(o)
         else:
             to_validate.append(o)
+    # Validated orders are a history that only ever grows, so page through them instead
+    # of rendering every order the customer has ever placed on every visit.
+    validated_orders = Paginator(customer_orders.filter(validated=True), VALIDATED_ORDERS_PER_PAGE).get_page(request.GET.get("page"))
 
     context = {
         "validated_orders": validated_orders,
@@ -445,6 +547,7 @@ def actions(request, year=None, month=None, day=None, to_print=False, section=No
         target_date = date.today()
     else:
         target_date = date(year, month, day)
+    reconcile_pending_checkouts(request)
     date_nav = []
     for i in range(-5, 6):
         date_nav.append(target_date + timedelta(days=i))

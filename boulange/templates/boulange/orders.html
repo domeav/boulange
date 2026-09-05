@@ -137,5 +137,16 @@
     </article>
   {% endfor %}
   </div>
+  {% if validated_orders.paginator.num_pages > 1 %}
+  <nav>
+    {% if validated_orders.has_previous %}
+    <a class="button small" href="?page={{ validated_orders.previous_page_number }}">← Plus récentes</a>
+    {% endif %}
+    Page {{ validated_orders.number }} / {{ validated_orders.paginator.num_pages }}
+    {% if validated_orders.has_next %}
+    <a class="button small" href="?page={{ validated_orders.next_page_number }}">Plus anciennes →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
 </section>
 {% endblock %}
