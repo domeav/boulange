@@ -1,8 +1,10 @@
+import re
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+from django.contrib.auth import get_user as auth_get_user
 from django.core import mail
 from django.db import IntegrityError, connection, transaction
 from django.test import Client, TestCase
@@ -20,6 +22,7 @@ from .models import (
     OrderLine,
     Product,
     ResetAccountToken,
+    SignupRequest,
     WeeklyDelivery,
 )
 from .views import _get_start_end_command_period
@@ -989,11 +992,14 @@ class PasswordResetTests(ExtendedTestCase):
         self.context = populate()
         self.client = Client()
 
-    def test_account_init_unknown_email_does_not_leak_and_sends_nothing(self):
+    def test_account_init_unknown_email_offers_a_signup(self):
         response = self.client.post("/account_init", {"email": "nobody@example.com"})
         self.assertEqual(response.status_code, 200)  # same page as a known address, no 404
-        self.assertEqual(len(mail.outbox), 0)
-        self.assertEqual(ResetAccountToken.objects.count(), 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(SignupRequest.objects.count(), 1)
+        self.assertEqual(ResetAccountToken.objects.count(), 0)  # no customer to reset
+        # nothing is created before the link is followed
+        self.assertFalse(Customer.objects.filter(email="nobody@example.com").exists())
 
     def test_account_init_missing_email_does_not_500(self):
         response = self.client.post("/account_init", {})
@@ -2057,3 +2063,172 @@ class CustomerSearchTests(ExtendedTestCase):
     def test_period_is_optional(self):
         r = self._search("client")
         self.assertContains(r, f"/customer_orders/?customer={self.guy.id}")
+
+
+class SelfServiceSignupTests(ExtendedTestCase):
+    """Anyone can open an account from the login page, email address confirmed first."""
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+
+    def _signup(self, email="newcomer@example.com"):
+        self.client.post("/account_init", {"email": email})
+        return SignupRequest.objects.get(email=email)
+
+    def _complete(self, request_token, **overrides):
+        payload = {"display_name": "Nouveau Client", "address": "12 rue du Pain", "newpw": "un-tres-bon-mdp"}
+        payload.update(overrides)
+        return self.client.post(f"/signup/{request_token.token}", payload)
+
+    # --- the response never says whether an address is known ---
+
+    def test_known_and_unknown_addresses_render_the_same_page(self):
+        def body(response):
+            # the per-request CSRF token is the only legitimate difference
+            return re.sub(rb"[A-Za-z0-9]{32,}", b"CSRF", response.content)
+
+        unknown = self.client.post("/account_init", {"email": "nobody@example.com"})
+        known = self.client.post("/account_init", {"email": self.context["guy"].email})
+        self.assertEqual(unknown.status_code, known.status_code)
+        self.assertEqual(body(unknown), body(known))
+
+    # --- brand new address ---
+
+    def test_signup_creates_the_account_and_signs_in(self):
+        response = self._complete(self._signup())
+        self.assertRedirects(response, "/orders/")
+        customer = Customer.objects.get(email="newcomer@example.com")
+        self.assertEqual(customer.display_name, "Nouveau Client")
+        self.assertEqual(customer.address, "12 rue du Pain")
+        self.assertTrue(customer.check_password("un-tres-bon-mdp"))
+        self.assertTrue(customer.has_web_access())
+        self.assertFalse(customer.is_professional)
+        self.assertFalse(customer.is_staff)
+        self.assertIn("Compte créé en ligne", customer.notes)
+        # signed in, and the token is consumed
+        self.assertEqual(self.client.get("/orders/").status_code, 200)
+        self.assertEqual(SignupRequest.objects.count(), 0)
+
+    def test_signup_link_is_single_use(self):
+        signup_request = self._signup()
+        self._complete(signup_request)
+        self.client.logout()
+        self.assertEqual(self.client.post(f"/signup/{signup_request.token}", {}).status_code, 404)
+
+    def test_expired_signup_link_creates_nothing(self):
+        signup_request = self._signup()
+        signup_request.created = timezone.now() - timedelta(days=2)
+        signup_request.save()
+        response = self._complete(signup_request)
+        self.assertContains(response, "n'est plus valide")
+        self.assertFalse(Customer.objects.filter(email="newcomer@example.com").exists())
+
+    def test_unknown_signup_token_is_404_not_500(self):
+        self.assertEqual(self.client.get("/signup/not-a-uuid").status_code, 404)
+        self.assertEqual(self.client.get("/signup/11111111-1111-1111-1111-111111111111").status_code, 404)
+
+    def test_signup_is_throttled(self):
+        for _ in range(3):
+            self.client.post("/account_init", {"email": "newcomer@example.com"})
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(SignupRequest.objects.count(), 1)
+
+    # --- validation on the confirmation form ---
+
+    def test_weak_password_is_refused_by_the_configured_validators(self):
+        signup_request = self._signup()
+        response = self._complete(signup_request, newpw="12345678")
+        self.assertContains(response, "mot de passe")
+        self.assertFalse(Customer.objects.filter(email="newcomer@example.com").exists())
+        self.assertTrue(SignupRequest.objects.filter(token=signup_request.token).exists())
+
+    def test_short_password_is_refused(self):
+        self._complete(self._signup(), newpw="court")
+        self.assertFalse(Customer.objects.filter(email="newcomer@example.com").exists())
+
+    def test_missing_display_name_is_refused(self):
+        response = self._complete(self._signup(), display_name="   ")
+        self.assertContains(response, "indiquer le nom qui identifiera")
+        self.assertFalse(Customer.objects.filter(email="newcomer@example.com").exists())
+
+    def test_display_name_already_taken_is_refused(self):
+        response = self._complete(self._signup(), display_name=self.context["guy"].display_name.upper())
+        self.assertContains(response, "déjà utilisé")
+        self.assertFalse(Customer.objects.filter(email="newcomer@example.com").exists())
+
+    def test_address_is_optional(self):
+        self._complete(self._signup(), address="")
+        self.assertIsNone(Customer.objects.get(email="newcomer@example.com").address)
+
+    def test_account_claimed_meanwhile_is_refused(self):
+        signup_request = self._signup()
+        Customer.objects.create(username="squatter", display_name="Squatter", email="NEWCOMER@example.com")
+        response = self._complete(signup_request)
+        self.assertContains(response, "existe déjà pour cette adresse")
+        self.assertEqual(Customer.objects.filter(email__iexact="newcomer@example.com").count(), 1)
+
+
+class ExistingEmailSignupTests(ExtendedTestCase):
+    """An address the bakery already has on file must attach to that customer."""
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+        # a customer created by the bakery: an email, but no password ever set
+        self.known = Customer.objects.create(
+            username="ancien",
+            display_name="Ancien Client",
+            email="Ancien@Example.com",
+            is_professional=True,
+            pro_discount_percentage=7.0,
+        )
+        self.order = Order.objects.create(customer=self.known, delivery_date=DeliveryDate.objects.first(), validated=True)
+
+    def test_admin_created_customer_has_no_web_access(self):
+        self.assertEqual(self.known.password, "")
+        # Django considers the empty password "usable", which is why has_web_access exists
+        self.assertTrue(self.known.has_usable_password())
+        self.assertFalse(self.known.has_web_access())
+
+    def test_signup_with_a_known_email_reuses_that_customer(self):
+        self.client.post("/account_init", {"email": "ancien@example.com"})  # different case
+        self.assertEqual(SignupRequest.objects.count(), 0)  # not a new account
+        token = ResetAccountToken.objects.get(customer=self.known)
+        response = self.client.post(f"/reset_password/{token.token}", {"newpw": "un-tres-bon-mdp"})
+        self.assertEqual(response.status_code, 302)
+        self.known.refresh_from_db()
+        self.assertTrue(self.known.check_password("un-tres-bon-mdp"))
+        self.assertTrue(self.known.has_web_access())
+        # and everything the bakery had recorded is still there
+        self.assertEqual(Customer.objects.filter(email__iexact="ancien@example.com").count(), 1)
+        self.assertTrue(self.known.is_professional)
+        self.assertEqual(self.known.pro_discount_percentage, 7.0)
+        self.assertEqual(self.known.display_name, "Ancien Client")
+        self.assertIn(self.order, self.known.order_set.all())
+
+    def test_the_email_tells_a_known_customer_their_identifier(self):
+        self.client.post("/account_init", {"email": "ancien@example.com"})
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("ancien", mail.outbox[0].body)
+        self.assertIn("initialisation de votre compte", mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].to, ["Ancien@Example.com"])
+
+    def test_customer_with_web_access_gets_a_reset_wording(self):
+        self.known.set_password("deja-un-mot-de-passe")
+        self.known.save()
+        self.client.post("/account_init", {"email": "ancien@example.com"})
+        self.assertIn("réinitialisation de votre mot de passe", mail.outbox[0].subject)
+
+    def test_submitting_someone_elses_email_grants_nothing_to_the_sender(self):
+        self.client.post("/account_init", {"email": "ancien@example.com"})
+        # the link only ever goes to the address already on file
+        self.assertEqual(mail.outbox[0].to, ["Ancien@Example.com"])
+        self.assertFalse(auth_get_user(self.client).is_authenticated)
+
+    def test_ambiguous_email_is_not_guessed(self):
+        Customer.objects.create(username="homonyme", display_name="Homonyme", email="ancien@example.com")
+        self.client.post("/account_init", {"email": "ancien@example.com"})
+        self.assertEqual(ResetAccountToken.objects.count(), 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("plusieurs comptes", mail.outbox[0].subject)

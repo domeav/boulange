@@ -13,21 +13,23 @@
 </section>
 
 <section>
-  <h2>Initialisation du compte</h2>
+  <h2>Créer un compte / initialiser mon accès</h2>
   <p>
-    Merci d'initialiser votre compte en renseignant votre adresse
-    email ci-dessous.
+    Nouveau client comme ancien, renseignez votre adresse email
+    ci-dessous : vous recevrez un lien pour choisir votre mot de passe.
+    Si la boulangerie vous connaît déjà, votre historique de commandes
+    est conservé.
   </p>
   <form action="{% url 'boulange:account_init' %}" method="POST">
     {% csrf_token %}
     Email :
     <input name="email"></input>
-    <input type="submit" value="Initialiser"></input>
+    <input type="submit" value="Valider"></input>
   </form>
   <p>
-    En cas d'oubli de mot de passe ou d'identifiant, vous pouvez
-    utiliser ce formulaire pour récupérer votre identifiant et
-    positionner un nouveau mot de passe.
+    En cas d'oubli de mot de passe ou d'identifiant, utilisez également
+    ce formulaire pour récupérer votre identifiant et positionner un
+    nouveau mot de passe.
   </p>
 </section>
 {% endblock %}

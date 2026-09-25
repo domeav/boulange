@@ -1,0 +1,36 @@
+{% extends "boulange/base.html" %}
+
+{% block title %}Création de compte{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Création de votre compte</h2>
+  <p>
+    Adresse email confirmée : <b>{{ signup_request.email }}</b>
+  </p>
+  {% if errors %}
+  <p class="error">
+    {% for error in errors %}{{ error }}<br>{% endfor %}
+  </p>
+  {% endif %}
+  <form method="POST">
+    {% csrf_token %}
+    <label>
+      Nom qui identifiera vos commandes :
+      <input name="display_name" value="{{ display_name }}" required>
+    </label>
+    <label>
+      Adresse postale (facultatif) :
+      <input name="address" value="{{ address }}">
+    </label>
+    <label>
+      Votre mot de passe :
+      <input type="password" name="newpw" required>
+    </label>
+    <p>
+      Attention à ne pas utiliser un mot courant, longueur minimale 8 caractères.
+    </p>
+    <button type="submit">Créer mon compte</button>
+  </form>
+</section>
+{% endblock %}

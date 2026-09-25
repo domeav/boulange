@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.contrib.auth.hashers import is_password_usable
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -16,6 +17,8 @@ TVA = 5.5
 ORDER_WINDOW_DAYS = 56
 # How far ahead delivery dates are pre-generated when (re)generation does run.
 DELIVERY_DATES_HORIZON_DAYS = 365
+# How long an emailed account link (password reset or signup confirmation) stays usable.
+ACCOUNT_TOKEN_VALIDITY = timedelta(days=1)
 
 
 class Settings(models.Model):
@@ -196,6 +199,16 @@ class Customer(AbstractUser):
     def __str__(self):
         return f"{self.display_name}"
 
+    def has_web_access(self):
+        """Whether this customer can actually sign in.
+
+        Customers the bakery creates from the admin have no password field on the form
+        and are stored with an empty password. has_usable_password() is not usable here
+        because Django only treats the "!" prefix as unusable and reports the empty
+        string as a usable password.
+        """
+        return bool(self.password) and is_password_usable(self.password)
+
     class Meta:
         verbose_name = "Client"
         verbose_name_plural = "Clients"
@@ -206,6 +219,34 @@ class ResetAccountToken(models.Model):
     token = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created = models.DateTimeField(default=timezone.now)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    def is_expired(self):
+        return (timezone.now() - self.created) > ACCOUNT_TOKEN_VALIDITY
+
+
+class SignupRequest(models.Model):
+    """A self-service account creation waiting for its email address to be confirmed.
+
+    The Customer row is only written once the emailed link is followed, so an
+    unconfirmed signup neither squats a display name nor shows up in the customer list
+    the bakery works from. Signups whose address already belongs to a customer never
+    get here: those are handled as an initialisation of that existing customer, which
+    is what preserves their order history, professional status and delivery points.
+    """
+
+    token = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created = models.DateTimeField(default=timezone.now)
+    email = models.EmailField("Email")
+
+    def __str__(self):
+        return f"Demande de compte pour {self.email}"
+
+    def is_expired(self):
+        return (timezone.now() - self.created) > ACCOUNT_TOKEN_VALIDITY
+
+    class Meta:
+        verbose_name = "Demande de création de compte"
+        verbose_name_plural = "Demandes de création de compte"
 
 
 class WeeklyDelivery(models.Model):

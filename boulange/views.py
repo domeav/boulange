@@ -6,8 +6,10 @@ from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -22,6 +24,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from .models import (
+    ACCOUNT_TOKEN_VALIDITY,
     ORDER_WINDOW_DAYS,
     Checkout,
     Customer,
@@ -32,6 +35,7 @@ from .models import (
     Product,
     ProductLine,
     ResetAccountToken,
+    SignupRequest,
     WeeklyDelivery,
 )
 from .serializers import (
@@ -161,50 +165,186 @@ def index(request):
     return redirect("boulange:orders")
 
 
-def account_init(request):
-    email = request.POST.get("email")
-    if not email:
-        return redirect("boulange:index")
-    customer = Customer.objects.filter(email=email).first()
-    # Always render the same confirmation page so the response does not reveal
-    # whether an account exists for the submitted address (avoid user enumeration).
-    if customer is not None:
-        # Throttle: don't send a fresh link (nor create a token) if one was already
-        # issued recently, to prevent using this endpoint for email bombing.
-        recently = timezone.now() - timedelta(minutes=10)
-        if not ResetAccountToken.objects.filter(customer=customer, created__gte=recently).exists():
-            token = ResetAccountToken(customer=customer)
-            token.save()
-            send_mail(
-                "Boulangerie de la Ferme du Resto : initialisation de votre compte",
-                f"""Bonjour,\n
-Rendez-vous à l'adresse suivante pour positionner le mot de passe de votre compte :\n
-{request.build_absolute_uri('/reset_password/'+str(token.token))}\n
+BAKERY_FROM_EMAIL = "boulangerie@lafermebioduresto.bzh"
+# Don't re-send a link to the same address within this window: without it the form is
+# an email-bombing tool aimed at any address an attacker cares to type.
+ACCOUNT_EMAIL_THROTTLE = timedelta(minutes=10)
+# The default ModelBackend, named explicitly because two backends are configured and
+# login() cannot pick one on its own.
+DEFAULT_AUTH_BACKEND = "django.contrib.auth.backends.ModelBackend"
+
+
+def _send_bakery_email(subject, body, to):
+    send_mail(f"Boulangerie de la Ferme du Resto : {subject}", body, BAKERY_FROM_EMAIL, [to], fail_silently=False)
+
+
+def _was_recently_mailed(queryset):
+    return queryset.filter(created__gte=timezone.now() - ACCOUNT_EMAIL_THROTTLE).exists()
+
+
+def _send_existing_customer_link(request, customer):
+    """Email an existing customer a link to (re)set their password.
+
+    Covers both the customer the bakery created but never gave web access to, and the
+    one who already signs in and just forgot their password. Either way the link only
+    ever goes to the address already on file, so submitting somebody else's address
+    grants nothing.
+    """
+    if _was_recently_mailed(ResetAccountToken.objects.filter(customer=customer)):
+        return
+    ResetAccountToken.objects.filter(created__lt=timezone.now() - ACCOUNT_TOKEN_VALIDITY).delete()
+    token = ResetAccountToken.objects.create(customer=customer)
+    url = request.build_absolute_uri(reverse("boulange:reset_password", kwargs={"token": token.token}))
+    if customer.has_web_access():
+        subject = "réinitialisation de votre mot de passe"
+        intro = "Rendez-vous à l'adresse suivante pour choisir un nouveau mot de passe :"
+    else:
+        subject = "initialisation de votre compte"
+        intro = "Un compte existe déjà à votre nom. Rendez-vous à l'adresse suivante pour choisir votre mot de passe :"
+    _send_bakery_email(
+        subject,
+        f"""Bonjour,\n
+{intro}\n
+{url}\n
 Ce lien est valable 24h.\n
 Attention : votre nom d'utilisateur/identifiant pour l'accès au service est : {customer.username}""",
-                "boulangerie@lafermebioduresto.bzh",
-                [customer.email],
-                fail_silently=False,
-            )
+        customer.email,
+    )
+
+
+def _send_signup_link(request, email):
+    """Email an unknown address the link that will create its account."""
+    if _was_recently_mailed(SignupRequest.objects.filter(email__iexact=email)):
+        return
+    SignupRequest.objects.filter(created__lt=timezone.now() - ACCOUNT_TOKEN_VALIDITY).delete()
+    signup_request = SignupRequest.objects.create(email=email)
+    url = request.build_absolute_uri(reverse("boulange:signup", kwargs={"token": signup_request.token}))
+    _send_bakery_email(
+        "création de votre compte",
+        f"""Bonjour,\n
+Rendez-vous à l'adresse suivante pour créer votre compte et choisir votre mot de passe :\n
+{url}\n
+Ce lien est valable 24h.\n
+Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.""",
+        email,
+    )
+
+
+def _send_ambiguous_email(email):
+    """Several customers share this address, so we refuse to guess which one to open.
+
+    Same stance as EmailBackend for signing in. The explanation goes to the mailbox
+    itself, so it tells a third party nothing.
+    """
+    if _was_recently_mailed(SignupRequest.objects.filter(email__iexact=email)):
+        return
+    SignupRequest.objects.create(email=email)
+    _send_bakery_email(
+        "plusieurs comptes pour cette adresse",
+        """Bonjour,\n
+Plusieurs comptes utilisent cette adresse email : nous ne pouvons pas déterminer
+automatiquement lequel ouvrir.\n
+Merci de contacter la boulangerie, qui régularisera la situation.""",
+        email,
+    )
+
+
+def account_init(request):
+    """Single self-service entry point: the visitor submits their email address.
+
+    Three outcomes, all answered with the very same page so the response never reveals
+    whether an address is already known (no user enumeration):
+      - the address belongs to a customer the bakery created, with or without web
+        access yet -> a link to set a password on *that* customer, which is what keeps
+        their order history, professional pricing and delivery points;
+      - the address is unknown -> a link that creates the account once followed;
+      - the address is shared by several customers -> a note asking them to get in
+        touch, because picking one of them automatically would be a guess.
+    Nothing is ever created or granted before the link in that email is followed.
+    """
+    email = (request.POST.get("email") or "").strip()
+    if not email:
+        return redirect("boulange:index")
+    customers = list(Customer.objects.filter(email__iexact=email)[:2])
+    if len(customers) > 1:
+        _send_ambiguous_email(email)
+    elif customers:
+        _send_existing_customer_link(request, customers[0])
+    else:
+        _send_signup_link(request, email)
     return render(request, "registration/account_init.html")
+
+
+def _password_errors(password, user=None):
+    """AUTH_PASSWORD_VALIDATORS are configured but were not being applied anywhere."""
+    try:
+        validate_password(password, user=user)
+    except ValidationError as error:
+        return list(error.messages)
+    return []
+
+
+def _unique_username(email):
+    """Self-service accounts sign in with their email, which must still be unique."""
+    username = email[:150]
+    suffix = 1
+    while Customer.objects.filter(username__iexact=username).exists():
+        suffix += 1
+        username = f"{email[:145]}-{suffix}"
+    return username
+
+
+def signup(request, token):
+    """Create the account behind a confirmed signup link: name, address, password."""
+    signup_request = get_object_or_404(SignupRequest, token=token)
+    if signup_request.is_expired():
+        return HttpResponse("Ce lien n'est plus valide")
+    display_name = (request.POST.get("display_name") or "").strip()
+    address = (request.POST.get("address") or "").strip()
+    errors = []
+    if request.POST:
+        password = request.POST.get("newpw", "")
+        if not display_name:
+            errors.append("Merci d'indiquer le nom qui identifiera vos commandes.")
+        elif Customer.objects.filter(display_name__iexact=display_name).exists():
+            errors.append("Ce nom est déjà utilisé, merci d'en choisir un autre.")
+        # the address may have been given an account since the link was sent
+        if Customer.objects.filter(email__iexact=signup_request.email).exists():
+            errors.append("Un compte existe déjà pour cette adresse email.")
+        errors.extend(_password_errors(password))
+        if not errors:
+            customer = Customer(
+                username=_unique_username(signup_request.email),
+                display_name=display_name,
+                email=signup_request.email,
+                address=address or None,
+                notes=f"Compte créé en ligne le {timezone.localtime():%d/%m/%Y}.",
+            )
+            customer.set_password(password)
+            customer.save()
+            signup_request.delete()
+            login(request, customer, backend=DEFAULT_AUTH_BACKEND)
+            return redirect("boulange:orders")
+    context = {"signup_request": signup_request, "display_name": display_name, "address": address, "errors": errors}
+    return render(request, "registration/signup.html", context=context)
 
 
 def reset_password(request, token):
     token = get_object_or_404(ResetAccountToken, token=token)
     # Enforce expiry before doing anything else, so an expired token can't be used
     # to set a password through a POST request either.
-    if (timezone.now() - token.created) > timedelta(days=1):
+    if token.is_expired():
         return HttpResponse("Ce lien n'est plus valide")
+    errors = []
     if request.POST:
-        if len(request.POST.get("newpw", "")) < 8:
-            return redirect("boulange:reset_password", token=token.token)
-        else:
+        errors = _password_errors(request.POST.get("newpw", ""), user=token.customer)
+        if not errors:
             token.customer.set_password(request.POST["newpw"])
             token.customer.save()
             token.delete()
             return redirect("boulange:index")
 
-    context = {"token": token}
+    context = {"token": token, "errors": errors}
     return render(request, "registration/reset_password.html", context=context)
 
 
