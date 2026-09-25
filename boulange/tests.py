@@ -2232,3 +2232,73 @@ class ExistingEmailSignupTests(ExtendedTestCase):
         self.assertEqual(ResetAccountToken.objects.count(), 0)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("plusieurs comptes", mail.outbox[0].subject)
+
+
+class PasswordChangeTests(ExtendedTestCase):
+    """A signed-in customer can change their own password (Django's built-in view)."""
+
+    URL = "/accounts/password_change/"
+
+    def setUp(self):
+        self.context = populate()
+        self.customer = self.context["guy"]
+        self.customer.set_password("mon-ancien-mdp")
+        self.customer.save()
+        self.client = Client()
+        self.client.login(username=self.customer.username, password="mon-ancien-mdp")
+
+    def _change(self, old="mon-ancien-mdp", new="mon-nouveau-mdp"):
+        return self.client.post(self.URL, {"old_password": old, "new_password1": new, "new_password2": new})
+
+    def test_requires_login(self):
+        anonymous = Client()
+        response = anonymous.get(self.URL)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login", response.url)
+
+    def test_form_is_reachable_and_rendered(self):
+        response = self.client.get(self.URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "old_password")
+        self.assertContains(response, "new_password1")
+
+    def test_password_is_changed(self):
+        response = self._change()
+        self.assertRedirects(response, "/accounts/password_change/done/")
+        self.customer.refresh_from_db()
+        self.assertTrue(self.customer.check_password("mon-nouveau-mdp"))
+        self.assertFalse(self.customer.check_password("mon-ancien-mdp"))
+
+    def test_user_stays_signed_in_afterwards(self):
+        self._change()
+        self.assertTrue(auth_get_user(self.client).is_authenticated)
+        self.assertEqual(self.client.get("/orders/").status_code, 200)
+
+    def test_done_page_renders(self):
+        self._change()
+        response = self.client.get("/accounts/password_change/done/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "bien été modifié")
+
+    def test_wrong_current_password_is_refused(self):
+        response = self._change(old="pas-le-bon")
+        self.assertEqual(response.status_code, 200)  # redisplayed with errors
+        self.customer.refresh_from_db()
+        self.assertTrue(self.customer.check_password("mon-ancien-mdp"))
+
+    def test_mismatched_confirmation_is_refused(self):
+        response = self.client.post(self.URL, {"old_password": "mon-ancien-mdp", "new_password1": "un-bon-mot-de-passe", "new_password2": "pas-le-meme"})
+        self.assertEqual(response.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertTrue(self.customer.check_password("mon-ancien-mdp"))
+
+    def test_weak_password_is_refused_by_the_configured_validators(self):
+        for weak in ("12345678", "court", "password"):
+            self._change(new=weak)
+            self.customer.refresh_from_db()
+            self.assertTrue(self.customer.check_password("mon-ancien-mdp"), f"{weak} should have been refused")
+
+    def test_link_is_offered_to_signed_in_users_only(self):
+        self.assertContains(self.client.get("/orders/"), self.URL)
+        anonymous = Client()
+        self.assertNotContains(anonymous.get("/accounts/login/"), self.URL)
