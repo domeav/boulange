@@ -490,17 +490,45 @@ class PreparationBatch(dict):
             self.finalize_product(product, qty)
 
 
+class NotesBatch(dict):
+    """The notes customers attached to the orders that concern the day, by delivery point.
+
+    An order contributes its note as soon as it takes part in the day in any capacity,
+    so a remark like "pas trop cuit" reaches the baker on the day the dough is worked
+    and not only on the day the bread is handed over. Orders are keyed by id while
+    collecting so an order counted for both baking and delivery is only listed once.
+    """
+
+    def add_order(self, order):
+        if not (order.notes or "").strip():
+            return
+        self.setdefault(order.delivery_date, {})[order.id] = order
+
+    def finalize(self):
+        ordered = {}
+        for delivery_date in sorted(self, key=lambda dd: (dd.date, str(dd.weekly_delivery))):
+            ordered[delivery_date] = sorted(self[delivery_date].values(), key=lambda order: str(order.customer))
+        self.clear()
+        self.update(ordered)
+
+    def count(self):
+        return sum(len(orders) for orders in self.values())
+
+
 class Actions(dict):
     def __init__(self):
         self["delivery"] = DeliveryBatch()
         self["bakery"] = BakeryBatch()
         self["preparation"] = PreparationBatch()
+        self["notes"] = NotesBatch()
 
     def add_order_for_delivery(self, order):
+        self["notes"].add_order(order)
         for line in order.lines.all():
             self["delivery"].add_line(line)
 
     def add_order_for_bakery(self, order):
+        self["notes"].add_order(order)
         for line in order.lines.all():
             self["bakery"].add_line(line)
 

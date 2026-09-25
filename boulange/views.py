@@ -13,7 +13,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -137,12 +137,18 @@ def _get_actions(target_date):
         DeliveryDate.objects.filter(date__gte=target_date)
         .filter(active=True)
         .filter(date__lte=target_date + timedelta(days=2))
-        .select_related("weekly_delivery")
-        .prefetch_related("order_set__lines__product__orig_product__raw_ingredients__ingredient")
+        .select_related("weekly_delivery__customer")
+        .prefetch_related(
+            # filtering order_set below would discard a plain prefetch and re-query, so
+            # the validated-only filter lives in the Prefetch itself, which also lets us
+            # fetch the customer each note is displayed under.
+            Prefetch("order_set", queryset=Order.objects.filter(validated=True).select_related("customer")),
+            "order_set__lines__product__orig_product__raw_ingredients__ingredient",
+        )
     )
     actions = None
     for delivery_date in delivery_dates:
-        for order in delivery_date.order_set.filter(validated=True):
+        for order in delivery_date.order_set.all():
             actions = order.get_actions(target_date, actions)
     if actions:
         actions.finalize()

@@ -16,6 +16,37 @@
 {% else %}
 {{ d|date:"D d/m" }}
 {% endif %}
+{% if actions.notes and section is None %}
+<section>
+  <details open>
+    <summary>Notes associées aux commandes du jour ({{ actions.notes.count }})</summary>
+    <table>
+      <thead>
+	<tr><th>Point de retrait</th><th>Client</th><th>Commande</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+	{% for delivery_date, orders in actions.notes.items %}
+	{% for order in orders %}
+	<tr>
+	  <td>
+	    <a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">{{ delivery_date.weekly_delivery.customer }}</a>
+	    {% if delivery_date.date != target_date %}
+	    <br><small>livraison le {{ delivery_date.date|date:"l d/m" }}</small>
+	    {% endif %}
+	  </td>
+	  <td>{{ order.customer }}</td>
+	  <td class="small">
+	    {% for line in order.lines.all %}{{ line.quantity }}&nbsp;{{ line.product.ref }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+	  </td>
+	  <td><pre style="white-space: pre-wrap; margin: 0;">{{ order.notes }}</pre></td>
+	</tr>
+	{% endfor %}
+	{% endfor %}
+      </tbody>
+    </table>
+  </details>
+</section>
+{% endif %}
 {% if actions.bakery %}
 {% if section is None or section == 'boulange' %}
 <section>
@@ -86,6 +117,14 @@
         <li>{{ product }} : {{ nb }}</li>
         {% endfor %}
       </ul>
+      {% with notes=actions.notes|dict_key:delivery_date %}
+      {% if notes %}
+      {# the card totals every order of the point, so a note cannot be tied to a line here: point at the detail instead #}
+      <p class="small" style="text-align: center;">
+	<a href="{% url 'boulange:delivery_receipt' delivery_date.id %}">📝 {{ notes|length }} note{{ notes|length|pluralize }}</a>
+      </p>
+      {% endif %}
+      {% endwith %}
     </article>
     {% endfor %}
   </div>

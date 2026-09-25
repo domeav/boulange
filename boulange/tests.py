@@ -2302,3 +2302,124 @@ class PasswordChangeTests(ExtendedTestCase):
         self.assertContains(self.client.get("/orders/"), self.URL)
         anonymous = Client()
         self.assertNotContains(anonymous.get("/accounts/login/"), self.URL)
+
+
+class ActionsNotesTests(ExtendedTestCase):
+    """Order notes surface on the actions screen, not only on the delivery receipt."""
+
+    fixtures = ["data/base.json"]
+
+    def setUp(self):
+        self.context = populate()
+        self.client = Client()
+        self.client.force_login(self.context["admin"])
+        self.product = Product.objects.filter(active=True).first()
+        self.monday = self.context["monday_delivery"]  # SAME_DAY
+        self.wednesday = self.context["wednesday_delivery"]  # PREVIOUS_DAY
+
+    def _order(self, weekly_delivery, on_date, notes, customer=None):
+        delivery_date = weekly_delivery.deliverydate_set.filter(date=on_date).first() or weekly_delivery.deliverydate_set.create(date=on_date)
+        order = Order.objects.create(customer=customer or self.context["guy"], delivery_date=delivery_date, validated=True, notes=notes)
+        OrderLine.objects.create(order=order, product=self.product, quantity=2)
+        return order
+
+    def _actions_on(self, day):
+        return self.client.get(f"/actions/{day.year}/{day.month}/{day.day}/")
+
+    def test_note_of_the_day_is_shown(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "Merci de bien emballer le pain")
+        response = self._actions_on(day)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Notes associées aux commandes du jour (1)")
+        self.assertContains(response, "Merci de bien emballer le pain")
+
+    def test_note_reaches_the_baker_on_the_baking_day(self):
+        """A PREVIOUS_DAY delivery is baked the day before: the note must show then too."""
+        wednesday = date.today() + timedelta(days=(2 - date.today().weekday()) % 7 or 7)
+        self._order(self.wednesday, wednesday, "Pas trop cuit svp")
+        baking_day = wednesday - timedelta(days=1)
+        response = self._actions_on(baking_day)
+        self.assertContains(response, "Pas trop cuit svp")
+        # and it says which delivery it is for, since that is not this day
+        self.assertContains(response, "livraison le")
+
+    def test_note_is_listed_once_when_baked_and_delivered_the_same_day(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "Note unique")
+        response = self._actions_on(day)
+        self.assertContains(response, "Notes associées aux commandes du jour (1)")
+
+    def test_delivery_card_points_at_the_notes_without_quoting_them(self):
+        """The card totals every order of a point, so a note cannot be tied to a line."""
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "Je passe vers 18h")
+        self._order(self.monday, day, "Sans sel", customer=self.context["store"])
+        response = self.client.get(f"/actions_print/livraison/{day.year}/{day.month}/{day.day}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2 notes")
+        self.assertNotContains(response, "Je passe vers 18h")
+        self.assertNotContains(response, "Notes associées aux commandes du jour")
+
+    def test_summary_ties_each_note_to_its_own_order_lines(self):
+        """Two orders from one customer at one point: each note keeps its own products."""
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        first = self._order(self.monday, day, "Trancher le pain")
+        second = self._order(self.monday, day, "Pas besoin de le livrer")
+        other = Product.objects.filter(active=True, available_mondays=True).exclude(id=self.product.id).first()
+        second.lines.all().delete()
+        OrderLine.objects.create(order=second, product=other, quantity=1)
+        response = self._actions_on(day)
+        self.assertContains(response, "Notes associées aux commandes du jour (2)")
+        # each row carries the reference of the products of *that* order
+        self.assertContains(response, self.product.ref)
+        self.assertContains(response, other.ref)
+        self.assertEqual(first.lines.first().product, self.product)
+
+    def test_several_notes_are_counted_and_grouped(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "Note du client A")
+        self._order(self.monday, day, "Note du client B", customer=self.context["store"])
+        response = self._actions_on(day)
+        self.assertContains(response, "Notes associées aux commandes du jour (2)")
+        self.assertContains(response, "Note du client A")
+        self.assertContains(response, "Note du client B")
+
+    def test_no_section_when_no_note(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "")
+        response = self._actions_on(day)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Notes associées aux commandes du jour")
+
+    def test_blank_note_is_ignored(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "   \n  ")
+        self.assertNotContains(self._actions_on(day), "Notes associées aux commandes du jour")
+
+    def test_unvalidated_order_note_is_not_shown(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        order = self._order(self.monday, day, "Brouillon non validé")
+        order.validated = False
+        order.save()
+        self.assertNotContains(self._actions_on(day), "Brouillon non validé")
+
+    def test_notes_are_staff_only(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "Note confidentielle")
+        customer_client = Client()
+        customer_client.force_login(self.context["guy"])
+        self.assertEqual(customer_client.get(f"/actions/{day.year}/{day.month}/{day.day}/").status_code, 403)
+
+    def test_actions_query_count_does_not_grow_per_note(self):
+        day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7 or 7)
+        self._order(self.monday, day, "une note")
+        with CaptureQueriesContext(connection) as few:
+            self._actions_on(day)
+        for i in range(10):
+            extra = Customer.objects.create(username=f"noteur{i}", display_name=f"noteur {i}", email=f"noteur{i}@toto.net")
+            self._order(self.monday, day, f"note {i}", customer=extra)
+        with CaptureQueriesContext(connection) as many:
+            self._actions_on(day)
+        print(f"  /actions/ queries: {len(few.captured_queries)} with 1 note, {len(many.captured_queries)} with 11")
+        self.assertEqual(len(few.captured_queries), len(many.captured_queries))
